@@ -1,82 +1,67 @@
-# Better Off Local – Claude Code Guide
+# CLAUDE.md — Better Off Local
 
-## Project Overview
-Better Off Local is a consumer loyalty platform for local independent retailers.
-- **Consumer app**: Flutter (iOS + Android)
-- **Retailer portal**: Next.js web app for local businesses
-- **Admin portal**: Next.js web app for internal operations
-- **Backend**: Supabase (Postgres, Auth, Storage, Edge Functions)
+This file provides persistent context for AI coding assistants working on this project.
 
-## Repo Structure
+## Project Summary
+
+Better Off Local is a platform that rewards consumers for shopping at local independent retailers. It consists of:
+- A Flutter mobile app (consumer-facing)
+- A Next.js retailer portal (retailer-facing, includes QR scanner)
+- A Next.js admin portal (internal team)
+- A Supabase backend (PostgreSQL, Auth, Storage, Edge Functions)
+
+## Monorepo Structure
+
 ```
 apps/
-  mobile/           Flutter consumer app
-  retailer-portal/  Next.js retailer dashboard
-  admin/            Next.js admin dashboard
+  mobile/           Flutter app (iOS + Android) — uses pub/dart, NOT pnpm
+  admin/            Next.js app (App Router, TypeScript)
+  retailer-portal/  Next.js app (App Router, TypeScript)
 packages/
-  ui/               Shared React components (retailer + admin only)
-  types/            Shared TypeScript types and DTOs
-  config/           Shared constants and env helpers
-docs/
-  architecture/     Architecture decision records and structure guides
-supabase/           Migrations, seed, edge functions
+  config/           Shared env helpers, constants, feature flags
+  types/            Shared TypeScript types
+  ui/               Shared React component library
+supabase/
+  migrations/       SQL migrations (run via Supabase CLI)
+  seed/             Seed data
+  functions/        Deno-based edge functions
 ```
 
-## Architecture Docs
-Always read these before making structural changes:
-- `docs/architecture/flutter-app-structure.md`
-- `docs/architecture/nextjs-portals-structure.md`
+## Key Technical Decisions
 
-## Key Rules
+- **Monorepo**: Turborepo + pnpm workspaces (Flutter app excluded from workspace)
+- **Backend**: Supabase only — no separate API server
+- **Auth**: Supabase Auth (GoTrue) — row-level security enforced at DB level
+- **Mobile**: Flutter (`supabase_flutter` package for backend integration)
+- **Web**: Next.js App Router with TypeScript
 
-### Flutter (apps/mobile)
-- State management: Riverpod (flutter_riverpod)
-- Navigation: go_router
-- Feature-first folder structure under `lib/features/`
-- All Supabase access goes through `core/services/` and feature `data/` layers
-- Never call Supabase directly from widgets or screens
-- Never hardcode membership status in UI
-- Never validate redemptions client-side only
+## Database Conventions
 
-### Next.js Portals (apps/retailer-portal, apps/admin)
-- Framework: Next.js App Router with TypeScript
-- Styling: Tailwind CSS + shadcn/ui
-- All auth guards live in `lib/auth/` and run server-side
-- All Supabase access centralized in `lib/supabase/` and `lib/queries/`
-- Mutations go through `lib/actions/` (server actions)
-- Retailer users must never see another retailer's data — enforced server-side
-- Admin auth must be enforced server-side, not just in middleware
+- All tables use `uuid` primary keys with `gen_random_uuid()` default
+- All tables have `created_at timestamptz default now()`
+- Row-level security (RLS) is enabled on all tables
+- Use `profiles` table to extend `auth.users` — never modify `auth.users` directly
+- Migrations are numbered sequentially: `001_init.sql`, `002_retailers.sql`, etc.
 
-### Shared Packages
-- `packages/ui` — only genuinely shared components, no app business logic
-- `packages/types` — shared TS types, keep in sync with Supabase schema
-- `packages/config` — shared constants and env helpers
+## Code Conventions
 
-## Development Commands
+- TypeScript strict mode enabled across all web apps
+- Shared types live in `packages/types` — import from there, not locally
+- Environment variables accessed via helpers in `packages/config`
+- UI components shared between admin and retailer portal live in `packages/ui`
+
+## Running the Project
+
 ```bash
-# Web portals (from repo root)
-npm run dev:retailer     # retailer portal
-npm run dev:admin        # admin portal
-npm run build            # build all web apps
-npm run lint             # lint all web apps
-
-# Flutter (from apps/mobile)
-flutter run              # run on connected device/emulator
-flutter test             # run unit + widget tests
-flutter test integration_test/  # run integration tests
+pnpm install          # Install all web dependencies
+supabase start        # Start local Supabase
+pnpm dev              # Start all web apps
+cd apps/mobile && flutter run   # Start Flutter app
 ```
 
-## Environment Setup
-Each Next.js app has a `.env.local.example` — copy to `.env.local` and fill in:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (server-side only, never expose to client)
+## Useful Docs
 
-Flutter env is managed via `lib/core/config/env.dart` — see that file for setup.
-
-## Non-Negotiables
-- Do not put retailer or admin logic in the Flutter app
-- Do not create a single merged dashboard for both portals
-- Do not bypass server-side auth guards
-- Do not duplicate shared UI between portals — use packages/ui
-- Do not add full feature implementations without architecture review
+- [Architecture Overview](docs/architecture/overview.md)
+- [Data Model](docs/architecture/data-model.md)
+- [Architecture Decisions](docs/architecture/decisions.md)
+- [Build Roadmap](docs/roadmap/build-roadmap.md)

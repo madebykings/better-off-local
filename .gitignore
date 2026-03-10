@@ -1,35 +1,27 @@
 # Dependencies
 node_modules/
+.pnpm-store/
 .pnp
 .pnp.js
 
 # Build outputs
 .next/
-out/
 dist/
 build/
-
-# Environment files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+out/
 
 # Turbo
 .turbo/
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# Environment variables
+.env
+.env.local
+.env.*.local
+!.env.example
 
-# Editor
-.DS_Store
-.idea/
-*.swp
-*.swo
+# Supabase local
+supabase/.branches/
+supabase/.temp/
 
 # Flutter
 apps/mobile/.dart_tool/
@@ -37,6 +29,7 @@ apps/mobile/.flutter-plugins
 apps/mobile/.flutter-plugins-dependencies
 apps/mobile/.packages
 apps/mobile/build/
+apps/mobile/pubspec.lock
 apps/mobile/ios/Pods/
 apps/mobile/ios/.symlinks/
 apps/mobile/android/.gradle/
@@ -46,9 +39,20 @@ apps/mobile/coverage/
 apps/mobile/*.g.dart
 apps/mobile/*.freezed.dart
 
-# Supabase
-supabase/.branches/
-supabase/.temp/
-
 # OS
+.DS_Store
 Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage/

@@ -1,23 +1,23 @@
 {
   "name": "better-off-local",
   "private": true,
-  "workspaces": [
-    "apps/retailer-portal",
-    "apps/admin",
-    "packages/*"
-  ],
   "scripts": {
-    "dev:retailer": "turbo run dev --filter=retailer-portal",
-    "dev:admin": "turbo run dev --filter=admin",
-    "build": "turbo run build",
-    "lint": "turbo run lint",
-    "type-check": "turbo run type-check"
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "clean": "turbo clean"
   },
   "devDependencies": {
-    "turbo": "^2.0.0"
+    "prettier": "^3.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.0.0"
   },
-  "engines": {
-    "node": ">=20"
-  },
-  "packageManager": "npm@10.0.0"
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "apps/admin",
+    "apps/retailer-portal",
+    "packages/*"
+  ]
 }
