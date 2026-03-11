@@ -31,6 +31,7 @@ import '../../features/home/presentation/home_screen.dart';
 import '../../features/map/presentation/map_screen.dart';
 import '../../features/memberships/presentation/membership_card_screen.dart';
 import '../../features/memberships/presentation/paywall_screen.dart';
+import '../../features/memberships/presentation/subscription_success_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/offers/presentation/offer_detail_screen.dart';
 import '../../features/offers/presentation/offer_list_screen.dart';
@@ -127,6 +128,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.paywall,
         builder: (context, state) => const PaywallScreen(),
+      ),
+      GoRoute(
+        path: RouteNames.subscriptionSuccess,
+        builder: (context, state) => const SubscriptionSuccessScreen(),
       ),
 
       // ── Authenticated shell ────────────────────────────────────────────

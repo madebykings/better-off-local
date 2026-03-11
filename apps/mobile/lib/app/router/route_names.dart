@@ -11,6 +11,7 @@ abstract class RouteNames {
 
   // Membership gating
   static const paywall = '/paywall';
+  static const subscriptionSuccess = '/subscription-success';
 
   // Authenticated shell tabs
   static const home = '/home';

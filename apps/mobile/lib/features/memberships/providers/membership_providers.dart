@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/session_provider.dart';
 import '../../../core/providers/supabase_provider.dart';
 import '../data/membership_remote_data_source.dart';
 import '../data/membership_repository_impl.dart';
@@ -16,6 +17,13 @@ final membershipRepositoryProvider = Provider<MembershipRepository>(
       MembershipRepositoryImpl(ref.watch(membershipRemoteDataSourceProvider)),
 );
 
+/// Fetches the current user's membership whenever the auth session changes.
+/// Returns null when unauthenticated or when no membership row exists.
 final currentMembershipProvider = FutureProvider<Membership?>((ref) async {
-  return ref.watch(membershipRepositoryProvider).getCurrentMembership();
+  final session = ref.watch(sessionProvider).valueOrNull;
+  if (session == null) return null;
+
+  return ref
+      .read(membershipRepositoryProvider)
+      .fetchMembership(session.user.id);
 });

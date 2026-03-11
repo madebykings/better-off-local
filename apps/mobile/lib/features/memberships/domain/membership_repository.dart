@@ -1,9 +1,11 @@
 import 'membership.dart';
 
-abstract class MembershipRepository {
-  /// Fetch the active membership for the current authenticated user.
-  Future<Membership?> getCurrentMembership();
+abstract interface class MembershipRepository {
+  /// Fetch the most recent membership record for the given user.
+  /// Returns null when the user has no membership row.
+  Future<Membership?> fetchMembership(String userId);
 
-  /// Fetch membership by ID.
-  Future<Membership?> getMembership(String membershipId);
+  /// Calls the create-checkout-session edge function and returns
+  /// the Stripe Checkout Session URL. The app opens this in a browser.
+  Future<String> createCheckoutSession({required String plan});
 }

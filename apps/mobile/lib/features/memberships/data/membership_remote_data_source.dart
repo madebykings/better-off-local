@@ -1,13 +1,40 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// TODO: implement membership data source
-// Queries the memberships table via Supabase for the current user.
 class MembershipRemoteDataSource {
   const MembershipRemoteDataSource(this._client);
+
   final SupabaseClient _client;
 
-  Future<Map<String, dynamic>?> fetchCurrentMembership(String userId) async {
-    // TODO: implement
-    throw UnimplementedError();
+  /// Fetches the most recent membership row for the user.
+  /// Returns null when no row exists.
+  Future<Map<String, dynamic>?> fetchMembership(String userId) async {
+    final response = await _client
+        .from('consumer_memberships')
+        .select()
+        .eq('profile_id', userId)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    return response;
+  }
+
+  /// Calls the create-checkout-session edge function.
+  /// Returns the Stripe Checkout Session URL.
+  Future<String> createCheckoutSession({required String plan}) async {
+    final response = await _client.functions.invoke(
+      'create-checkout-session',
+      body: {'plan': plan},
+    );
+
+    if (response.status != 200) {
+      final message =
+          (response.data as Map<String, dynamic>?)?['error'] as String? ??
+              'Failed to create checkout session';
+      throw Exception(message);
+    }
+
+    final url = (response.data as Map<String, dynamic>)['url'] as String?;
+    if (url == null) throw Exception('No checkout URL returned');
+    return url;
   }
 }
