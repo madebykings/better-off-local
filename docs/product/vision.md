@@ -1,47 +1,109 @@
-# Product Vision
+# Better Off Local – Product Vision
 
-## Better Off Local
+## Overview
+Better Off Local is a paid local membership platform that helps consumers save money at independent businesses while helping retailers attract new local customers.
 
-> Empowering communities to shop local through rewards, discovery, and connection.
+Consumers join Better Off Local to unlock exclusive discounts and offers nearby.
+Retailers join Better Off Local to gain visibility, increase footfall, and convert more local shoppers into paying customers.
 
-## Mission
+The product launches first in Clackmannanshire, Scotland, with a hyper-local density strategy before expanding into surrounding regions.
 
-Better Off Local makes it effortless for consumers to discover, support, and be rewarded for shopping at independent local retailers — while giving retailers the tools to grow loyal customer relationships.
+## Vision Statement
+Make supporting local businesses the easiest and most rewarding way to shop locally.
 
 ## Problem
+Local independent businesses often struggle with:
+- limited reach
+- inconsistent footfall
+- expensive or ineffective advertising
+- lack of measurable local marketing ROI
 
-- Consumers lack a unified, rewarding experience for local shopping
-- Independent retailers struggle to compete with the loyalty programs of large chains
-- Local economies lose spend to national chains partly due to friction and lack of incentive
+Consumers often want to support local businesses, but:
+- do not know what is nearby
+- are price-sensitive
+- lack a simple way to discover worthwhile local offers
+- have no single trusted place to access local discounts
 
 ## Solution
+Better Off Local provides:
+- a mobile membership app for consumers
+- a verified offers platform for local businesses
+- location-aware discovery of nearby deals
+- a secure redemption flow using dynamic QR validation
+- analytics for retailers to measure engagement and redemptions
 
-A mobile-first platform that:
-1. Lets consumers earn rewards by scanning QR codes at participating local retailers
-2. Gives retailers a simple dashboard to manage their presence, offers, and customer insights
-3. Builds a discovery layer so consumers can find great local businesses nearby
+## Core Value Proposition
 
-## Core User Journeys
+### For Consumers
+- Save money locally
+- Discover nearby independent businesses
+- Access exclusive member-only deals
+- Feel part of supporting the local economy
 
-### Consumer
-1. Download app → browse nearby retailers
-2. Visit a retailer → scan QR code → earn points
-3. Redeem points for rewards → feel good about shopping local
+### For Retailers
+- Reach local people more effectively
+- Attract new customers
+- Increase repeat visits
+- Access redemption and engagement analytics
+- Join a curated local network rather than a generic marketplace
+
+## Business Model
+
+### Consumer Revenue
+Consumers pay:
+- monthly subscription, or
+- annual subscription
+
+### Retailer Revenue
+Retailers pay:
+- annual subscription for listing, offer management, analytics, and redemption verification access
+
+## Product Positioning
+Better Off Local is not a generic coupon site.
+It is a paid, trusted, curated local membership platform designed around verified value for both consumers and local businesses.
+
+## Launch Strategy
+Launch in Clackmannanshire first.
+The initial focus is retailer density and visible consumer value within a small geography.
+
+Target early launch success factors:
+- 40 to 60 live retailers
+- strong spread across major towns
+- clear offer variety
+- enough deal density that consumers feel immediate value
+
+## Target User Types
+
+### Consumer Member
+A resident who wants to save money, discover local businesses, and use a simple app to access worthwhile deals.
 
 ### Retailer
-1. Sign up via retailer portal → set up profile + QR code
-2. View customer visits and insights
-3. Create offers and rewards to drive repeat visits
+An independent local business owner or manager who wants measurable new local customers and easy deal management.
 
-### Admin
-1. Manage retailer onboarding and approvals
-2. Monitor platform health and usage
-3. Configure rewards structure and promotions
+### Internal Admin
+The Better Off Local team managing onboarding, approvals, moderation, analytics, subscriptions, and rollout.
 
-## Success Metrics
+## Product Principles
+- Hyper-local before regional expansion
+- Paid membership with obvious value
+- Simple, intuitive redemption flow
+- Fraud-resistant architecture
+- High retailer trust
+- Strong analytics foundations
+- Scalable multi-region model
 
-- Monthly Active Users (consumers)
-- Retailer retention rate
-- QR scans per week
-- Redemption rate
-- Net Promoter Score
+## What Success Looks Like
+A successful Better Off Local launch means:
+- consumers save more than they spend on membership
+- retailers can clearly see return on participation
+- redemption is easy but secure
+- local businesses want to join because other locals are using it
+- expansion into nearby areas becomes operationally repeatable
+
+## Long-Term Potential
+Once proven locally, Better Off Local can expand into:
+- nearby counties and cities
+- stronger loyalty mechanics
+- referral and ambassador systems
+- premium placements and sponsorships
+- local rewards, cashback, and community campaigns

@@ -1,61 +1,27 @@
 # Better Off Local
 
-A platform empowering communities to shop local through rewards, discovery, and connection.
+Better Off Local is a production-grade local discount and loyalty membership platform launching first in Clackmannanshire, Scotland.
 
-## What's in this repo
+Consumers pay a monthly or annual membership to unlock exclusive offers from local independent businesses.
+Retailers pay an annual fee to be listed, create offers, and access redemption analytics.
 
-| Path | Description |
-|------|-------------|
-| `apps/mobile` | Flutter consumer app (iOS + Android) |
-| `apps/admin` | Next.js internal admin portal |
-| `apps/retailer-portal` | Next.js retailer dashboard + QR scanner |
-| `packages/config` | Shared config, env helpers, constants |
-| `packages/types` | Shared TypeScript types for web apps |
-| `packages/ui` | Shared UI components (admin + retailer portal) |
-| `supabase/` | Migrations, seed data, edge functions |
-| `docs/` | Product, architecture, roadmap, UX docs |
-| `scripts/` | Dev setup and deploy helper scripts |
-
-## Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org) v20+
-- [pnpm](https://pnpm.io) v9+
-- [Supabase CLI](https://supabase.com/docs/guides/cli)
-- [Flutter](https://flutter.dev) (for mobile development)
-
-### Setup
-
-```bash
-# Install dependencies (web apps + packages)
-pnpm install
-
-# Start local Supabase
-supabase start
-
-# Start all web apps in dev mode
-pnpm dev
-```
-
-### Running individual apps
-
-```bash
-# Admin portal only
-pnpm --filter admin dev
-
-# Retailer portal only
-pnpm --filter retailer-portal dev
-
-# Mobile app
-cd apps/mobile && flutter run
-```
+## Platforms
+- Flutter mobile app for consumers (iOS + Android)
+- Next.js retailer portal
+- Next.js internal admin portal
+- Supabase backend
+- Stripe billing
 
 ## Documentation
+- Product vision: `docs/product/vision.md`
+- Architecture overview: `docs/architecture/overview.md`
+- Data model: `docs/architecture/data-model.md`
+- Build roadmap: `docs/roadmap/build-roadmap.md`
 
-- [Product Vision](docs/product/vision.md)
-- [Architecture Overview](docs/architecture/overview.md)
-- [Data Model](docs/architecture/data-model.md)
-- [Architecture Decisions](docs/architecture/decisions.md)
-- [Build Roadmap](docs/roadmap/build-roadmap.md)
-- [Screen List](docs/ux/screen-list.md)
+## Principles
+- Hyper-local first
+- Production-ready from day one
+- Clean UX
+- Fraud-resistant redemption
+- Strong retailer value
+- Measurable consumer savings

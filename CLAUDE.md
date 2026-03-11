@@ -1,67 +1,56 @@
-# CLAUDE.md — Better Off Local
+# Better Off Local
 
-This file provides persistent context for AI coding assistants working on this project.
+## Product Summary
+Better Off Local is a paid local discount and loyalty membership platform launching first in Clackmannanshire, Scotland.
 
-## Project Summary
+Consumers pay monthly or annually to access verified local discounts.
+Retailers pay annually to appear on the platform, manage offers, and validate redemptions.
 
-Better Off Local is a platform that rewards consumers for shopping at local independent retailers. It consists of:
-- A Flutter mobile app (consumer-facing)
-- A Next.js retailer portal (retailer-facing, includes QR scanner)
-- A Next.js admin portal (internal team)
-- A Supabase backend (PostgreSQL, Auth, Storage, Edge Functions)
+This is a production product, not an MVP.
 
-## Monorepo Structure
+## Platforms
+- Flutter mobile app for consumers
+- Next.js retailer portal
+- Next.js admin portal
+- Supabase backend
+- Stripe billing
+- Google Maps location discovery
 
-```
-apps/
-  mobile/           Flutter app (iOS + Android) — uses pub/dart, NOT pnpm
-  admin/            Next.js app (App Router, TypeScript)
-  retailer-portal/  Next.js app (App Router, TypeScript)
-packages/
-  config/           Shared env helpers, constants, feature flags
-  types/            Shared TypeScript types
-  ui/               Shared React component library
-supabase/
-  migrations/       SQL migrations (run via Supabase CLI)
-  seed/             Seed data
-  functions/        Deno-based edge functions
-```
+## Core User Types
+1. Consumer members
+2. Retailers
+3. Internal admins
 
-## Key Technical Decisions
+## Product Principles
+- Hyper-local launch first
+- Value must be obvious immediately
+- Offers must be easy to discover and redeem
+- Redemption must be fraud-resistant
+- Retailer setup must be simple
+- Architecture must scale beyond one launch region
 
-- **Monorepo**: Turborepo + pnpm workspaces (Flutter app excluded from workspace)
-- **Backend**: Supabase only — no separate API server
-- **Auth**: Supabase Auth (GoTrue) — row-level security enforced at DB level
-- **Mobile**: Flutter (`supabase_flutter` package for backend integration)
-- **Web**: Next.js App Router with TypeScript
+## Non-Negotiable Business Rules
+- Consumers must have an active paid membership to redeem offers
+- Retailers must have an active paid plan to be publicly visible
+- Redemption validation must happen server-side
+- QR codes must be short-lived and tied to authenticated membership state
+- Offers can have rules such as one per user, one per day, validity windows, start/end dates, and redemption caps
+- Launch geography is Clackmannanshire first
+- Better Off Local is a paid membership product, not a free listing site
 
-## Database Conventions
+## Coding Rules
+- Prefer clear modular architecture
+- Do not invent hidden business logic
+- Keep files readable and production-ready
+- Preserve existing patterns unless clearly broken
+- Add documentation when behaviour, schema, routes, or env requirements change
+- For major features, provide brief implementation plans before coding
 
-- All tables use `uuid` primary keys with `gen_random_uuid()` default
-- All tables have `created_at timestamptz default now()`
-- Row-level security (RLS) is enabled on all tables
-- Use `profiles` table to extend `auth.users` — never modify `auth.users` directly
-- Migrations are numbered sequentially: `001_init.sql`, `002_retailers.sql`, etc.
-
-## Code Conventions
-
-- TypeScript strict mode enabled across all web apps
-- Shared types live in `packages/types` — import from there, not locally
-- Environment variables accessed via helpers in `packages/config`
-- UI components shared between admin and retailer portal live in `packages/ui`
-
-## Running the Project
-
-```bash
-pnpm install          # Install all web dependencies
-supabase start        # Start local Supabase
-pnpm dev              # Start all web apps
-cd apps/mobile && flutter run   # Start Flutter app
-```
-
-## Useful Docs
-
-- [Architecture Overview](docs/architecture/overview.md)
-- [Data Model](docs/architecture/data-model.md)
-- [Architecture Decisions](docs/architecture/decisions.md)
-- [Build Roadmap](docs/roadmap/build-roadmap.md)
+## Delivery Workflow
+When asked to implement a feature:
+1. Read this file and relevant docs first
+2. Inspect the relevant existing files
+3. Summarize the implementation plan
+4. Implement only the requested slice
+5. Summarize changed files
+6. Note assumptions, risks, and follow-up tasks
