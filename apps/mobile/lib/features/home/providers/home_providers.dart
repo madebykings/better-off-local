@@ -1,4 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-// TODO: implement home feature providers
-// e.g. nearbyOffersProvider, featuredRetailersProvider, categoriesProvider
+// Home providers re-export the relevant feature providers for convenience.
+// Widgets on the home screen can import this file instead of individual feature
+// provider files.
+export '../../../features/offers/providers/offers_providers.dart'
+    show homeOffersProvider, categoriesProvider;
+export '../../../features/retailers/providers/retailer_providers.dart'
+    show liveRetailersProvider;

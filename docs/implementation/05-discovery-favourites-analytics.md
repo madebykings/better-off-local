@@ -1,183 +1,175 @@
 # Better Off Local – Implementation Brief 05
-# Discovery, Favourites, and Analytics Basics
+# Discovery, Favourites, and Analytics
 
 ## Objective
-Improve the consumer discovery experience and add the first meaningful retailer-facing analytics.
+Implement the discovery, favourites, and basic analytics slice for Better Off Local.
 
-This slice should make the app feel useful day to day:
-- nearby offers
-- retailer browsing
-- favourites
-- simple view/save/redemption metrics
+Consumers must be able to discover live offers and retailers, save their favourites, and view offer details. Retailers must be able to see basic usage metrics in the portal.
 
 ---
 
-## Consumer App Scope
+## Scope
 
-Implement or improve:
-
-### Home Screen
-Show:
-- nearby offers
-- featured retailers
-- category shortcuts
-- clear empty states if no local offers exist
-
-### Explore / Offers List
-Support:
-- list of live offers
-- sort by distance
-- filter by category
-- filter by featured/new if available
-
-### Map Screen
-Support:
-- live retailer/offer pins
-- tap pin to open preview card
-- link through to offer or retailer detail
-
-### Offer Detail Screen
-Show:
-- retailer name
-- offer details
-- terms
-- validity
-- location
-- favourite/save action
-- redeem CTA if eligible
-
-### Retailer Detail Screen
-Show:
-- retailer profile
-- active offers
-- address/location
-- contact details if available
-
-### Favourites Screen
-Users can:
-- save offers
-- unsave offers
-- save retailers
-- unsave retailers
-- view all saved items
+- Live offer discovery (home screen + explore list)
+- Category filtering for offers
+- Offer detail screen with favourite toggle and membership-gated redeem CTA
+- Retailer detail screen with offer list and contact info
+- Favourites system (save/unsave offers and retailers)
+- Offer view logging (fire-and-forget analytics)
+- Retailer portal dashboard metrics (views, saves, redemptions, live offers)
+- Retailer portal offers table with per-offer stats
 
 ---
 
-## Data Rules
+## Domain Models
 
-Only show offers that are:
-- live
-- within start/end dates
-- attached to visible retailers
-- linked to active retailer subscriptions
+### Offer
+Fields: `id`, `retailerId`, `retailerName` (from join), `title`, `status`, `shortSummary`, `description`, `offerType`, `valueText`, `termsText`, `startAt`, `endAt`, `isFeatured`, `imageUrl`, `retailerLogoUrl`, `distanceKm`.
 
-Only show retailers that are:
-- active
-- approved
-- live
-- have active retailer subscription
+Removed: `categoryId` (not in DB), `discountDisplay`, `expiresAt`.
 
----
+`fromMap` handles nested `retailers` join map.
 
-## Favourites
+### Retailer
+Fields: `id`, `name`, `slug`, `description`, `shortDescription`, `logoUrl`, `coverImageUrl`, `websiteUrl`, `phone`, `email`, `addressLine1`, `town`, `postcode`, `latitude`, `longitude`, `distanceKm`.
 
-Use existing or create:
+Removed: `categoryId`, `isActive` (handled server-side via RLS/query filter).
 
-### favourites
-Fields:
-- id
-- profile_id
-- retailer_id (nullable)
-- offer_id (nullable)
-- created_at
+`fromMap` handles nested `retailer_locations` join (list or single map, picks primary).
 
-Rules:
-- a favourite must reference either a retailer or an offer
-- users can only manage their own favourites
+### Category
+Fields: `id`, `name`, `slug`, `icon`, `sortOrder`. Read-only reference data.
+
+### Favourite
+Fields: `id`, `profileId`, `retailerId`, `offerId`, `createdAt`. Either `retailerId` or `offerId` must be set.
 
 ---
 
-## Analytics Basics
+## Offer Discovery Rules
 
-Implement first-pass tracking for:
+Offers are live when:
+- `status = 'live'`
+- `end_at IS NULL OR end_at > now()`
+- `start_at IS NULL OR start_at <= now()`
 
-### offer_views
-Track when a consumer opens an offer detail screen.
+These are enforced in the Supabase query, never client-side.
 
-Fields:
-- id
-- profile_id (nullable if needed later)
-- offer_id
-- retailer_id
-- viewed_at
-
-### Favourites Count
-Retailers should be able to see how many times their offers or business were saved.
-
-### Redemption Counts
-Retailers should see total successful redemptions.
+Category filtering works by:
+1. Query `retailer_categories` for retailer IDs with matching `category_id`
+2. Filter offers by those retailer IDs via `.inFilter()`
 
 ---
 
-## Retailer Portal Scope
+## Data Layer
 
-Add or improve:
+### offers_remote_data_source.dart
+- `fetchOffers({categoryId})` — live offers with category filter support
+- `fetchOffer(offerId)` — full detail with retailer + location join
+- `fetchOffersByRetailer(retailerId)` — live offers for a retailer
+- `logOfferView({offerId, retailerId, profileId})` — insert to `offer_views`
+- `fetchCategories()` — active categories ordered by sort_order
 
-### Dashboard
-Show basic metrics:
-- live offers count
-- total successful redemptions
-- total offer views
-- total favourites/saves
-- recent redemption activity
+### retailers_remote_data_source.dart
+- `fetchRetailer(retailerId)` — single live retailer with primary location
+- `fetchLiveRetailers()` — all live+active retailers for home screen
 
-### Offer Analytics
-Per-offer view should show:
-- views
-- saves
-- successful redemptions
-
-Use simple aggregated queries.
-Do not overengineer charts yet.
+### favourites_remote_data_source.dart
+- `fetchFavourites(profileId)` — all favourite rows
+- `fetchFavouriteOffers(profileId)` — with joined offer + retailer data
+- `fetchFavouriteRetailers(profileId)` — with joined retailer data
+- `addOfferFavourite`, `removeOfferFavourite`
+- `addRetailerFavourite`, `removeRetailerFavourite`
 
 ---
 
-## Backend Responsibilities
+## Providers
 
-Implement:
-- public live offers query path
-- public live retailers query path
-- favourite toggle logic
-- offer view logging
-- retailer dashboard aggregation queries
+### offers_providers.dart
+- `selectedCategoryProvider` — `StateProvider<String?>`, null = all
+- `liveOffersProvider` — `FutureProvider<List<Offer>>`, watches `selectedCategoryProvider`
+- `homeOffersProvider` — first 10 live offers for home screen
+- `offerProvider` — `FutureProvider.family<Offer, String>`
+- `retailerOffersProvider` — `FutureProvider.family<List<Offer>, String>`
+- `categoriesProvider` — `FutureProvider<List<Category>>`
+- `logOfferView(ref, offerId, retailerId)` — fire-and-forget utility function
 
-Prefer reusable query helpers or views where sensible.
+### retailer_providers.dart
+- `retailerProvider` — `FutureProvider.family<Retailer, String>`
+- `liveRetailersProvider` — `FutureProvider<List<Retailer>>`
+
+### favourites_providers.dart
+- `favouritesProvider` — `FutureProvider<List<Favourite>>`
+- `favouriteOfferIdsProvider` — `Provider<Set<String>>` derived
+- `favouriteRetailerIdsProvider` — `Provider<Set<String>>` derived
+- `toggleOfferFavourite(ref, offerId, isCurrentlyFavourited)` — utility
+- `toggleRetailerFavourite(ref, retailerId, isCurrentlyFavourited)` — utility
+
+---
+
+## Flutter Screens
+
+### OfferListScreen
+- Category chip bar at top (from `CategoryChipList`)
+- Live scrollable list of `OfferCard` widgets
+- Pull-to-refresh
+- Empty state per category
+
+### OfferDetailScreen
+- `ConsumerStatefulWidget`: logs view on init via `addPostFrameCallback`
+- Favourite toggle in app bar
+- Value badge, title, retailer link, description, terms
+- Membership-gated redeem CTA: active membership → redeem; no membership → paywall
+
+### RetailerDetailScreen
+- Cover image in collapsible app bar
+- Logo, name, address, contact chips (phone, website)
+- Description
+- Live offer list via `retailerOffersProvider`
+
+### FavouritesScreen
+- Two tabs: Offers | Retailers
+- Each tab fetches joined data from `favourites_remote_data_source`
+
+### Home Widgets
+- `NearbyOffersSection`: horizontal scroll of `OfferCardCompact`, "See all" → explore
+- `FeaturedRetailersSection`: horizontal scroll of retailer logos (up to 8)
+- `CategoriesSection`: horizontal chip list, tap navigates to explore with category pre-selected
+- `SavingsSummaryCard`: shows count of successful redemptions from `redemptionHistoryProvider`
+
+---
+
+## Retailer Portal
+
+### dashboard/page.tsx
+4 metric cards (server-rendered via `Promise.all`):
+- Live offers count
+- Total successful redemptions
+- Total offer views
+- Total saves/favourites
+
+Plus a recent redemptions table (last 5).
+
+### offers/page.tsx
+Table of all offers with:
+- Title, status badge, created date
+- Views, saves, redemptions counts (aggregated client-side from parallel queries)
 
 ---
 
 ## Constraints
-- do not implement advanced recommendations yet
-- do not implement push notification campaigns yet
-- do not implement loyalty/cashback yet
-- keep analytics simple and accurate
-- keep discovery queries modular and efficient
+
+- No loyalty points
+- No referral logic
+- No advanced recommendation engine
+- No real-time map screen (stubbed, requires Google Maps API key)
+- Distance sorting uses client-side Haversine (acceptable for hyper-local Clackmannanshire launch)
 
 ---
 
-## Acceptance Criteria
+## Assumptions and Follow-ups
 
-Consumer:
-- can browse nearby live offers
-- can filter by category
-- can favourite offers and retailers
-- can view favourites list
-- can open retailer and offer details cleanly
-
-Retailer:
-- can see basic dashboard metrics
-- can see offer-level views/saves/redemptions
-
-Backend:
-- only eligible live data is exposed
-- favourites are user-scoped
-- offer views are logged
+- `offer_views` has no deduplication — same user can log multiple views
+- Race condition on category filter: if `retailer_categories` is empty for a category, returns empty list without error
+- Favourites screen uses FutureBuilder for joined data (not integrated into Riverpod provider graph, acceptable for simplicity)
+- `SavingsSummaryCard` shows redemption count, not £ value (no savings amount stored in DB)
+- Retailer portal stats can be slow for very high volume — acceptable at launch scale with small dataset
