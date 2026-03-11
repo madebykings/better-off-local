@@ -20,19 +20,23 @@ export async function getCurrentRetailerContext(): Promise<RetailerContext | nul
 
   if (!user) return null;
 
-  // TODO: once retailer_users schema is ready, replace with:
-  // const { data } = await supabase
-  //   .from('retailer_users')
-  //   .select('retailer_id, retailers(name)')
-  //   .eq('user_id', user.id)
-  //   .single();
-  // if (!data) return null;
-  // return { userId: user.id, retailerId: data.retailer_id, retailerName: data.retailers.name };
+  const { data } = await supabase
+    .from('retailer_users')
+    .select('retailer_id, retailers(name)')
+    .eq('profile_id', user.id)
+    .eq('is_active', true)
+    .single();
 
-  // Transitional: return basic context until retailer_users table exists.
+  if (!data) return null;
+
+  const retailerName =
+    Array.isArray(data.retailers)
+      ? (data.retailers[0]?.name ?? '')
+      : (data.retailers as { name: string } | null)?.name ?? '';
+
   return {
     userId: user.id,
-    retailerId: '',
-    retailerName: '',
+    retailerId: data.retailer_id,
+    retailerName,
   };
 }

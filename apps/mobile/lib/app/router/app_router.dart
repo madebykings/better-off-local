@@ -4,19 +4,22 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/providers/session_provider.dart';
+import '../../features/profile/providers/profile_providers.dart';
 
-/// Listens to [sessionProvider] and notifies [GoRouter] to re-evaluate
-/// its redirect whenever the Supabase auth state changes.
+/// Listens to [sessionProvider] and [profileProvider] and notifies [GoRouter]
+/// to re-evaluate its redirect whenever auth state or profile state changes.
 class _RouterNotifier extends ChangeNotifier {
   _RouterNotifier(this._ref) {
     _ref.listen<AsyncValue<Session?>>(
       sessionProvider,
       (_, __) => notifyListeners(),
     );
+    _ref.listen(profileProvider, (_, __) => notifyListeners());
   }
 
   final Ref _ref;
 }
+
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/sign_in_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
@@ -33,6 +36,7 @@ import '../../features/offers/presentation/offer_detail_screen.dart';
 import '../../features/offers/presentation/offer_list_screen.dart';
 import '../../features/onboarding/presentation/splash_screen.dart';
 import '../../features/onboarding/presentation/welcome_screen.dart';
+import '../../features/profile/presentation/complete_profile_screen.dart';
 import '../../features/redemptions/presentation/redemption_confirmation_screen.dart';
 import '../../features/redemptions/presentation/redemption_failed_screen.dart';
 import '../../features/redemptions/presentation/redemption_history_screen.dart';
@@ -71,6 +75,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return RouteNames.home;
       }
 
+      // Profile completion gate: only runs when authenticated.
+      if (isAuthenticated) {
+        final profile = ref.read(profileProvider).valueOrNull;
+        final isOnCompleteProfile =
+            state.matchedLocation == RouteNames.completeProfile;
+
+        // While profile is loading (null async), do not redirect yet.
+        // Only redirect if we have a confirmed incomplete profile.
+        if (profile != null && !profile.isComplete && !isOnCompleteProfile) {
+          return RouteNames.completeProfile;
+        }
+
+        if (profile != null && profile.isComplete && isOnCompleteProfile) {
+          return RouteNames.home;
+        }
+      }
+
       return null;
     },
     routes: [
@@ -94,6 +115,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.forgotPassword,
         builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+
+      // ── Profile completion (authenticated, pre-home gate) ──────────────
+      GoRoute(
+        path: RouteNames.completeProfile,
+        builder: (context, state) => const CompleteProfileScreen(),
       ),
 
       // ── Membership gating ──────────────────────────────────────────────

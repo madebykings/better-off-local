@@ -3,11 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 export interface AdminContext {
   userId: string;
   email: string;
+  fullName: string | null;
 }
 
 /**
- * Returns basic admin context for the current session.
- * Used in layouts for populating header/audit context.
+ * Returns admin context for the current session.
+ * Used in layouts for populating header and audit context.
  */
 export async function getAdminContext(): Promise<AdminContext | null> {
   const supabase = await createClient();
@@ -18,8 +19,15 @@ export async function getAdminContext(): Promise<AdminContext | null> {
 
   if (!user) return null;
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single();
+
   return {
     userId: user.id,
     email: user.email ?? '',
+    fullName: profile?.full_name ?? null,
   };
 }

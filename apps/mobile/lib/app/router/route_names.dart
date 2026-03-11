@@ -6,6 +6,9 @@ abstract class RouteNames {
   static const signUp = '/sign-up';
   static const forgotPassword = '/forgot-password';
 
+  // Profile completion (authenticated, pre-home gate)
+  static const completeProfile = '/complete-profile';
+
   // Membership gating
   static const paywall = '/paywall';
 
