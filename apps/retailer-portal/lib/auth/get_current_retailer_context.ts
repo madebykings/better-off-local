@@ -20,12 +20,19 @@ export async function getCurrentRetailerContext(): Promise<RetailerContext | nul
 
   if (!user) return null;
 
-  // TODO: implement once schema is ready
+  // TODO: once retailer_users schema is ready, replace with:
   // const { data } = await supabase
   //   .from('retailer_users')
   //   .select('retailer_id, retailers(name)')
   //   .eq('user_id', user.id)
   //   .single();
+  // if (!data) return null;
+  // return { userId: user.id, retailerId: data.retailer_id, retailerName: data.retailers.name };
 
-  return null;
+  // Transitional: return basic context until retailer_users table exists.
+  return {
+    userId: user.id,
+    retailerId: '',
+    retailerName: '',
+  };
 }

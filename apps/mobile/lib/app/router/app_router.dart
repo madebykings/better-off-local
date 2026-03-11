@@ -1,7 +1,22 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/providers/session_provider.dart';
+
+/// Listens to [sessionProvider] and notifies [GoRouter] to re-evaluate
+/// its redirect whenever the Supabase auth state changes.
+class _RouterNotifier extends ChangeNotifier {
+  _RouterNotifier(this._ref) {
+    _ref.listen<AsyncValue<Session?>>(
+      sessionProvider,
+      (_, __) => notifyListeners(),
+    );
+  }
+
+  final Ref _ref;
+}
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/sign_in_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
@@ -26,11 +41,15 @@ import '../../features/shell/presentation/app_shell.dart';
 import 'route_names.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final notifier = _RouterNotifier(ref);
+
   return GoRouter(
     initialLocation: RouteNames.splash,
+    refreshListenable: notifier,
     redirect: (context, state) {
-      final session = ref.read(sessionProvider);
-      final isAuthenticated = session != null;
+      // Safely extract session from AsyncValue — loading is treated as unauthenticated.
+      final sessionAsync = ref.read(sessionProvider);
+      final isAuthenticated = sessionAsync.valueOrNull != null;
 
       final publicRoutes = {
         RouteNames.splash,

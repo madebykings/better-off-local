@@ -23,20 +23,11 @@ export async function requireAdmin(): Promise<{ userId: string }> {
     redirect('/sign-in');
   }
 
-  // TODO: verify admin role via JWT claim or admin_users table
-  // Option A: JWT app_metadata claim
-  // const isAdmin = user.app_metadata?.role === 'admin';
-  //
-  // Option B: admin_users table
-  // const { data: adminUser } = await supabase
-  //   .from('admin_users')
-  //   .select('id')
-  //   .eq('user_id', user.id)
-  //   .single();
-  // const isAdmin = !!adminUser;
-  //
-  // if (!isAdmin) throw new Error('Access denied: not an admin');
+  const isAdmin = user.app_metadata?.role === 'admin';
 
-  // Placeholder until auth strategy is decided:
-  throw new Error('requireAdmin: not yet implemented — add admin role check');
+  if (!isAdmin) {
+    redirect('/sign-in');
+  }
+
+  return { userId: user.id };
 }

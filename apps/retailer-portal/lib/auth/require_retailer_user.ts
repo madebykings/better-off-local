@@ -24,17 +24,15 @@ export async function requireRetailerUser(): Promise<{
     redirect('/sign-in');
   }
 
-  // TODO: query retailer_users table to get linked retailer_id
+  // TODO: once retailer_users schema is ready, replace with:
   // const { data: retailerUser } = await supabase
   //   .from('retailer_users')
   //   .select('retailer_id')
   //   .eq('user_id', user.id)
   //   .single();
-
-  // if (!retailerUser) throw new Error('Access denied: no linked retailer');
-
+  // if (!retailerUser) redirect('/sign-in');
   // return { userId: user.id, retailerId: retailerUser.retailer_id };
 
-  // Placeholder until schema is ready:
-  throw new Error('requireRetailerUser: not yet implemented — add retailer_users query');
+  // Transitional: return userId only until retailer_users table exists.
+  return { userId: user.id, retailerId: '' };
 }
