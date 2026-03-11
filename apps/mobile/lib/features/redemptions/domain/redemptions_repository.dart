@@ -3,9 +3,10 @@ import 'redemption_token.dart';
 
 abstract class RedemptionsRepository {
   /// Request a short-lived redemption token from the server for a given offer.
-  /// Server must validate membership entitlement before issuing the token.
+  /// The server validates membership entitlement and offer rules before issuing.
+  /// Throws if the consumer is not entitled or the offer is not redeemable.
   Future<RedemptionToken> requestRedemptionToken(String offerId);
 
-  /// Fetch redemption history for the current user.
+  /// Fetch the authenticated user's redemption history, most recent first.
   Future<List<Redemption>> getRedemptionHistory();
 }

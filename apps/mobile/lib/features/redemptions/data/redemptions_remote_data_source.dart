@@ -4,14 +4,36 @@ class RedemptionsRemoteDataSource {
   const RedemptionsRemoteDataSource(this._client);
   final SupabaseClient _client;
 
+  /// Calls the `create-redemption-token` edge function.
+  /// Returns the raw response map: token, offer_id, retailer_id, expires_at.
+  /// Throws on membership/offer/rule violations (server returns 4xx).
   Future<Map<String, dynamic>> requestRedemptionToken(String offerId) async {
-    // TODO: call a Supabase Edge Function that validates membership,
-    // generates a signed token, and returns it. Do NOT validate client-side.
-    throw UnimplementedError();
+    final response = await _client.functions.invoke(
+      'create-redemption-token',
+      body: {'offer_id': offerId},
+    );
+
+    if (response.status != 200) {
+      final message =
+          (response.data as Map<String, dynamic>?)?['error'] as String? ??
+              'Could not create redemption token';
+      throw Exception(message);
+    }
+
+    return response.data as Map<String, dynamic>;
   }
 
-  Future<List<Map<String, dynamic>>> fetchRedemptionHistory() async {
-    // TODO: implement
-    throw UnimplementedError();
+  /// Fetches the authenticated user's redemption history with offer title,
+  /// most recent first, limited to 50 entries.
+  Future<List<Map<String, dynamic>>> fetchRedemptionHistory(
+    String userId,
+  ) async {
+    final response = await _client
+        .from('redemptions')
+        .select('*, offers(title)')
+        .eq('profile_id', userId)
+        .order('redeemed_at', ascending: false)
+        .limit(50);
+    return List<Map<String, dynamic>>.from(response as List);
   }
 }

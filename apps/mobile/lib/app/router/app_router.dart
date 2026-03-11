@@ -41,6 +41,7 @@ import '../../features/profile/presentation/complete_profile_screen.dart';
 import '../../features/redemptions/presentation/redemption_confirmation_screen.dart';
 import '../../features/redemptions/presentation/redemption_failed_screen.dart';
 import '../../features/redemptions/presentation/redemption_history_screen.dart';
+import '../../features/redemptions/presentation/redemption_qr_screen.dart';
 import '../../features/retailers/presentation/retailer_detail_screen.dart';
 import '../../features/shell/presentation/app_shell.dart';
 import 'route_names.dart';
@@ -195,12 +196,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const RedemptionHistoryScreen(),
           ),
           GoRoute(
+            path: '/redemptions/qr/:offerId',
+            builder: (context, state) => RedemptionQRScreen(
+              offerId: state.pathParameters['offerId']!,
+            ),
+          ),
+          GoRoute(
             path: RouteNames.redemptionConfirmation,
-            builder: (context, state) => const RedemptionConfirmationScreen(),
+            builder: (context, state) {
+              final offerTitle = state.extra as String?;
+              return RedemptionConfirmationScreen(offerTitle: offerTitle);
+            },
           ),
           GoRoute(
             path: RouteNames.redemptionFailed,
-            builder: (context, state) => const RedemptionFailedScreen(),
+            builder: (context, state) {
+              final reason = state.extra as String?;
+              return RedemptionFailedScreen(reason: reason);
+            },
           ),
         ],
       ),

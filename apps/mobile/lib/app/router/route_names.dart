@@ -32,6 +32,7 @@ abstract class RouteNames {
   static const favourites = '/favourites';
   static const notifications = '/notifications';
   static const redemptionHistory = '/redemptions';
+  static const redemptionQR = '/redemptions/qr/:offerId';
   static const redemptionConfirmation = '/redemptions/confirmation';
   static const redemptionFailed = '/redemptions/failed';
 }

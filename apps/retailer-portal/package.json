@@ -16,6 +16,7 @@
     "@supabase/supabase-js": "^2.45.0",
     "@supabase/ssr": "^0.5.0",
     "zod": "^3.23.0",
+    "html5-qrcode": "^2.3.8",
     "@better-off-local/ui": "*",
     "@better-off-local/types": "*",
     "@better-off-local/config": "*"
