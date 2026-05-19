@@ -42,6 +42,9 @@ dependencies:
   # QR code display for redemption tokens
   qr_flutter: ^4.1.0
 
+  # QR code scanning via camera (online checkout flow)
+  mobile_scanner: ^5.2.0
+
   # Relative time formatting ("2 minutes ago")
   timeago: ^3.6.1
 

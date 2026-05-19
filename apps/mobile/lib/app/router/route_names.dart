@@ -35,4 +35,7 @@ abstract class RouteNames {
   static const redemptionQR = '/redemptions/qr/:offerId';
   static const redemptionConfirmation = '/redemptions/confirmation';
   static const redemptionFailed = '/redemptions/failed';
+
+  // Online checkout scan (full-screen camera, no shell/bottom nav)
+  static const onlineScan = '/online-checkout/scan';
 }
