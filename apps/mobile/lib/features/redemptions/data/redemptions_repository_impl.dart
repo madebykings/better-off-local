@@ -14,6 +14,19 @@ class RedemptionsRepositoryImpl implements RedemptionsRepository {
     return RedemptionToken.fromMap(map);
   }
 
+  /// Returns a membership-level pass token (no offer_id / retailer_id).
+  ///
+  /// Delegates to [RedemptionsRemoteDataSource.requestPassToken], which
+  /// currently throws [UnimplementedError] until the backend edge function is
+  /// ready. [PassQRController] catches [UnimplementedError] and transitions to
+  /// [PassQRPending] — a non-error placeholder state — so the card screen
+  /// remains fully usable.
+  @override
+  Future<RedemptionToken> requestPassToken() async {
+    final map = await _dataSource.requestPassToken();
+    return RedemptionToken.fromMap(map);
+  }
+
   @override
   Future<List<Redemption>> getRedemptionHistory() async {
     final rows = await _dataSource.fetchRedemptionHistory(_userId);
