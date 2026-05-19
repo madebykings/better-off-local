@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { getStepByPath, getNextStep, getPrevStep } from '@/lib/onboarding/steps';
+import { getStepByPath, getNextStep, getPrevStep, FORM_CONTROLLED_STEPS } from '@/lib/onboarding/steps';
 
 /**
  * Footer navigation for the onboarding flow.
@@ -18,7 +18,9 @@ export function OnboardingNav() {
   const router = useRouter();
 
   const currentStep = getStepByPath(pathname);
+  // submitted: has its own CTA. form-controlled: form owns back/continue.
   if (!currentStep || currentStep.id === 'submitted') return null;
+  if (FORM_CONTROLLED_STEPS.has(currentStep.id)) return null;
 
   const prevStep = getPrevStep(currentStep.id);
   const nextStep = getNextStep(currentStep.id);

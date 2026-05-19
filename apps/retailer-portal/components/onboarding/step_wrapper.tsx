@@ -1,20 +1,22 @@
 /**
  * Standard content container for onboarding steps.
  *
- * Centres content, constrains width to match the footer nav, and renders
- * a consistent heading + subtitle above the step-specific content.
+ * Set `wide` for steps that use a two-column layout (e.g. form + live preview).
+ * Defaults to a centred single-column layout (max-w-xl).
  */
 export function StepWrapper({
   title,
   subtitle,
+  wide = false,
   children,
 }: {
   title: string;
   subtitle?: string;
+  wide?: boolean;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto w-full max-w-xl">
+    <div className={`mx-auto w-full ${wide ? 'max-w-5xl' : 'max-w-xl'}`}>
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
           {title}

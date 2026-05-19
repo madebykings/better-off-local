@@ -1,5 +1,6 @@
 import { requireOnboardingUser } from '@/lib/auth/require_onboarding_user';
-import { StepWrapper, StepPlaceholder } from '@/components/onboarding/step_wrapper';
+import { StepWrapper } from '@/components/onboarding/step_wrapper';
+import { BusinessDetailsForm } from '@/components/onboarding/business_details_form';
 
 export default async function BusinessDetailsPage() {
   await requireOnboardingUser();
@@ -8,12 +9,9 @@ export default async function BusinessDetailsPage() {
     <StepWrapper
       title="Tell us about your business"
       subtitle="This is what members will see when they discover you on Better Off Local."
+      wide
     >
-      {/* TODO: BusinessDetailsForm
-          Fields: business name, tagline (optional), description (~160 chars),
-          business type (dropdown), phone number (optional).
-          Right panel: live listing card preview updating as user types. */}
-      <StepPlaceholder label="Business details form — coming next" />
+      <BusinessDetailsForm />
     </StepWrapper>
   );
 }

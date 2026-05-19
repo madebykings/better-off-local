@@ -60,6 +60,15 @@ export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 export const TOTAL_STEPS = ONBOARDING_STEPS.length;
 
+/**
+ * Steps that manage their own Back and Continue navigation internally.
+ * OnboardingNav renders null for these so the form's own submit button
+ * acts as the Continue action (enabling validation before navigation).
+ */
+export const FORM_CONTROLLED_STEPS = new Set<OnboardingStepId>([
+  'business-details',
+]);
+
 export function getStepByPath(pathname: string): OnboardingStep | undefined {
   return ONBOARDING_STEPS.find((s) => s.path === pathname);
 }
