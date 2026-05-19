@@ -8,7 +8,8 @@ export type RedemptionStatus =
   | 'rejected'
   | 'expired'
   | 'rule_blocked'
-  | 'membership_invalid';
+  | 'membership_invalid'
+  | 'server_error';
 
 export interface RedemptionResult {
   success: boolean;
@@ -32,14 +33,16 @@ async function hashToken(raw: string): Promise<string> {
  *
  * Checks (in order):
  * 1. Token exists in DB
- * 2. Token not already consumed
- * 3. Token not expired
- * 4. Token belongs to this retailer
- * 5. Consumer membership still active
- * 6. Offer still live
- * 7. Offer rules (per-user, per-day, global caps)
+ * 2. Token not expired
+ * 3. Token belongs to this retailer
+ * 4. Consumer membership still active
+ * 5. Offer still live
+ * 6. Offer rules (per-user, per-day, global caps)
+ * 7. Atomic token consumption — UPDATE WHERE consumed_at IS NULL RETURNING id.
+ *    This is the true single-use gate. If 0 rows are returned, a concurrent
+ *    request consumed the token between our lookup and this write.
  *
- * On success: marks token consumed, inserts success redemption record.
+ * On success: inserts success redemption record.
  * On failure: inserts a failure redemption record (with context) and returns reason.
  *
  * Callers must be authenticated retailer users — enforced via requireRetailerUser().
@@ -82,7 +85,8 @@ export async function validateRedemption(rawToken: string): Promise<RedemptionRe
     return { success: false, status: 'rejected', rejectionReason: 'Invalid QR code' };
   }
 
-  // ── Already consumed ─────────────────────────────────────────────────────
+  // ── Early exit for obviously consumed tokens (optimisation only — the true
+  //    single-use gate is the atomic UPDATE at the end of this function).
   if (token.consumed_at) {
     await logFailure('rejected', 'Token already used');
     return { success: false, status: 'rejected', rejectionReason: 'This QR code has already been used' };
@@ -188,12 +192,33 @@ export async function validateRedemption(rawToken: string): Promise<RedemptionRe
     }
   }
 
-  // ── All checks passed — mark consumed + log success ──────────────────────
-  await supabase
+  // ── Atomic single-use gate ────────────────────────────────────────────────
+  // All business rule checks have passed. Now atomically claim the token by
+  // writing consumed_at only if it is still null. If another concurrent request
+  // already consumed it between the lookup above and this write, 0 rows will be
+  // returned and we must reject rather than record a double redemption.
+  const { data: consumed, error: consumeError } = await supabase
     .from('redemption_tokens')
     .update({ consumed_at: new Date().toISOString() })
-    .eq('id', token.id);
+    .eq('id', token.id)
+    .is('consumed_at', null)
+    .select('id');
 
+  if (consumeError) {
+    // A genuine DB error — distinct from a concurrent-scan race. Do not record
+    // a failed redemption against the member; the failure is server-side.
+    console.error('[validate_redemption] token consume update failed:', consumeError.message);
+    return { success: false, status: 'server_error', rejectionReason: 'A server error occurred. Please try again.' };
+  }
+
+  if (!consumed || consumed.length === 0) {
+    // A concurrent request won the race. Log the failure but do not record a
+    // success redemption for this attempt.
+    await logFailure('rejected', 'Token already used (concurrent scan)');
+    return { success: false, status: 'rejected', rejectionReason: 'This QR code has already been used' };
+  }
+
+  // ── Record success ────────────────────────────────────────────────────────
   await supabase.from('redemptions').insert({
     profile_id: token.profile_id,
     retailer_id: retailerId,
