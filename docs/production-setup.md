@@ -101,6 +101,7 @@ This applies all files under `supabase/migrations/` against the linked project.
 | 034 | `034_offer_onboarding_source.sql` | `onboarding_source` column on offers |
 | 035 | `035_changes_requested_status.sql` | Adds `changes_requested` approval status, `submitted_at` column |
 | 036 | `036_retailer_billing_activation.sql` | Moves `stripe_customer_id` to `retailers`, checkout tracking columns, makes `admin_actions.admin_profile_id` nullable |
+| 037 | `037_discovery_views.sql` | Adds `tagline` column to `retailers`; creates `consumer_discovery_retailers` and `consumer_discovery_offers` flat views for Flutter app |
 
 > Migration 026 (`seed_demo_data`) is safe to run in **staging** for realistic test data. Do not run it in production — it inserts rows with fixed UUIDs.
 
