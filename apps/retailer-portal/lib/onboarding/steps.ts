@@ -67,6 +67,8 @@ export const TOTAL_STEPS = ONBOARDING_STEPS.length;
  */
 export const FORM_CONTROLLED_STEPS = new Set<OnboardingStepId>([
   'business-details',
+  'branding',
+  'location',
 ]);
 
 export function getStepByPath(pathname: string): OnboardingStep | undefined {
