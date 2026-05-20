@@ -1,5 +1,6 @@
 import '../domain/category.dart';
 import '../domain/offer.dart';
+import '../domain/offer_summary.dart';
 import '../domain/offers_repository.dart';
 import 'offers_remote_data_source.dart';
 
@@ -42,5 +43,22 @@ class OffersRepositoryImpl implements OffersRepository {
       retailerId: retailerId,
       profileId: profileId,
     );
+  }
+
+  @override
+  Future<Map<String, OfferSummary>> getFeaturedOffersByRetailers(
+      List<String> retailerIds) async {
+    if (retailerIds.isEmpty) return {};
+    final rows =
+        await _dataSource.fetchFeaturedOfferForRetailers(retailerIds);
+    final result = <String, OfferSummary>{};
+    for (final row in rows) {
+      final retailerId = row['retailer_id'] as String;
+      // First result per retailer wins (ordered: featured desc, created_at asc).
+      if (!result.containsKey(retailerId)) {
+        result[retailerId] = OfferSummary.fromMap(row);
+      }
+    }
+    return result;
   }
 }

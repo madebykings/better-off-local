@@ -95,6 +95,34 @@ class RetailerDetailScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      if (retailer.categories.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: retailer.categories
+                              .map(
+                                (c) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.background,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border:
+                                        Border.all(color: AppColors.border),
+                                  ),
+                                  child: Text(
+                                    c,
+                                    style: AppTextStyles.labelSmall.copyWith(
+                                      color: AppColors.textSecondary,
+                                      letterSpacing: 0,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
                       if (retailer.shortDescription != null) ...[
                         const SizedBox(height: 16),
                         Text(

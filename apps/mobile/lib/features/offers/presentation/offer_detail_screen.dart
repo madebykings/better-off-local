@@ -173,7 +173,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                   const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               child: isEntitled
                   ? PrimaryButton(
-                      label: 'Redeem offer',
+                      label: 'Use this offer',
                       onPressed: () => context.push(
                         RouteNames.redemptionQR
                             .replaceAll(':offerId', offer.id),

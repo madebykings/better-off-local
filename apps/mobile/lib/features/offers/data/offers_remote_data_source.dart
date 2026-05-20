@@ -81,6 +81,19 @@ class OffersRemoteDataSource {
     });
   }
 
+  /// Fetches the best offer per retailer from [retailerIds] using the
+  /// `consumer_discovery_offers` view. Featured offers are preferred; oldest
+  /// live offer is the fallback. Callers keep the first result per retailer.
+  Future<List<Map<String, dynamic>>> fetchFeaturedOfferForRetailers(
+      List<String> retailerIds) async {
+    return (await _client
+        .from('consumer_discovery_offers')
+        .select('id, retailer_id, title, value_text, is_featured')
+        .inFilter('retailer_id', retailerIds)
+        .order('is_featured', ascending: false)
+        .order('created_at', ascending: true)) as List<Map<String, dynamic>>;
+  }
+
   Future<List<Map<String, dynamic>>> fetchCategories() async {
     return (await _client
         .from('categories')

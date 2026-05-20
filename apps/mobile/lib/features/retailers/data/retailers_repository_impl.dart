@@ -36,6 +36,7 @@ class RetailersRepositoryImpl implements RetailerRepository {
             id: r.id,
             name: r.name,
             slug: r.slug,
+            tagline: r.tagline,
             description: r.description,
             shortDescription: r.shortDescription,
             logoUrl: r.logoUrl,
@@ -49,6 +50,8 @@ class RetailersRepositoryImpl implements RetailerRepository {
             latitude: r.latitude,
             longitude: r.longitude,
             distanceKm: dist,
+            categories: r.categories,
+            featuredOffer: r.featuredOffer,
           );
         })
         .toList()
