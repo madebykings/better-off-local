@@ -102,8 +102,12 @@ export async function submitOnboarding(): Promise<SubmitOnboardingResult | null>
     return { error: 'Could not load retailer data. Please try again.' };
   }
 
-  // Idempotent — already submitted.
-  if (retailer.onboarding_step === 'submitted') {
+  // Idempotent — already submitted and not awaiting changes.
+  // If approval_status is 'changes_requested', allow resubmission.
+  if (
+    retailer.onboarding_step === 'submitted' &&
+    retailer.approval_status !== 'changes_requested'
+  ) {
     return null;
   }
 
@@ -153,13 +157,18 @@ export async function submitOnboarding(): Promise<SubmitOnboardingResult | null>
   }
 
   // ── Persist ──────────────────────────────────────────────────────────────
+  const now = new Date().toISOString();
+  const isResubmission = retailer.approval_status === 'changes_requested';
+
   const updatePayload: Record<string, unknown> = {
     onboarding_step: 'submitted',
-    updated_at: new Date().toISOString(),
+    submitted_at:    now,
+    updated_at:      now,
   };
 
-  // Only reset to pending after a rejection — don't overwrite pending/approved/suspended.
-  if (retailer.approval_status === 'rejected') {
+  // Reset approval_status to pending after rejection or changes-requested.
+  // Leave unchanged when pending/approved/suspended.
+  if (retailer.approval_status === 'rejected' || isResubmission) {
     updatePayload.approval_status = 'pending';
   }
 
@@ -171,6 +180,18 @@ export async function submitOnboarding(): Promise<SubmitOnboardingResult | null>
   if (updateError) {
     console.error('[submitOnboarding] update error:', updateError.message);
     return { error: 'Submission failed. Please try again.' };
+  }
+
+  // Log resubmission to the admin audit trail.
+  if (isResubmission) {
+    await service.from('admin_actions').insert({
+      admin_profile_id: userId,
+      action_type:      'retailer_resubmitted',
+      target_table:     'retailers',
+      target_id:        retailerId,
+      reason:           null,
+      metadata_json:    null,
+    });
   }
 
   return null;

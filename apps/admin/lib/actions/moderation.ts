@@ -25,17 +25,42 @@ async function logAdminAction(params: {
   });
 }
 
+/**
+ * Placeholder notification hook.
+ *
+ * TODO: Replace with real email/notification dispatch (e.g. Resend, Postmark).
+ * Called after every approval status transition so the integration point is
+ * established even before the email provider is wired up.
+ */
+async function notifyRetailerApprovalStatus(
+  retailerId: string,
+  action: 'approved' | 'rejected' | 'changes_requested',
+  note?: string,
+) {
+  // TODO: look up retailer owner email, dispatch transactional email
+  console.log('[notifyRetailerApprovalStatus] stub', { retailerId, action, note });
+}
+
 // ─── Retailer actions ─────────────────────────────────────────────────────────
 
 export async function approveRetailer(retailerId: string, reason?: string) {
   const { userId } = await requireAdmin();
   const supabase = createServiceClient();
 
+  // Idempotent guard.
+  const { data: current } = await supabase
+    .from('retailers')
+    .select('approval_status')
+    .eq('id', retailerId)
+    .single();
+  if (current?.approval_status === 'approved') return;
+
+  // NOTE: visibility_status is deliberately NOT set to 'live' here.
+  // A retailer goes live when approved + active subscription (enforced elsewhere).
   await supabase
     .from('retailers')
     .update({
       approval_status: 'approved',
-      visibility_status: 'live',
       updated_at: new Date().toISOString(),
     })
     .eq('id', retailerId);
@@ -48,13 +73,26 @@ export async function approveRetailer(retailerId: string, reason?: string) {
     reason,
   });
 
+  await notifyRetailerApprovalStatus(retailerId, 'approved');
+
   revalidatePath('/retailers');
   revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/review');
 }
 
-export async function rejectRetailer(retailerId: string, reason?: string) {
+export async function rejectRetailer(retailerId: string, note: string) {
+  if (!note?.trim()) return; // server-side guard — note is required
+
   const { userId } = await requireAdmin();
   const supabase = createServiceClient();
+
+  // Idempotent guard.
+  const { data: current } = await supabase
+    .from('retailers')
+    .select('approval_status')
+    .eq('id', retailerId)
+    .single();
+  if (current?.approval_status === 'rejected') return;
 
   await supabase
     .from('retailers')
@@ -70,16 +108,65 @@ export async function rejectRetailer(retailerId: string, reason?: string) {
     actionType: 'retailer_rejected',
     targetTable: 'retailers',
     targetId: retailerId,
-    reason,
+    reason: note,
   });
+
+  await notifyRetailerApprovalStatus(retailerId, 'rejected', note);
 
   revalidatePath('/retailers');
   revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/review');
+}
+
+export async function requestRetailerChanges(retailerId: string, note: string) {
+  if (!note?.trim()) return; // server-side guard — note is required
+
+  const { userId } = await requireAdmin();
+  const supabase = createServiceClient();
+
+  // Idempotent guard.
+  const { data: current } = await supabase
+    .from('retailers')
+    .select('approval_status')
+    .eq('id', retailerId)
+    .single();
+  if (current?.approval_status === 'changes_requested') return;
+
+  await supabase
+    .from('retailers')
+    .update({
+      approval_status: 'changes_requested',
+      visibility_status: 'hidden',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', retailerId);
+
+  await logAdminAction({
+    adminId: userId,
+    actionType: 'retailer_changes_requested',
+    targetTable: 'retailers',
+    targetId: retailerId,
+    reason: note,
+  });
+
+  await notifyRetailerApprovalStatus(retailerId, 'changes_requested', note);
+
+  revalidatePath('/retailers');
+  revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/review');
 }
 
 export async function suspendRetailer(retailerId: string, reason?: string) {
   const { userId } = await requireAdmin();
   const supabase = createServiceClient();
+
+  // Idempotent guard.
+  const { data: current } = await supabase
+    .from('retailers')
+    .select('approval_status')
+    .eq('id', retailerId)
+    .single();
+  if (current?.approval_status === 'suspended') return;
 
   await supabase
     .from('retailers')
