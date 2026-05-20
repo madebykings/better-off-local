@@ -393,6 +393,10 @@ export function BusinessDetailsForm({
           </select>
         </Field>
 
+        {/* TODO: Deprecate this phone field. The Links onboarding step (step 6)
+            now owns phone, email, and WhatsApp contact details. Hide this field
+            once the links step is live for all retailers. Do not remove the DB
+            column (retailers.phone) as existing records may have data here. */}
         <Field
           id="phone"
           label="Phone number"
