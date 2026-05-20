@@ -1,12 +1,14 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../domain/redemption_exception.dart';
+
 class RedemptionsRemoteDataSource {
   const RedemptionsRemoteDataSource(this._client);
   final SupabaseClient _client;
 
   /// Calls the `create-redemption-token` edge function.
   /// Returns the raw response map: token, offer_id, retailer_id, expires_at.
-  /// Throws on membership/offer/rule violations (server returns 4xx).
+  /// Throws [RedemptionException] on membership/offer/rule violations (4xx/5xx).
   Future<Map<String, dynamic>> requestRedemptionToken(String offerId) async {
     final response = await _client.functions.invoke(
       'create-redemption-token',
@@ -14,10 +16,12 @@ class RedemptionsRemoteDataSource {
     );
 
     if (response.status != 200) {
-      final message =
-          (response.data as Map<String, dynamic>?)?['error'] as String? ??
-              'Could not create redemption token';
-      throw Exception(message);
+      final body = response.data as Map<String, dynamic>?;
+      throw RedemptionException(
+        message: body?['error'] as String? ?? 'Could not create redemption token',
+        statusCode: response.status,
+        errorCode: body?['error_code'] as String?,
+      );
     }
 
     return response.data as Map<String, dynamic>;

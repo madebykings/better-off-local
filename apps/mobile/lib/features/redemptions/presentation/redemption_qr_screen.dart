@@ -2,21 +2,23 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../offers/providers/offers_providers.dart';
 import 'redemption_controller.dart';
 
 /// Displays a short-lived QR code that the retailer scans to validate a
-/// redemption. The token is requested from the server on mount and refreshed
-/// automatically when it expires.
-///
-/// The QR value is the raw token UUID — the server hashes it when validating.
+/// redemption. The token is requested from the server on mount and silently
+/// refreshed at T-30 seconds. The QR value is the raw token UUID — the server
+/// hashes it when validating.
 class RedemptionQRScreen extends ConsumerStatefulWidget {
   const RedemptionQRScreen({super.key, required this.offerId});
 
@@ -30,6 +32,13 @@ class RedemptionQRScreen extends ConsumerStatefulWidget {
 class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
   Timer? _countdownTimer;
   Duration _remaining = Duration.zero;
+
+  /// Value of the token currently displayed. Used to detect when a new token
+  /// arrives (initial issue or after silent refresh) so the countdown restarts.
+  String? _activeTokenValue;
+
+  /// Prevents multiple concurrent silent refresh calls for the same token.
+  bool _silentRefreshAttempted = false;
 
   @override
   void initState() {
@@ -50,11 +59,20 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
   void _startCountdown(DateTime expiresAt) {
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final remaining = expiresAt.difference(DateTime.now().toUtc());
       if (!mounted) return;
+      final remaining = expiresAt.difference(DateTime.now().toUtc());
       setState(() {
         _remaining = remaining.isNegative ? Duration.zero : remaining;
       });
+      // Silent refresh at T-30s (once per token).
+      if (!_silentRefreshAttempted &&
+          _remaining.inSeconds <= 30 &&
+          _remaining.inSeconds > 0) {
+        _silentRefreshAttempted = true;
+        ref
+            .read(redemptionControllerProvider.notifier)
+            .silentRefresh(widget.offerId);
+      }
     });
   }
 
@@ -66,19 +84,28 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for new tokens (initial issue and silent refresh).
+    // Using ref.listen avoids side effects inside the build body.
+    ref.listen<RedemptionControllerState>(redemptionControllerProvider,
+        (_, next) {
+      if (next is! RedemptionQRReady) return;
+      final token = next.token;
+      if (_activeTokenValue == token.token) return; // same token, no change
+      _activeTokenValue = token.token;
+      _silentRefreshAttempted = false;
+      _countdownTimer?.cancel();
+      setState(() => _remaining = token.remainingTime);
+      _startCountdown(token.expiresAt);
+    });
+
     final controllerState = ref.watch(redemptionControllerProvider);
 
-    // When QR is ready, kick off (or restart) the countdown timer.
-    if (controllerState is RedemptionQRReady) {
-      final token = controllerState.token;
-      if (_countdownTimer == null || !_countdownTimer!.isActive) {
-        _remaining = token.remainingTime;
-        _startCountdown(token.expiresAt);
-      }
-    }
+    // Offer title shown in the QR view (best-effort; silently absent on error).
+    final offerTitle =
+        ref.watch(offerProvider(widget.offerId)).valueOrNull?.title;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Redeem offer')),
+      appBar: AppBar(title: const Text('Use this offer')),
       body: switch (controllerState) {
         RedemptionLoading() => const LoadingIndicator(),
         RedemptionControllerError(:final message) => ErrorState(
@@ -87,13 +114,19 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
                 .read(redemptionControllerProvider.notifier)
                 .requestToken(widget.offerId),
           ),
+        RedemptionBlocked(:final message, :final showMembershipCTA) =>
+          _BlockedView(
+            message: message,
+            showMembershipCTA: showMembershipCTA,
+          ),
         RedemptionQRReady(:final token) => _QRView(
             token: token.token,
+            offerTitle: offerTitle,
             isExpired: _remaining == Duration.zero,
             countdown: _formatCountdown(_remaining),
             onRefresh: () {
               _countdownTimer?.cancel();
-              _countdownTimer = null;
+              _activeTokenValue = null;
               ref
                   .read(redemptionControllerProvider.notifier)
                   .refreshToken(widget.offerId);
@@ -105,18 +138,22 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
   }
 }
 
+// ── QR view ──────────────────────────────────────────────────────────────────
+
 class _QRView extends StatelessWidget {
   const _QRView({
     required this.token,
     required this.isExpired,
     required this.countdown,
     required this.onRefresh,
+    this.offerTitle,
   });
 
   final String token;
   final bool isExpired;
   final String countdown;
   final VoidCallback onRefresh;
+  final String? offerTitle;
 
   @override
   Widget build(BuildContext context) {
@@ -131,6 +168,19 @@ class _QRView extends StatelessWidget {
             style: AppTextStyles.titleMedium,
             textAlign: TextAlign.center,
           ),
+          if (offerTitle != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              offerTitle!,
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
           const SizedBox(height: AppSpacing.sm),
           Text(
             'The retailer will scan this code to confirm your redemption.',
@@ -168,18 +218,19 @@ class _QRView extends StatelessWidget {
                     height: 240,
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.55),
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      borderRadius:
+                          BorderRadius.circular(AppSpacing.radiusMd),
                     ),
-                    child: Column(
+                    child: const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.timer_off_outlined,
                           color: Colors.white,
                           size: 40,
                         ),
-                        const SizedBox(height: AppSpacing.sm),
-                        const Text(
+                        SizedBox(height: AppSpacing.sm),
+                        Text(
                           'Code expired',
                           style: TextStyle(
                             color: Colors.white,
@@ -195,7 +246,7 @@ class _QRView extends StatelessWidget {
 
           const SizedBox(height: AppSpacing.lg),
 
-          // Countdown or expired badge
+          // Countdown
           Center(
             child: isExpired
                 ? const SizedBox.shrink()
@@ -232,7 +283,6 @@ class _QRView extends StatelessWidget {
   }
 
   Color _countdownColor(String countdown) {
-    // Parse MM:SS and warn when under 60s
     final parts = countdown.split(':');
     if (parts.length == 2) {
       final minutes = int.tryParse(parts[0]) ?? 0;
@@ -242,5 +292,54 @@ class _QRView extends StatelessWidget {
       if (totalSeconds <= 60) return AppColors.warning;
     }
     return AppColors.textSecondary;
+  }
+}
+
+// ── Blocked view (permanent error, no retry) ─────────────────────────────────
+
+class _BlockedView extends StatelessWidget {
+  const _BlockedView({
+    required this.message,
+    required this.showMembershipCTA,
+  });
+
+  final String message;
+  final bool showMembershipCTA;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.pagePadding),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Icon(
+            showMembershipCTA
+                ? Icons.card_membership_outlined
+                : Icons.block_outlined,
+            size: 56,
+            color: AppColors.textSecondary,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            message,
+            style: AppTextStyles.bodyLarge,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          if (showMembershipCTA)
+            PrimaryButton(
+              label: 'Get membership',
+              onPressed: () => context.go(RouteNames.paywall),
+            )
+          else
+            OutlinedButton(
+              onPressed: () => context.pop(),
+              child: const Text('Go back'),
+            ),
+        ],
+      ),
+    );
   }
 }

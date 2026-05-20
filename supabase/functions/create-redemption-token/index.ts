@@ -47,9 +47,9 @@ serve(async (req) => {
     const body = await req.json();
     offerId = body?.offer_id as string | undefined;
   } catch {
-    return json({ error: 'Invalid request body' }, 400);
+    return json({ error: 'Invalid request body', error_code: 'server_error' }, 400);
   }
-  if (!offerId) return json({ error: 'offer_id is required' }, 400);
+  if (!offerId) return json({ error: 'offer_id is required', error_code: 'server_error' }, 400);
 
   // ── 3. Service-role client for all DB writes/checks ──────────────────────
   const supabase = createClient(
@@ -67,7 +67,7 @@ serve(async (req) => {
     .maybeSingle();
 
   if (!membership) {
-    return json({ error: 'No active membership' }, 403);
+    return json({ error: 'No active membership', error_code: 'membership_required' }, 403);
   }
 
   // ── 5. Verify offer exists and is live ───────────────────────────────────
@@ -79,11 +79,11 @@ serve(async (req) => {
     .maybeSingle();
 
   if (!offer) {
-    return json({ error: 'Offer not found or not live' }, 404);
+    return json({ error: 'Offer not found or not live', error_code: 'offer_unavailable' }, 404);
   }
 
   if (offer.end_at && new Date(offer.end_at) < new Date()) {
-    return json({ error: 'Offer has ended' }, 410);
+    return json({ error: 'Offer has ended', error_code: 'offer_ended' }, 410);
   }
 
   // ── 6. Check offer rules (caps) ──────────────────────────────────────────
@@ -104,7 +104,10 @@ serve(async (req) => {
         .eq('status', 'success');
 
       if ((count ?? 0) >= rules.max_redemptions_per_user) {
-        return json({ error: 'Per-user redemption limit reached for this offer' }, 429);
+        return json({
+          error: 'Per-user redemption limit reached for this offer',
+          error_code: 'lifetime_limit',
+        }, 429);
       }
     }
 
@@ -117,7 +120,10 @@ serve(async (req) => {
         .eq('status', 'success');
 
       if ((count ?? 0) >= rules.max_redemptions_total) {
-        return json({ error: 'Offer redemption cap reached' }, 410);
+        return json({
+          error: 'Offer redemption cap reached',
+          error_code: 'global_cap',
+        }, 410);
       }
     }
 
@@ -135,7 +141,10 @@ serve(async (req) => {
         .gte('redeemed_at', todayStart.toISOString());
 
       if ((count ?? 0) >= rules.max_redemptions_per_day) {
-        return json({ error: 'Daily redemption limit reached for this offer' }, 429);
+        return json({
+          error: 'Daily redemption limit reached for this offer',
+          error_code: 'daily_limit',
+        }, 429);
       }
     }
   }
@@ -158,7 +167,7 @@ serve(async (req) => {
 
   if (insertError) {
     console.error('Token insert error:', insertError.message);
-    return json({ error: 'Failed to create redemption token' }, 500);
+    return json({ error: 'Failed to create redemption token', error_code: 'server_error' }, 500);
   }
 
   // Return raw token — never persisted, only the hash is stored.
