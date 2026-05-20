@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
+import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/primary_button.dart';
 import 'membership_controller.dart';
 
@@ -256,8 +257,14 @@ class _HeroSection extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 7),
+                      const BrandLogo(
+                        variant: BrandLogoVariant.horizontal,
+                        scheme: BrandLogoScheme.dark,
+                        height: 14,
+                      ),
+                      const SizedBox(width: 6),
                       const Text(
-                        'Better Off Local Membership',
+                        'Membership',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 12,

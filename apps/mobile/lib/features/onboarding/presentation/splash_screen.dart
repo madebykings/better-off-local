@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/route_names.dart';
 import '../../../core/providers/session_provider.dart';
+import '../../../core/widgets/brand_logo.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -38,10 +39,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // TODO: replace with app logo asset
-            Icon(Icons.storefront, size: 72),
-            SizedBox(height: 16),
-            Text('Better Off Local'),
+            BrandLogo(variant: BrandLogoVariant.horizontal, height: 72),
           ],
         ),
       ),

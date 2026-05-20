@@ -10,26 +10,28 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-off-local/config": "*",
+    "@better-off-local/types": "*",
+    "@better-off-local/ui": "*",
+    "@supabase/ssr": "^0.5.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "html5-qrcode": "^2.3.8",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@supabase/supabase-js": "^2.45.0",
-    "@supabase/ssr": "^0.5.0",
-    "zod": "^3.23.0",
-    "html5-qrcode": "^2.3.8",
-    "@better-off-local/ui": "*",
-    "@better-off-local/types": "*",
-    "@better-off-local/config": "*"
+    "sharp": "^0.34.5",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
-    "typescript": "^5.5.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "tailwindcss": "^3.4.0",
+    "@types/sharp": "^0.31.1",
     "autoprefixer": "^10.4.0",
-    "postcss": "^8.4.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^15.0.0"
+    "eslint-config-next": "^15.0.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.5.0"
   }
 }

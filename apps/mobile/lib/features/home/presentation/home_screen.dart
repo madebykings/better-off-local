@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
+import '../../../core/widgets/brand_logo.dart';
 import 'widgets/categories_section.dart';
 import 'widgets/featured_retailers_section.dart';
 import 'widgets/nearby_offers_section.dart';
@@ -53,38 +54,10 @@ class _HomeHeader extends StatelessWidget {
       child: Row(
         children: [
           // BOL wordmark
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Better Off',
-                  style: AppTextStyles.titleLarge.copyWith(
-                    color: AppColors.primary,
-                    height: 1.1,
-                  ),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      'Local',
-                      style: AppTextStyles.titleLarge.copyWith(
-                        color: AppColors.primary,
-                        height: 1.1,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+          const Expanded(
+            child: BrandLogo(
+              variant: BrandLogoVariant.horizontal,
+              height: 32,
             ),
           ),
           // Notification bell

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
+import { ActivationStatusCard } from '@/components/dashboard/activation_status_card';
 
 export const metadata: Metadata = { title: 'Dashboard – Retailer Portal' };
 
@@ -33,8 +34,20 @@ export default async function DashboardPage() {
   const { retailerId } = await requireRetailerUser();
   const supabase = createServiceClient();
 
-  const [liveOffersResult, redemptionsResult, viewsResult, savesResult, recentResult] =
+  const [retailerResult, subscriptionResult, liveOffersResult, redemptionsResult, viewsResult, savesResult, recentResult] =
     await Promise.all([
+      supabase
+        .from('retailers')
+        .select('approval_status, visibility_status')
+        .eq('id', retailerId)
+        .single(),
+      supabase
+        .from('retailer_subscriptions')
+        .select('status, current_period_end')
+        .eq('retailer_id', retailerId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
       supabase
         .from('offers')
         .select('id', { count: 'exact', head: true })
@@ -61,6 +74,9 @@ export default async function DashboardPage() {
         .limit(5),
     ]);
 
+  const retailer = retailerResult.data;
+  const subscription = subscriptionResult.data;
+
   const liveOffers = liveOffersResult.count ?? 0;
   const totalRedemptions = redemptionsResult.count ?? 0;
   const totalViews = viewsResult.count ?? 0;
@@ -82,6 +98,18 @@ export default async function DashboardPage() {
           Overview of your account activity.
         </p>
       </div>
+
+      {/* Activation status */}
+      {retailer && (
+        <div className="mb-6">
+          <ActivationStatusCard
+            approvalStatus={retailer.approval_status as 'pending' | 'approved' | 'rejected' | 'suspended' | 'changes_requested'}
+            subscriptionStatus={(subscription?.status ?? null) as 'inactive' | 'active' | 'past_due' | 'cancelled' | 'expired' | null}
+            visibilityStatus={retailer.visibility_status}
+            periodEnd={subscription?.current_period_end ?? null}
+          />
+        </div>
+      )}
 
       {/* Metrics */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-8">

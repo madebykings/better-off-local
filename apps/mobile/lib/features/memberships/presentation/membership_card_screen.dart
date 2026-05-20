@@ -10,6 +10,7 @@ import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_text_styles.dart';
+import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../profile/providers/profile_providers.dart';
@@ -241,14 +242,10 @@ class _PassHeader extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Better Off Local',
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: Colors.white60,
-                      fontSize: 12,
-                      letterSpacing: 0.3,
-                      fontWeight: FontWeight.w400,
-                    ),
+                  const BrandLogo(
+                    variant: BrandLogoVariant.horizontal,
+                    scheme: BrandLogoScheme.dark,
+                    height: 18,
                   ),
                   _StatusChip(status: membership.status),
                 ],

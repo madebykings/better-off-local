@@ -6,7 +6,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 export const metadata: Metadata = { title: 'Retailers – Admin' };
 
 interface Props {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; activation?: string }>;
 }
 
 const APPROVAL_BADGES: Record<string, string> = {
@@ -14,6 +14,7 @@ const APPROVAL_BADGES: Record<string, string> = {
   approved: 'bg-green-100 text-green-800 border-green-200',
   rejected: 'bg-red-100 text-red-800 border-red-200',
   suspended: 'bg-gray-200 text-gray-700 border-gray-300',
+  changes_requested: 'bg-orange-100 text-orange-700 border-orange-200',
 };
 
 const VISIBILITY_BADGES: Record<string, string> = {
@@ -22,13 +23,24 @@ const VISIBILITY_BADGES: Record<string, string> = {
   hidden: 'bg-orange-100 text-orange-700 border-orange-200',
 };
 
+const SUB_BADGES: Record<string, string> = {
+  active:   'bg-green-100 text-green-800 border-green-200',
+  inactive: 'bg-gray-100 text-gray-500 border-gray-200',
+  past_due: 'bg-amber-100 text-amber-800 border-amber-200',
+  cancelled:'bg-red-100 text-red-700 border-red-200',
+  expired:  'bg-red-100 text-red-700 border-red-200',
+  none:     'bg-gray-100 text-gray-400 border-gray-200',
+};
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+type SubRow = { retailer_id: string; status: string; current_period_end: string | null };
+
 export default async function RetailersPage({ searchParams }: Props) {
   await requireAdmin();
-  const { status, q } = await searchParams;
+  const { status, q, activation } = await searchParams;
   const supabase = createServiceClient();
 
   let query = supabase
@@ -40,9 +52,37 @@ export default async function RetailersPage({ searchParams }: Props) {
 
   const { data: retailers } = await query;
 
-  const filtered = (retailers ?? []).filter((r) =>
+  // Fetch latest subscription per retailer in one query.
+  const retailerIds = (retailers ?? []).map((r) => r.id);
+  let subsByRetailerId: Record<string, SubRow> = {};
+
+  if (retailerIds.length > 0) {
+    const { data: subs } = await supabase
+      .from('retailer_subscriptions')
+      .select('retailer_id, status, current_period_end')
+      .in('retailer_id', retailerIds)
+      .order('created_at', { ascending: false });
+
+    // Keep only the most recent subscription per retailer.
+    for (const sub of subs ?? []) {
+      if (!subsByRetailerId[sub.retailer_id]) {
+        subsByRetailerId[sub.retailer_id] = sub as SubRow;
+      }
+    }
+  }
+
+  let filtered = (retailers ?? []).filter((r) =>
     q ? r.name.toLowerCase().includes(q.toLowerCase()) : true,
   );
+
+  // "Not activated" filter: approved but no active subscription.
+  if (activation === 'not_activated') {
+    filtered = filtered.filter((r) => {
+      if (r.approval_status !== 'approved') return false;
+      const sub = subsByRetailerId[r.id];
+      return !sub || sub.status !== 'active';
+    });
+  }
 
   const tabs = ['all', 'pending', 'approved', 'rejected', 'suspended'];
 
@@ -61,7 +101,7 @@ export default async function RetailersPage({ searchParams }: Props) {
               key={t}
               href={`/retailers${t === 'all' ? '' : `?status=${t}`}`}
               className={`px-3 py-1 rounded text-sm font-medium transition-colors capitalize ${
-                (status ?? 'all') === t
+                (status ?? 'all') === t && !activation
                   ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
@@ -69,9 +109,20 @@ export default async function RetailersPage({ searchParams }: Props) {
               {t}
             </Link>
           ))}
+          <Link
+            href="/retailers?activation=not_activated"
+            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+              activation === 'not_activated'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Not activated
+          </Link>
         </div>
         <form method="GET">
           {status && <input type="hidden" name="status" value={status} />}
+          {activation && <input type="hidden" name="activation" value={activation} />}
           <input
             type="search" name="q" defaultValue={q ?? ''}
             placeholder="Search by name…"
@@ -92,37 +143,48 @@ export default async function RetailersPage({ searchParams }: Props) {
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Approval</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Subscription</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Visibility</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Joined</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{r.name}</div>
-                    <div className="text-xs text-gray-400">{r.slug}</div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${APPROVAL_BADGES[r.approval_status] ?? ''}`}>
-                      {r.approval_status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${VISIBILITY_BADGES[r.visibility_status] ?? ''}`}>
-                      {r.visibility_status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(r.created_at)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Link href={`/retailers/${r.id}`}
-                      className="text-sm text-green-700 hover:text-green-900 font-medium">
-                      Review →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((r) => {
+                const sub = subsByRetailerId[r.id];
+                const subStatus = sub?.status ?? 'none';
+                const subLabel = subStatus === 'none' ? 'None' : subStatus.replace('_', ' ');
+                return (
+                  <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-gray-900">{r.name}</div>
+                      <div className="text-xs text-gray-400">{r.slug}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${APPROVAL_BADGES[r.approval_status] ?? ''}`}>
+                        {r.approval_status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${SUB_BADGES[subStatus] ?? ''}`}>
+                        {subLabel}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${VISIBILITY_BADGES[r.visibility_status] ?? ''}`}>
+                        {r.visibility_status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(r.created_at)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link href={`/retailers/${r.id}`}
+                        className="text-sm text-green-700 hover:text-green-900 font-medium">
+                        Review →
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

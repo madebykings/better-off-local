@@ -11,4 +11,4 @@
 // export { StatusBadge } from './status-badge';
 // export { ConfirmDialog } from './confirm-dialog';
 
-export {};
+export { Logo } from './logo';

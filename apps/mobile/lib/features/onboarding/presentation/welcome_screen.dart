@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/route_names.dart';
+import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/primary_button.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -17,15 +18,8 @@ class WelcomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              // TODO: onboarding illustration
-              const Icon(Icons.storefront_outlined, size: 80),
+              const BrandLogo(variant: BrandLogoVariant.horizontal, height: 56),
               const SizedBox(height: 24),
-              Text(
-                'Better Off Local',
-                style: Theme.of(context).textTheme.headlineMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
               Text(
                 'Discover offers from local independent retailers near you.',
                 style: Theme.of(context).textTheme.bodyMedium,

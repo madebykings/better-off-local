@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Logo } from '@better-off-local/ui';
 import { parseOpeningHours, DAY_KEYS } from '@/lib/actions/opening_hours';
 import { reverseNormaliseLink, URL_LINK_TYPES, type UrlLinkType } from '@/lib/actions/links';
 import { ruleFromColumns } from '@/lib/actions/first_offer';
@@ -547,6 +548,11 @@ export function ListingPreview({ data }: { data: PreviewData }) {
           How your listing will look to members
         </p>
         <div className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_20px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]">
+          {/* Simulated platform chrome */}
+          <div className="flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
+            <Logo variant="horizontal" scheme="light" height={22} />
+            <div className="h-6 w-6 rounded-full bg-gray-200" />
+          </div>
           <CoverHeader retailer={data.retailer} />
           <NameBlock retailer={data.retailer} categories={data.categories} />
           <DescriptionBlock description={data.retailer.description} />

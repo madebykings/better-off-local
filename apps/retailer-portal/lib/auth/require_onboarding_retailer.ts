@@ -10,6 +10,8 @@ export type OnboardingRetailer = {
   description: string | null;
   business_type: string | null;
   phone: string | null;
+  logo_url: string | null;
+  cover_image_url: string | null;
   onboarding_step: OnboardingStepId;
 };
 
@@ -51,7 +53,7 @@ export async function requireOnboardingRetailer(): Promise<OnboardingRetailerCon
 
   const { data: retailer } = await service
     .from('retailers')
-    .select('id, name, tagline, description, business_type, phone, onboarding_step')
+    .select('id, name, tagline, description, business_type, phone, logo_url, cover_image_url, onboarding_step')
     .eq('id', retailerUser.retailer_id)
     .single();
 
@@ -68,6 +70,8 @@ export async function requireOnboardingRetailer(): Promise<OnboardingRetailerCon
       description: retailer.description ?? null,
       business_type: retailer.business_type ?? null,
       phone: retailer.phone ?? null,
+      logo_url: retailer.logo_url ?? null,
+      cover_image_url: retailer.cover_image_url ?? null,
       onboarding_step: retailer.onboarding_step as OnboardingStepId,
     },
   };

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Logo } from '@better-off-local/ui';
 import { OnboardingProgress } from '@/components/onboarding/onboarding_progress';
 import { OnboardingNav } from '@/components/onboarding/onboarding_nav';
 
@@ -21,9 +22,7 @@ export default function OnboardingLayout({
     <div className="flex min-h-screen flex-col bg-white">
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <header className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-        <span className="text-lg font-semibold text-brand">
-          Better Off Local
-        </span>
+        <Logo variant="horizontal" scheme="light" height={28} />
 
         {/* Progress is autosaved — navigating to the dashboard does not lose work. */}
         <Link
