@@ -177,10 +177,10 @@ Token type detection:
 - ✅ re-validate offer rules at scan time: per-user cap, per-day cap, global cap, cooldown, valid days, valid time window
 
 **Effects — offer redemption path:**
-- ✅ mark token consumed atomically (`UPDATE WHERE consumed_at IS NULL` + `.select()` for race detection)
-- ✅ insert row into `redemptions` table (`status = 'success'` or rejection reason)
+- ✅ consume token, insert redemption row, and record idempotency attempt atomically via `redeem_offer_token` Postgres RPC (migration `029`)
+- ✅ `SELECT ... FOR UPDATE` row lock eliminates concurrent-scan race condition
+- ✅ `p_redemption_attempt_id` idempotency key allows safe scanner retries
 - ✅ return structured result including `offer_title`, `benefit_text`, `next_available_at` for cap blocks
-- ⚠️ **Launch blocker:** consume and insert are sequential, not transactional. If the insert fails after a successful consume, the scan returns `valid: false, status: "server_error"` and logs all IDs for manual reconciliation. Before production launch, implement a `redeem_offer_token(token_hash, retailer_user_id)` Postgres function that performs both operations in one transaction, replacing steps 7–8.
 
 **Return — offer redemption (approved):**
 `{ token_type: "redemption", valid: true, status: "success", offer_id, retailer_id, offer_title, benefit_text }`
