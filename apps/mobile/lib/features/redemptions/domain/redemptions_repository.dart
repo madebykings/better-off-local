@@ -18,9 +18,6 @@ abstract class RedemptionsRepository {
   ///
   /// The returned token has null [RedemptionToken.offerId] and
   /// [RedemptionToken.retailerId].
-  ///
-  /// TODO: Implement the `create-membership-pass-token` Supabase edge function.
-  /// Until then, implementations throw [UnimplementedError].
   Future<RedemptionToken> requestPassToken();
 
   /// Fetch the authenticated user's redemption history, most recent first.

@@ -180,15 +180,27 @@ Handles:
 4. User views details and chooses an offer
 5. User redeems if eligible
 
-### Redemption Flow
-1. Consumer opens redeem action
-2. App requests a short-lived redemption token
-3. Backend verifies user and membership status
-4. App renders dynamic QR based on the token
-5. Retailer scans the code
-6. Backend validates token, retailer access, offer rules, and membership
-7. Redemption is recorded server-side
-8. Both parties receive success/failure response
+### Redemption Flow (In-Store Offer)
+1. Consumer browses offers and selects a specific one
+2. Offer detail screen shows live availability state: eligible, already redeemed today, rule blocked, etc.
+3. Consumer taps Redeem — app calls `create-redemption-token` for that specific offer
+4. Backend validates at token creation: active membership, live offer, retailer active, all offer rules
+5. App displays a dynamic, short-lived QR code for that offer
+6. Retailer opens the unified scanner — no mode selection required
+7. Retailer scans the QR once
+8. Backend validates in a single call via `validate-qr-token`: token type detected automatically, expiry checked, membership re-verified, offer rules re-checked, redemption recorded
+9. Retailer sees one clear result: approved (benefit to apply) or rejected (reason, next available time if relevant)
+10. Consumer receives confirmation on their screen
+
+### Membership Pass (Identity Proof — Separate from Discount Flow)
+The Card tab QR issues a short-lived membership-level token (`create-membership-pass-token`). This proves
+active BOL membership but is **not** the primary discount flow.
+
+Use cases: general membership proof at a retailer, entry verification, any non-offer check.
+The unified scanner (`validate-qr-token`) handles both QR types automatically — no staff mode switching.
+
+Do not ask consumers to show their Card tab QR to redeem a specific offer. The correct flow is
+always: offer detail → Redeem → offer-specific QR → retailer scans once.
 
 ### Retailer Offer Flow
 1. Retailer logs into portal
