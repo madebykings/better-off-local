@@ -14,7 +14,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
  *   STRIPE_SECRET_KEY
  *   STRIPE_PRICE_ID_MONTHLY        — Stripe price ID for the monthly plan
  *   STRIPE_PRICE_ID_ANNUAL         — Stripe price ID for the annual plan
- *   APP_SCHEME                     — Deep link scheme (e.g. 'betterofflocal')
+ *   APP_UNIVERSAL_LINK_DOMAIN      — e.g. 'app.betterofflocal.co.uk'. When set,
+ *                                    HTTPS universal links are used as the primary
+ *                                    redirect target. Requires AASA / DAL files
+ *                                    to be hosted at that domain.
+ *   APP_SCHEME                     — Custom scheme fallback (default: 'betterofflocal').
+ *                                    Used when APP_UNIVERSAL_LINK_DOMAIN is not set.
  *   SUPABASE_URL
  *   SUPABASE_ANON_KEY
  *   SUPABASE_SERVICE_ROLE_KEY
@@ -114,7 +119,18 @@ serve(async (req) => {
       customerId = customer.id;
     }
 
+    const appDomain = Deno.env.get('APP_UNIVERSAL_LINK_DOMAIN');
     const appScheme = Deno.env.get('APP_SCHEME') ?? 'betterofflocal';
+
+    // Prefer HTTPS universal links when a domain is configured.
+    // Fall back to the custom URI scheme for local / staging environments
+    // where the AASA / Digital Asset Links files are not yet hosted.
+    const successUrl = appDomain
+      ? `https://${appDomain}/subscription-success`
+      : `${appScheme}://subscription-success`;
+    const cancelUrl = appDomain
+      ? `https://${appDomain}/paywall`
+      : `${appScheme}://paywall`;
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -124,8 +140,8 @@ serve(async (req) => {
       subscription_data: {
         metadata: { supabase_user_id: user.id, plan },
       },
-      success_url: `${appScheme}://subscription-success`,
-      cancel_url: `${appScheme}://paywall`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

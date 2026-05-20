@@ -30,6 +30,7 @@ import '../../features/favourites/presentation/favourites_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/map/presentation/map_screen.dart';
 import '../../features/memberships/presentation/membership_card_screen.dart';
+import '../../features/memberships/presentation/membership_activating_screen.dart';
 import '../../features/memberships/presentation/paywall_screen.dart';
 import '../../features/memberships/presentation/subscription_success_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
@@ -130,6 +131,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.paywall,
         builder: (context, state) => const PaywallScreen(),
+      ),
+      // Activation screen: shown immediately after Stripe redirects back.
+      // Polls until the webhook confirms the membership is active, then
+      // navigates to subscriptionSuccess. Sits outside the shell so there
+      // is no bottom nav bar while the user waits.
+      GoRoute(
+        path: RouteNames.activating,
+        builder: (context, state) => const MembershipActivatingScreen(),
       ),
       GoRoute(
         path: RouteNames.subscriptionSuccess,

@@ -39,6 +39,9 @@ dependencies:
   # External URL launching (Stripe Checkout)
   url_launcher: ^6.3.0
 
+  # Deep link handling — universal links (HTTPS) and custom scheme fallback
+  app_links: ^6.0.0
+
   # QR code display for redemption tokens
   qr_flutter: ^4.1.0
 
