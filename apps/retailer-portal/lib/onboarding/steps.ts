@@ -69,6 +69,7 @@ export const FORM_CONTROLLED_STEPS = new Set<OnboardingStepId>([
   'business-details',
   'branding',
   'location',
+  'opening-hours',
 ]);
 
 export function getStepByPath(pathname: string): OnboardingStep | undefined {
