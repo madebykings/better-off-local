@@ -1,9 +1,20 @@
-import { requireOnboardingUser } from '@/lib/auth/require_onboarding_user';
+import { requireOnboardingRetailer } from '@/lib/auth/require_onboarding_retailer';
 import { StepWrapper } from '@/components/onboarding/step_wrapper';
 import { BusinessDetailsForm } from '@/components/onboarding/business_details_form';
+import type { BusinessDetailsFields } from '@/lib/actions/onboarding';
 
 export default async function BusinessDetailsPage() {
-  await requireOnboardingUser();
+  const { retailer } = await requireOnboardingRetailer();
+
+  // business-details is step 1 — always accessible, no forward-skip guard needed.
+
+  const initialData: BusinessDetailsFields = {
+    name: retailer?.name ?? '',
+    tagline: retailer?.tagline ?? '',
+    description: retailer?.description ?? '',
+    businessType: retailer?.business_type ?? '',
+    phone: retailer?.phone ?? '',
+  };
 
   return (
     <StepWrapper
@@ -11,7 +22,7 @@ export default async function BusinessDetailsPage() {
       subtitle="This is what members will see when they discover you on Better Off Local."
       wide
     >
-      <BusinessDetailsForm />
+      <BusinessDetailsForm initialData={initialData} />
     </StepWrapper>
   );
 }

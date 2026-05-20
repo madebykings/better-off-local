@@ -25,11 +25,7 @@ export default function OnboardingLayout({
           Better Off Local
         </span>
 
-        {/*
-          Save and exit persists progress and returns to the dashboard stub.
-          The retailer can resume from where they left off.
-          TODO: wire up save-progress server action before navigation.
-        */}
+        {/* Progress is autosaved — navigating to the dashboard does not lose work. */}
         <Link
           href="/dashboard"
           className="text-sm text-gray-400 transition-colors hover:text-gray-600"

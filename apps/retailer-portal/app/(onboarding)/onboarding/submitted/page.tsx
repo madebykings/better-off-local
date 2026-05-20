@@ -1,5 +1,8 @@
 import Link from 'next/link';
-import { requireOnboardingUser } from '@/lib/auth/require_onboarding_user';
+import {
+  requireOnboardingRetailer,
+  guardOnboardingStep,
+} from '@/lib/auth/require_onboarding_retailer';
 
 /**
  * Confirmation screen shown after the retailer submits for review.
@@ -14,7 +17,8 @@ import { requireOnboardingUser } from '@/lib/auth/require_onboarding_user';
  *   4. Successful payment sets the retailer live
  */
 export default async function SubmittedPage() {
-  await requireOnboardingUser();
+  const { retailer } = await requireOnboardingRetailer();
+  guardOnboardingStep('submitted', retailer?.onboarding_step ?? null);
 
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col items-center py-16 text-center">

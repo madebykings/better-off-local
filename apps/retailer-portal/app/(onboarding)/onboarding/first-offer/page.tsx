@@ -1,8 +1,12 @@
-import { requireOnboardingUser } from '@/lib/auth/require_onboarding_user';
+import {
+  requireOnboardingRetailer,
+  guardOnboardingStep,
+} from '@/lib/auth/require_onboarding_retailer';
 import { StepWrapper, StepPlaceholder } from '@/components/onboarding/step_wrapper';
 
 export default async function FirstOfferPage() {
-  await requireOnboardingUser();
+  const { retailer } = await requireOnboardingRetailer();
+  guardOnboardingStep('first-offer', retailer?.onboarding_step ?? null);
 
   return (
     <StepWrapper

@@ -1,9 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getNextStep, getPrevStep } from '@/lib/onboarding/steps';
-import { saveBusinessDetails, type BusinessDetailsFields } from '@/lib/actions/onboarding';
+import {
+  saveBusinessDetails,
+  draftSaveBusinessDetails,
+  type BusinessDetailsFields,
+} from '@/lib/actions/onboarding';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -22,6 +26,7 @@ const BUSINESS_TYPES = [
 ] as const;
 
 const DESCRIPTION_MAX = 160;
+const AUTOSAVE_DELAY_MS = 12_000; // 12 seconds
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -192,19 +197,44 @@ function RetailerCardPreview({ fields }: { fields: BusinessDetailsFields }) {
 // Main form component
 // ---------------------------------------------------------------------------
 
-export function BusinessDetailsForm() {
+export function BusinessDetailsForm({
+  initialData,
+}: {
+  initialData: BusinessDetailsFields;
+}) {
   const router = useRouter();
 
-  const [fields, setFields] = useState<BusinessDetailsFields>({
-    name: '',
-    tagline: '',
-    description: '',
-    businessType: '',
-    phone: '',
-  });
+  const [fields, setFields] = useState<BusinessDetailsFields>(initialData);
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+
+  // Autosave state
+  const isDirtyRef = useRef(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+
+  // Keep a stable ref to the latest fields for the autosave callback.
+  const fieldsRef = useRef(fields);
+  useEffect(() => {
+    fieldsRef.current = fields;
+  });
+
+  function scheduleAutosave() {
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(async () => {
+      await draftSaveBusinessDetails(fieldsRef.current);
+      setSavedAt(new Date());
+      isDirtyRef.current = false;
+    }, AUTOSAVE_DELAY_MS);
+  }
+
+  // Cancel any pending autosave on unmount.
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, []);
 
   function setField(key: keyof BusinessDetailsFields) {
     return (
@@ -215,6 +245,10 @@ export function BusinessDetailsForm() {
       setFields((prev) => ({ ...prev, [key]: e.target.value }));
       // Clear per-field error as soon as the user edits it.
       if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
+      // Mark dirty and schedule autosave.
+      isDirtyRef.current = true;
+      setSavedAt(null);
+      scheduleAutosave();
     };
   }
 
@@ -225,11 +259,14 @@ export function BusinessDetailsForm() {
     const clientErrors = validate(fields);
     if (Object.keys(clientErrors).length > 0) {
       setErrors(clientErrors);
-      // Focus the first failing field for accessibility.
       const firstKey = Object.keys(clientErrors)[0];
       document.getElementById(firstKey)?.focus();
       return;
     }
+
+    // Cancel pending autosave — the full save takes over.
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    isDirtyRef.current = false;
 
     setIsPending(true);
     try {
@@ -383,14 +420,19 @@ export function BusinessDetailsForm() {
             ← Back
           </button>
 
-          <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white
-                       transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isPending ? 'Saving…' : 'Continue'}
-          </button>
+          <div className="flex items-center gap-3">
+            {savedAt && (
+              <span className="text-xs text-gray-400">Saved just now</span>
+            )}
+            <button
+              type="submit"
+              disabled={isPending}
+              className="rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white
+                         transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isPending ? 'Saving…' : 'Continue'}
+            </button>
+          </div>
         </div>
       </form>
 
