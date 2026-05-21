@@ -6,6 +6,7 @@ import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../core/widgets/section_header.dart';
+import '../../../favourites/providers/favourites_providers.dart';
 import '../../../retailers/domain/retailer.dart';
 import '../../home_providers.dart';
 
@@ -76,7 +77,7 @@ class FeaturedRetailersSection extends ConsumerWidget {
   }
 }
 
-class _RetailerCard extends StatelessWidget {
+class _RetailerCard extends ConsumerWidget {
   const _RetailerCard({
     required this.retailer,
     required this.onTap,
@@ -86,7 +87,9 @@ class _RetailerCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isFavourited =
+        ref.watch(favouriteRetailerIdsProvider).contains(retailer.id);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -132,21 +135,25 @@ class _RetailerCard extends StatelessWidget {
                 ),
               ),
             ),
-            // Favourite heart — top right (placeholder, no wiring)
+            // Favourite heart — top right
             Positioned(
               top: 8,
               right: 8,
-              child: Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.favorite_border,
-                  size: 16,
-                  color: Colors.white,
+              child: GestureDetector(
+                onTap: () => toggleRetailerFavourite(
+                    ref, retailer.id, isFavourited),
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isFavourited ? Icons.favorite : Icons.favorite_border,
+                    size: 16,
+                    color: isFavourited ? AppColors.error : Colors.white,
+                  ),
                 ),
               ),
             ),

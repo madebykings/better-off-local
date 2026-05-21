@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../favourites/providers/favourites_providers.dart';
 import '../../domain/offer.dart';
 
-class OfferCard extends StatelessWidget {
+class OfferCard extends ConsumerWidget {
   const OfferCard({
     super.key,
     required this.offer,
@@ -15,7 +17,9 @@ class OfferCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isFavourited =
+        ref.watch(favouriteOfferIdsProvider).contains(offer.id);
     return Card(
       clipBehavior: Clip.antiAlias,
       elevation: 0,
@@ -28,17 +32,46 @@ class OfferCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (offer.imageUrl != null)
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image.network(
-                  offer.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _placeholderImage(),
+            Stack(
+              children: [
+                if (offer.imageUrl != null)
+                  AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Image.network(
+                      offer.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _placeholderImage(),
+                    ),
+                  )
+                else
+                  _placeholderImage(),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () =>
+                        toggleOfferFavourite(ref, offer.id, isFavourited),
+                    child: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        isFavourited
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        size: 16,
+                        color: isFavourited
+                            ? AppColors.error
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
                 ),
-              )
-            else
-              _placeholderImage(),
+              ],
+            ),
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -103,7 +136,7 @@ class OfferCard extends StatelessWidget {
 }
 
 /// Compact horizontal card used in home screen rows.
-class OfferCardCompact extends StatelessWidget {
+class OfferCardCompact extends ConsumerWidget {
   const OfferCardCompact({
     super.key,
     required this.offer,
@@ -114,7 +147,9 @@ class OfferCardCompact extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isFavourited =
+        ref.watch(favouriteOfferIdsProvider).contains(offer.id);
     return SizedBox(
       width: 180,
       child: Card(
@@ -129,13 +164,42 @@ class OfferCardCompact extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                height: 100,
-                width: double.infinity,
-                child: offer.imageUrl != null
-                    ? Image.network(offer.imageUrl!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _placeholder())
-                    : _placeholder(),
+              Stack(
+                children: [
+                  SizedBox(
+                    height: 100,
+                    width: double.infinity,
+                    child: offer.imageUrl != null
+                        ? Image.network(offer.imageUrl!, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _placeholder())
+                        : _placeholder(),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: GestureDetector(
+                      onTap: () =>
+                          toggleOfferFavourite(ref, offer.id, isFavourited),
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isFavourited
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          size: 13,
+                          color: isFavourited
+                              ? AppColors.error
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               Padding(
                 padding: const EdgeInsets.all(10),
