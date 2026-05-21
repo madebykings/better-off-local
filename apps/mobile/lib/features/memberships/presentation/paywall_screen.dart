@@ -165,7 +165,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                               // ── CTA
                               PrimaryButton(
                                 label: _kShowTrial
-                                    ? 'Start ${_kTrialDays}-day free trial'
+                                    ? 'Start $_kTrialDays-day free trial'
                                     : (_selectedPlan == 'annual'
                                         ? 'Get started · £49.99/year'
                                         : 'Get started · £5.99/month'),
@@ -240,10 +240,10 @@ class _HeroSection extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.12),
+                    color: Colors.white.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: Colors.white.withOpacity(0.2), width: 1),
+                        color: Colors.white.withValues(alpha: 0.2), width: 1),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -294,7 +294,7 @@ class _HeroSection extends StatelessWidget {
                 Text(
                   'Member discounts at independent businesses\nin Clackmannanshire.',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.68),
+                    color: Colors.white.withValues(alpha: 0.68),
                     fontSize: 14,
                     height: 1.45,
                   ),
@@ -313,7 +313,7 @@ class _HeroDiagonalPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.03)
+      ..color = Colors.white.withValues(alpha: 0.03)
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
 
@@ -347,7 +347,7 @@ class _SheetHandle extends StatelessWidget {
         width: 36,
         height: 4,
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.10),
+          color: Colors.black.withValues(alpha: 0.10),
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -399,7 +399,7 @@ class _RadioDot extends StatelessWidget {
           width: 2,
         ),
         color: isSelected
-            ? Colors.white.withOpacity(0.18)
+            ? Colors.white.withValues(alpha: 0.18)
             : Colors.transparent,
       ),
       child: isSelected
@@ -439,14 +439,14 @@ class _AnnualPlanCard extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.28),
+                    color: AppColors.primary.withValues(alpha: 0.28),
                     blurRadius: 20,
                     offset: const Offset(0, 7),
                   )
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   )
@@ -482,8 +482,8 @@ class _AnnualPlanCard extends StatelessWidget {
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? Colors.white.withOpacity(0.18)
-                                : AppColors.accent.withOpacity(0.14),
+                                ? Colors.white.withValues(alpha: 0.18)
+                                : AppColors.accent.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -519,7 +519,7 @@ class _AnnualPlanCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           color: isSelected
-                              ? Colors.white.withOpacity(0.65)
+                              ? Colors.white.withValues(alpha: 0.65)
                               : AppColors.textSecondary,
                         ),
                       ),
@@ -536,8 +536,8 @@ class _AnnualPlanCard extends StatelessWidget {
                     horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.white.withOpacity(0.10)
-                      : AppColors.primary.withOpacity(0.06),
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : AppColors.primary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: Row(
@@ -546,7 +546,7 @@ class _AnnualPlanCard extends StatelessWidget {
                       Icons.savings_outlined,
                       size: 14,
                       color: isSelected
-                          ? Colors.white.withOpacity(0.80)
+                          ? Colors.white.withValues(alpha: 0.80)
                           : AppColors.primary,
                     ),
                     const SizedBox(width: 7),
@@ -556,7 +556,7 @@ class _AnnualPlanCard extends StatelessWidget {
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                         color: isSelected
-                            ? Colors.white.withOpacity(0.85)
+                            ? Colors.white.withValues(alpha: 0.85)
                             : AppColors.primary,
                       ),
                     ),
@@ -602,14 +602,14 @@ class _MonthlyPlanCard extends StatelessWidget {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.28),
+                    color: AppColors.primary.withValues(alpha: 0.28),
                     blurRadius: 20,
                     offset: const Offset(0, 7),
                   )
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   )
@@ -639,7 +639,7 @@ class _MonthlyPlanCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       color: isSelected
-                          ? Colors.white.withOpacity(0.65)
+                          ? Colors.white.withValues(alpha: 0.65)
                           : AppColors.textSecondary,
                     ),
                   ),
@@ -663,7 +663,7 @@ class _MonthlyPlanCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     color: isSelected
-                        ? Colors.white.withOpacity(0.65)
+                        ? Colors.white.withValues(alpha: 0.65)
                         : AppColors.textSecondary,
                   ),
                 ),
@@ -735,7 +735,7 @@ class _FeatureTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -782,9 +782,9 @@ class _TrialBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.08),
+        color: AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.18)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
       ),
       child: Row(
         children: [
@@ -793,7 +793,7 @@ class _TrialBanner extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.primary.withOpacity(0.10),
+              color: AppColors.primary.withValues(alpha: 0.10),
             ),
             child: const Icon(
               Icons.card_giftcard_outlined,
@@ -806,9 +806,9 @@ class _TrialBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Try free for $_kTrialDays days',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
@@ -819,7 +819,7 @@ class _TrialBanner extends StatelessWidget {
                   'No charge until your trial ends. Cancel anytime.',
                   style: TextStyle(
                     fontSize: 11.5,
-                    color: AppColors.primary.withOpacity(0.70),
+                    color: AppColors.primary.withValues(alpha: 0.70),
                     height: 1.4,
                   ),
                 ),
@@ -885,7 +885,7 @@ class _LegalFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
+    return const Text(
       'Renews automatically at the end of each billing period.\n'
       'Cancel anytime via your account settings. Prices include VAT.',
       style: TextStyle(

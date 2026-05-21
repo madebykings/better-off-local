@@ -164,10 +164,10 @@ class _ScannerView extends ConsumerWidget {
         ),
 
         // Dark overlay with transparent scan window (punched via blendMode)
-        CustomPaint(
+        const CustomPaint(
           painter: _ScanOverlayPainter(),
           size: Size.infinite,
-          child: const SizedBox.expand(),
+          child: SizedBox.expand(),
         ),
 
         // Animated scan line within the clear window
@@ -217,7 +217,7 @@ class _ScannerView extends ConsumerWidget {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.close, color: Colors.white, size: 18),
@@ -237,7 +237,7 @@ class _ScannerView extends ConsumerWidget {
               child: Text(
                 'Point your camera at the QR code\non the online checkout page',
                 style: AppTextStyles.bodyMedium.copyWith(
-                  color: Colors.white.withOpacity(0.75),
+                  color: Colors.white.withValues(alpha: 0.75),
                   fontSize: 14,
                 ),
                 textAlign: TextAlign.center,
@@ -273,7 +273,7 @@ class _ScanOverlayPainter extends CustomPainter {
     canvas.saveLayer(Rect.largest, Paint());
     canvas.drawRect(
       Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = Colors.black.withOpacity(0.68),
+      Paint()..color = Colors.black.withValues(alpha: 0.68),
     );
     canvas.drawRRect(
       RRect.fromRectAndRadius(clearRect, const Radius.circular(10)),
@@ -336,7 +336,7 @@ class _ScanLinePainter extends CustomPainter {
       ..shader = LinearGradient(
         colors: [
           Colors.transparent,
-          AppColors.primary.withOpacity(0.9),
+          AppColors.primary.withValues(alpha: 0.9),
           Colors.transparent,
         ],
       ).createShader(
@@ -386,7 +386,7 @@ class _VerifyingView extends StatelessWidget {
           Text(
             'Checking your membership',
             style: AppTextStyles.bodyMedium.copyWith(
-              color: Colors.white.withOpacity(0.55),
+              color: Colors.white.withValues(alpha: 0.55),
               fontSize: 14,
             ),
           ),
@@ -430,7 +430,7 @@ class _HandoffView extends StatelessWidget {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.12),
+                    color: Colors.white.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: ClipOval(
@@ -465,7 +465,7 @@ class _HandoffView extends StatelessWidget {
           Text(
             result.retailerName,
             style: AppTextStyles.bodyMedium.copyWith(
-              color: Colors.white.withOpacity(0.65),
+              color: Colors.white.withValues(alpha: 0.65),
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -475,7 +475,7 @@ class _HandoffView extends StatelessWidget {
             Text(
               result.offerTitle!,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: Colors.white.withOpacity(0.45),
+                color: Colors.white.withValues(alpha: 0.45),
                 fontSize: 13,
               ),
             ),
@@ -554,7 +554,7 @@ class _ApprovedView extends StatelessWidget {
                 width: 88,
                 height: 88,
                 decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.15),
+                  color: AppColors.success.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.success, width: 2),
                 ),
@@ -585,7 +585,7 @@ class _ApprovedView extends StatelessWidget {
           Text(
             'Your discount has been applied at',
             style: AppTextStyles.bodyMedium.copyWith(
-              color: Colors.white.withOpacity(0.55),
+              color: Colors.white.withValues(alpha: 0.55),
               fontSize: 14,
             ),
           ),
@@ -602,7 +602,7 @@ class _ApprovedView extends StatelessWidget {
             Text(
               result.offerTitle!,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: Colors.white.withOpacity(0.45),
+                color: Colors.white.withValues(alpha: 0.45),
                 fontSize: 13,
               ),
             ),
@@ -726,7 +726,7 @@ class _RejectedView extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.12),
+                color: AppColors.error.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.error, width: 2),
               ),
@@ -746,7 +746,7 @@ class _RejectedView extends StatelessWidget {
             child: Text(
               _displayMessage,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: Colors.white.withOpacity(0.6),
+                color: Colors.white.withValues(alpha: 0.6),
                 fontSize: 14,
                 height: 1.5,
               ),
@@ -826,7 +826,7 @@ class _PendingView extends StatelessWidget {
             child: Text(
               'The online checkout feature is being set up.\nCheck back soon.',
               style: AppTextStyles.bodyMedium.copyWith(
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 14,
                 height: 1.5,
               ),
@@ -891,7 +891,7 @@ class _ErrorView extends StatelessWidget {
             child: Text(
               message,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: Colors.white.withOpacity(0.5),
+                color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 13,
               ),
               textAlign: TextAlign.center,

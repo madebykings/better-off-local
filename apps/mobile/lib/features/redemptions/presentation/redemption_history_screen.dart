@@ -27,23 +27,23 @@ class RedemptionHistoryScreen extends ConsumerWidget {
         ),
         data: (history) {
           if (history.isEmpty) {
-            return Center(
+            return const Center(
               child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xl),
+                padding: EdgeInsets.all(AppSpacing.xl),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.receipt_long_outlined,
                       size: 64,
                       color: AppColors.textDisabled,
                     ),
-                    const SizedBox(height: AppSpacing.md),
+                    SizedBox(height: AppSpacing.md),
                     Text(
                       'No redemptions yet',
                       style: AppTextStyles.titleMedium,
                     ),
-                    const SizedBox(height: AppSpacing.sm),
+                    SizedBox(height: AppSpacing.sm),
                     Text(
                       'Your redeemed offers will appear here.',
                       style: AppTextStyles.bodyMedium,
@@ -127,9 +127,9 @@ class _RedemptionTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-              border: Border.all(color: color.withOpacity(0.4)),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
             ),
             child: Text(
               label,

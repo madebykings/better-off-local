@@ -5,12 +5,12 @@ class NotificationsRemoteDataSource {
   final SupabaseClient _client;
 
   Future<List<Map<String, dynamic>>> fetchNotifications(String profileId) async {
-    return (await _client
+    return await _client
         .from('notifications')
         .select('id, type, title, body, data_json, read_at, created_at')
         .eq('profile_id', profileId)
         .order('created_at', ascending: false)
-        .limit(50)) as List<Map<String, dynamic>>;
+        .limit(50);
   }
 
   Future<void> markRead(String notificationId) async {

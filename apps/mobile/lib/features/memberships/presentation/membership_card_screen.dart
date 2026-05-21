@@ -111,8 +111,8 @@ class _MembershipCardScreenState extends ConsumerState<MembershipCardScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(20, 20, 20, 20),
                         child: Text(
                           'My Pass',
                           style: AppTextStyles.headlineMedium,
@@ -175,7 +175,7 @@ class _PassCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.22),
+              color: AppColors.primary.withValues(alpha: 0.22),
               blurRadius: 28,
               offset: const Offset(0, 14),
             ),
@@ -269,7 +269,7 @@ class _PassHeader extends StatelessWidget {
               Text(
                 _planLabel(membership.planInterval),
                 style: AppTextStyles.bodyMedium.copyWith(
-                  color: Colors.white.withOpacity(0.65),
+                  color: Colors.white.withValues(alpha: 0.65),
                   fontSize: 13,
                 ),
               ),
@@ -308,13 +308,13 @@ class _PassHeader extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.warning.withOpacity(0.18),
+                        color: AppColors.warning.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                          color: AppColors.warning.withOpacity(0.45),
+                          color: AppColors.warning.withValues(alpha: 0.45),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Cancelling',
                         style: TextStyle(
                           fontSize: 11,
@@ -407,7 +407,7 @@ class _PerforationDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    return const SizedBox(
       height: 18,
       child: CustomPaint(
         painter: _PerforationPainter(),
@@ -572,18 +572,18 @@ class _PassQRZoneState extends State<_PassQRZone>
           ),
 
         // Backend edge function not yet deployed — non-blocking placeholder.
-        PassQRPending() => SizedBox(
+        PassQRPending() => const SizedBox(
             height: 240,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.qr_code_2, size: 64, color: AppColors.textDisabled),
-                const SizedBox(height: 14),
+                SizedBox(height: 14),
                 Text(
                   'Pass QR coming soon',
                   style: AppTextStyles.titleMedium,
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text(
                   'Show this card to the retailer\nto verify your membership.',
                   style: AppTextStyles.bodyMedium,
@@ -599,9 +599,9 @@ class _PassQRZoneState extends State<_PassQRZone>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.qr_code_2, size: 64, color: AppColors.textDisabled),
+                const Icon(Icons.qr_code_2, size: 64, color: AppColors.textDisabled),
                 const SizedBox(height: 14),
-                Text(
+                const Text(
                   'Could not load QR',
                   style: AppTextStyles.bodyMedium,
                 ),
@@ -725,9 +725,9 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.18),
+        color: color.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(
         label,
@@ -800,7 +800,7 @@ class _ActionTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -906,7 +906,7 @@ class _OnlineScanButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.28),
+              color: AppColors.primary.withValues(alpha: 0.28),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -960,13 +960,13 @@ class _NoPlanPrompt extends StatelessWidget {
             color: AppColors.textDisabled,
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text(
+          const Text(
             'No active membership',
             style: AppTextStyles.headlineMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.sm),
-          Text(
+          const Text(
             'Subscribe to access exclusive local discounts\nand get your digital membership card.',
             style: AppTextStyles.bodyMedium,
             textAlign: TextAlign.center,

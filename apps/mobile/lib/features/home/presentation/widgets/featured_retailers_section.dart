@@ -45,7 +45,7 @@ class FeaturedRetailersSection extends ConsumerWidget {
                 const Center(child: Text('Unable to load retailers')),
             data: (retailers) {
               if (retailers.isEmpty) {
-                return Center(
+                return const Center(
                   child: Text(
                     'No retailers yet',
                     style: AppTextStyles.bodyMedium,
@@ -96,7 +96,7 @@ class _RetailerCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.07),
+              color: Colors.black.withValues(alpha: 0.07),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -126,7 +126,7 @@ class _RetailerCard extends StatelessWidget {
                     stops: const [0.35, 1.0],
                     colors: [
                       Colors.transparent,
-                      Colors.black.withOpacity(0.72),
+                      Colors.black.withValues(alpha: 0.72),
                     ],
                   ),
                 ),
@@ -140,7 +140,7 @@ class _RetailerCard extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha: 0.35),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -205,7 +205,7 @@ class _RetailerCard extends StatelessWidget {
                           Text(
                             retailer.categories.take(2).join(' · '),
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.75),
+                              color: Colors.white.withValues(alpha: 0.75),
                               fontSize: 10,
                             ),
                             maxLines: 1,
@@ -216,7 +216,7 @@ class _RetailerCard extends StatelessWidget {
                           Text(
                             retailer.shortDescription!,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.75),
+                              color: Colors.white.withValues(alpha: 0.75),
                               fontSize: 10,
                             ),
                             maxLines: 1,
@@ -228,7 +228,7 @@ class _RetailerCard extends StatelessWidget {
                           Text(
                             _formatDistance(retailer.distanceKm!),
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.6),
+                              color: Colors.white.withValues(alpha: 0.6),
                               fontSize: 10,
                             ),
                           ),
@@ -239,7 +239,7 @@ class _RetailerCard extends StatelessWidget {
                           Text(
                             retailer.town!,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.6),
+                              color: Colors.white.withValues(alpha: 0.6),
                               fontSize: 10,
                             ),
                           ),
@@ -275,7 +275,7 @@ class _LogoBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.primaryLight,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
       ),
       clipBehavior: Clip.antiAlias,
       child: retailer.logoUrl != null

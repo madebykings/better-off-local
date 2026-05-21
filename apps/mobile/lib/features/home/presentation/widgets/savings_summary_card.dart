@@ -42,7 +42,7 @@ class SavingsSummaryCard extends StatelessWidget {
             Text(
               'Support the businesses that make Clackmannanshire great.',
               style: AppTextStyles.bodyMedium.copyWith(
-                color: Colors.white.withOpacity(0.75),
+                color: Colors.white.withValues(alpha: 0.75),
               ),
             ),
             const SizedBox(height: 20),

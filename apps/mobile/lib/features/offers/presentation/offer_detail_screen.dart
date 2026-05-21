@@ -92,7 +92,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
+                            color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -182,7 +182,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                   : Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
+                        const Text(
                           'Active membership required to redeem',
                           style: AppTextStyles.bodyMedium,
                           textAlign: TextAlign.center,

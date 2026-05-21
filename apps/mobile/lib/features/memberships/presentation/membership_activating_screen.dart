@@ -241,7 +241,7 @@ class _CheckingView extends StatelessWidget {
                         height: 130,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.primary.withOpacity(0.18),
+                          color: AppColors.primary.withValues(alpha: 0.18),
                         ),
                       ),
                     ),
@@ -263,7 +263,7 @@ class _CheckingView extends StatelessWidget {
                         height: 130,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.primary.withOpacity(0.12),
+                          color: AppColors.primary.withValues(alpha: 0.12),
                         ),
                       ),
                     ),
@@ -280,7 +280,7 @@ class _CheckingView extends StatelessWidget {
                   color: AppColors.primary,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.30),
+                      color: AppColors.primary.withValues(alpha: 0.30),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -298,19 +298,19 @@ class _CheckingView extends StatelessWidget {
 
         const SizedBox(height: AppSpacing.xl),
 
-        Text(
+        const Text(
           'Activating your membership',
           style: AppTextStyles.headlineMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text(
+        const Text(
           'Confirming your payment with Stripe\u2026',
           style: AppTextStyles.bodyMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text(
+        const Text(
           'This usually takes a few seconds.',
           style: AppTextStyles.labelSmall,
           textAlign: TextAlign.center,
@@ -344,7 +344,7 @@ class _ActiveView extends StatelessWidget {
             color: AppColors.success,
             boxShadow: [
               BoxShadow(
-                color: AppColors.success.withOpacity(0.30),
+                color: AppColors.success.withValues(alpha: 0.30),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -359,7 +359,7 @@ class _ActiveView extends StatelessWidget {
 
         const SizedBox(height: AppSpacing.lg),
 
-        Text(
+        const Text(
           'Membership active!',
           style: AppTextStyles.headlineMedium,
           textAlign: TextAlign.center,
@@ -388,7 +388,7 @@ class _TimeoutView extends StatelessWidget {
       children: [
         const Spacer(flex: 2),
 
-        Icon(
+        const Icon(
           Icons.hourglass_bottom_outlined,
           size: 56,
           color: AppColors.warning,
@@ -396,13 +396,13 @@ class _TimeoutView extends StatelessWidget {
 
         const SizedBox(height: AppSpacing.lg),
 
-        Text(
+        const Text(
           'Taking longer than expected',
           style: AppTextStyles.headlineMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.sm),
-        Text(
+        const Text(
           'Your payment may still be processing. Your '
           'membership will appear once Stripe confirms it.',
           style: AppTextStyles.bodyMedium,
@@ -418,7 +418,7 @@ class _TimeoutView extends StatelessWidget {
           child: const Text('Continue to app'),
         ),
         const SizedBox(height: AppSpacing.xs),
-        Text(
+        const Text(
           'Your membership may still be activating in the background',
           style: AppTextStyles.labelSmall,
           textAlign: TextAlign.center,

@@ -22,17 +22,17 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           const _SectionHeader('Notifications'),
-          _NotificationPreferenceTile(
+          const _NotificationPreferenceTile(
             title: 'New offers nearby',
             subtitle: 'Get notified when new offers are added',
             prefKey: 'notif_new_offers',
           ),
-          _NotificationPreferenceTile(
+          const _NotificationPreferenceTile(
             title: 'Membership updates',
             subtitle: 'Renewal reminders and membership changes',
             prefKey: 'notif_membership',
           ),
-          _NotificationPreferenceTile(
+          const _NotificationPreferenceTile(
             title: 'Redemption confirmations',
             subtitle: 'Confirmation when you redeem an offer',
             prefKey: 'notif_redemptions',
@@ -53,12 +53,12 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           const _SectionHeader('App'),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('Version'),
+          const ListTile(
+            leading: Icon(Icons.info_outline),
+            title: Text('Version'),
             trailing: Text(
               AppConstants.appVersion,
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: Colors.grey),
             ),
           ),
         ],

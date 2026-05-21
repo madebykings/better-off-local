@@ -24,10 +24,10 @@ class OffersRemoteDataSource {
           .select('retailer_id')
           .eq('category_id', categoryId);
       final retailerIds =
-          (catRows as List).map((r) => r['retailer_id'] as String).toList();
+          catRows.map((r) => r['retailer_id'] as String).toList();
       if (retailerIds.isEmpty) return [];
 
-      return (await _client
+      return await _client
           .from('offers')
           .select(_listSelect)
           .eq('status', 'live')
@@ -35,17 +35,17 @@ class OffersRemoteDataSource {
           .or('start_at.is.null,start_at.lte.$now')
           .inFilter('retailer_id', retailerIds)
           .order('is_featured', ascending: false)
-          .order('created_at', ascending: false)) as List<Map<String, dynamic>>;
+          .order('created_at', ascending: false);
     }
 
-    return (await _client
+    return await _client
         .from('offers')
         .select(_listSelect)
         .eq('status', 'live')
         .or('end_at.is.null,end_at.gt.$now')
         .or('start_at.is.null,start_at.lte.$now')
         .order('is_featured', ascending: false)
-        .order('created_at', ascending: false)) as List<Map<String, dynamic>>;
+        .order('created_at', ascending: false);
   }
 
   Future<Map<String, dynamic>> fetchOffer(String offerId) async {
@@ -59,14 +59,14 @@ class OffersRemoteDataSource {
   Future<List<Map<String, dynamic>>> fetchOffersByRetailer(
       String retailerId) async {
     final now = DateTime.now().toUtc().toIso8601String();
-    return (await _client
+    return await _client
         .from('offers')
         .select(_listSelect)
         .eq('retailer_id', retailerId)
         .eq('status', 'live')
         .or('end_at.is.null,end_at.gt.$now')
         .or('start_at.is.null,start_at.lte.$now')
-        .order('created_at', ascending: false)) as List<Map<String, dynamic>>;
+        .order('created_at', ascending: false);
   }
 
   Future<void> logOfferView({
@@ -86,19 +86,19 @@ class OffersRemoteDataSource {
   /// live offer is the fallback. Callers keep the first result per retailer.
   Future<List<Map<String, dynamic>>> fetchFeaturedOfferForRetailers(
       List<String> retailerIds) async {
-    return (await _client
+    return await _client
         .from('consumer_discovery_offers')
         .select('id, retailer_id, title, value_text, is_featured')
         .inFilter('retailer_id', retailerIds)
         .order('is_featured', ascending: false)
-        .order('created_at', ascending: true)) as List<Map<String, dynamic>>;
+        .order('created_at', ascending: true);
   }
 
   Future<List<Map<String, dynamic>>> fetchCategories() async {
-    return (await _client
+    return await _client
         .from('categories')
         .select('id, name, slug, icon, sort_order')
         .eq('is_active', true)
-        .order('sort_order')) as List<Map<String, dynamic>>;
+        .order('sort_order');
   }
 }

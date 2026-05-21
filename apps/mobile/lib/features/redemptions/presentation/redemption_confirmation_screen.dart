@@ -30,7 +30,7 @@ class RedemptionConfirmationScreen extends StatelessWidget {
                 color: AppColors.success,
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text(
+              const Text(
                 'Offer redeemed!',
                 style: AppTextStyles.displayLarge,
                 textAlign: TextAlign.center,
@@ -44,7 +44,7 @@ class RedemptionConfirmationScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],
-              Text(
+              const Text(
                 'Your redemption has been recorded. Enjoy your offer!',
                 style: AppTextStyles.bodyMedium,
                 textAlign: TextAlign.center,

@@ -5,17 +5,17 @@ class FavouritesRemoteDataSource {
   final SupabaseClient _client;
 
   Future<List<Map<String, dynamic>>> fetchFavourites(String profileId) async {
-    return (await _client
+    return await _client
         .from('favourites')
         .select('id, profile_id, retailer_id, offer_id, created_at')
         .eq('profile_id', profileId)
-        .order('created_at', ascending: false)) as List<Map<String, dynamic>>;
+        .order('created_at', ascending: false);
   }
 
   /// Fetches favourite offers with joined offer + retailer data.
   Future<List<Map<String, dynamic>>> fetchFavouriteOffers(
       String profileId) async {
-    return (await _client
+    return await _client
         .from('favourites')
         .select(
           'offer_id, offers(id, retailer_id, title, short_summary, '
@@ -23,13 +23,13 @@ class FavouritesRemoteDataSource {
         )
         .eq('profile_id', profileId)
         .not('offer_id', 'is', null)
-        .order('created_at', ascending: false)) as List<Map<String, dynamic>>;
+        .order('created_at', ascending: false);
   }
 
   /// Fetches favourite retailers with joined retailer data.
   Future<List<Map<String, dynamic>>> fetchFavouriteRetailers(
       String profileId) async {
-    return (await _client
+    return await _client
         .from('favourites')
         .select(
           'retailer_id, retailers(id, name, slug, short_description, '
@@ -37,7 +37,7 @@ class FavouritesRemoteDataSource {
         )
         .eq('profile_id', profileId)
         .not('retailer_id', 'is', null)
-        .order('created_at', ascending: false)) as List<Map<String, dynamic>>;
+        .order('created_at', ascending: false);
   }
 
   Future<void> addOfferFavourite(

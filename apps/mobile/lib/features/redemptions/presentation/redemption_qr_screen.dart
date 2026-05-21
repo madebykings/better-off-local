@@ -163,7 +163,7 @@ class _QRView extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
+          const Text(
             'Show this code to the retailer',
             style: AppTextStyles.titleMedium,
             textAlign: TextAlign.center,
@@ -182,7 +182,7 @@ class _QRView extends StatelessWidget {
             ),
           ],
           const SizedBox(height: AppSpacing.sm),
-          Text(
+          const Text(
             'The retailer will scan this code to confirm your redemption.',
             style: AppTextStyles.bodyMedium,
             textAlign: TextAlign.center,
@@ -217,7 +217,7 @@ class _QRView extends StatelessWidget {
                     width: 240,
                     height: 240,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.55),
+                      color: Colors.black.withValues(alpha: 0.55),
                       borderRadius:
                           BorderRadius.circular(AppSpacing.radiusMd),
                     ),

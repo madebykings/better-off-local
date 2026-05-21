@@ -18,9 +18,9 @@ class RetailersRemoteDataSource {
   }
 
   Future<List<Map<String, dynamic>>> fetchLiveRetailers() async {
-    return (await _client
+    return await _client
         .from('consumer_discovery_retailers')
         .select(_select)
-        .order('name')) as List<Map<String, dynamic>>;
+        .order('name');
   }
 }

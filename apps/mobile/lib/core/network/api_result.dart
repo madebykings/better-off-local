@@ -27,8 +27,8 @@ extension ApiResultX<T> on ApiResult<T> {
     required R Function(Failure failure) error,
   }) {
     return switch (this) {
-      ApiSuccess<T> s => success(s.data),
-      ApiError<T> e => error(e.failure),
+      final ApiSuccess<T> s => success(s.data),
+      final ApiError<T> e => error(e.failure),
     };
   }
 }

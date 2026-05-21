@@ -64,8 +64,8 @@ class _FavouriteOffersTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ds = ref.read(favouritesDataSourceProvider);
-    final session = ref.watch(
-      favouritesProvider.select((_) => null), // just to ensure session is loaded
+    ref.watch(
+      favouritesProvider.select((_) => null), // ensure session is loaded
     );
     // Use FutureBuilder to load detailed favourite offers
     return FutureBuilder<List<Map<String, dynamic>>>(
@@ -84,7 +84,7 @@ class _FavouriteOffersTab extends ConsumerWidget {
             .toList();
 
         if (offers.isEmpty) {
-          return _EmptyState(
+          return const _EmptyState(
             icon: Icons.favorite_border,
             message: 'No saved offers yet',
             subtitle: 'Tap the heart on any offer to save it here.',
@@ -145,7 +145,7 @@ class _FavouriteRetailersTab extends ConsumerWidget {
             .toList();
 
         if (retailers.isEmpty) {
-          return _EmptyState(
+          return const _EmptyState(
             icon: Icons.storefront_outlined,
             message: 'No saved retailers yet',
             subtitle: 'Tap the heart on any retailer to save it here.',

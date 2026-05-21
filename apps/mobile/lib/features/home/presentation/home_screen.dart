@@ -16,26 +16,26 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _HomeHeader(),
-              const _SearchRow(),
-              const SizedBox(height: 14),
-              const _OnlineBanner(),
-              const SizedBox(height: 20),
-              const NearbyOffersSection(),
-              const SizedBox(height: 28),
-              const CategoriesSection(),
-              const SizedBox(height: 28),
-              const FeaturedRetailersSection(),
-              const SizedBox(height: 28),
-              const SavingsSummaryCard(),
-              const SizedBox(height: 32),
+              _HomeHeader(),
+              _SearchRow(),
+              SizedBox(height: 14),
+              _OnlineBanner(),
+              SizedBox(height: 20),
+              NearbyOffersSection(),
+              SizedBox(height: 28),
+              CategoriesSection(),
+              SizedBox(height: 28),
+              FeaturedRetailersSection(),
+              SizedBox(height: 28),
+              SavingsSummaryCard(),
+              SizedBox(height: 32),
             ],
           ),
         ),
@@ -74,7 +74,7 @@ class _HomeHeader extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
+                        color: Colors.black.withValues(alpha: 0.06),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
@@ -115,7 +115,7 @@ class _HomeHeader extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
@@ -150,7 +150,7 @@ class _OnlineBanner extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -162,7 +162,7 @@ class _OnlineBanner extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: AppColors.primary.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -240,7 +240,7 @@ class _SearchRow extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -272,7 +272,7 @@ class _SearchRow extends StatelessWidget {
                 border: Border.all(color: AppColors.primary, width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),

@@ -115,24 +115,24 @@ class _SubscriptionSuccessScreenState
                 position: _contentSlide,
                 child: FadeTransition(
                   opacity: _contentFade,
-                  child: Column(
+                  child: const Column(
                     children: [
                       Text(
                         "You're a member!",
                         style: AppTextStyles.displayLarge,
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                      SizedBox(height: AppSpacing.sm),
                       Text(
                         'Your membership is active. Start exploring\n'
                         'exclusive local deals in Clackmannanshire.',
                         style: AppTextStyles.bodyMedium,
                         textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: AppSpacing.lg),
+                      SizedBox(height: AppSpacing.lg),
 
                       // ── Membership status pill
-                      const _MemberBadge(),
+                      _MemberBadge(),
                     ],
                   ),
                 ),
@@ -225,7 +225,7 @@ class _AnimatedCheckmark extends StatelessWidget {
                   color: AppColors.primary,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.28),
+                      color: AppColors.primary.withValues(alpha: 0.28),
                       blurRadius: 28,
                       offset: const Offset(0, 10),
                     ),
@@ -257,10 +257,10 @@ class _MemberBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.08),
+        color: AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: AppColors.primary.withOpacity(0.16),
+          color: AppColors.primary.withValues(alpha: 0.16),
         ),
       ),
       child: Row(
@@ -275,7 +275,7 @@ class _MemberBadge extends StatelessWidget {
               color: AppColors.success,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.success.withOpacity(0.5),
+                  color: AppColors.success.withValues(alpha: 0.5),
                   blurRadius: 4,
                 ),
               ],

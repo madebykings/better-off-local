@@ -30,7 +30,7 @@ class RedemptionFailedScreen extends StatelessWidget {
                 color: AppColors.error,
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text(
+              const Text(
                 'Redemption unsuccessful',
                 style: AppTextStyles.displayLarge,
                 textAlign: TextAlign.center,
