@@ -51,14 +51,14 @@ class RedemptionsRemoteDataSource {
     return response.data as Map<String, dynamic>;
   }
 
-  /// Fetches the authenticated user's redemption history with offer title,
-  /// most recent first, limited to 50 entries.
+  /// Fetches the authenticated user's redemption history with offer and
+  /// retailer details, most recent first, limited to 50 entries.
   Future<List<Map<String, dynamic>>> fetchRedemptionHistory(
     String userId,
   ) async {
     final response = await _client
         .from('redemptions')
-        .select('*, offers(title)')
+        .select('*, offers(title), retailers(name, logo_url)')
         .eq('profile_id', userId)
         .order('redeemed_at', ascending: false)
         .limit(50);

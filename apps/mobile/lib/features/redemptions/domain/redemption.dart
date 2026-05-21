@@ -24,6 +24,8 @@ class Redemption extends Equatable {
     required this.status,
     required this.redeemedAt,
     this.offerTitle,
+    this.retailerName,
+    this.retailerLogoUrl,
     this.rejectionReason,
   });
 
@@ -31,6 +33,8 @@ class Redemption extends Equatable {
   final String offerId;
   final String? offerTitle;
   final String retailerId;
+  final String? retailerName;
+  final String? retailerLogoUrl;
   final RedemptionStatus status;
   final String? rejectionReason;
   final DateTime redeemedAt;
@@ -39,11 +43,14 @@ class Redemption extends Equatable {
 
   factory Redemption.fromMap(Map<String, dynamic> map) {
     final offerData = map['offers'] as Map<String, dynamic>?;
+    final retailerData = map['retailers'] as Map<String, dynamic>?;
     return Redemption(
       id: map['id'] as String,
       offerId: map['offer_id'] as String,
       offerTitle: offerData?['title'] as String?,
       retailerId: map['retailer_id'] as String,
+      retailerName: retailerData?['name'] as String?,
+      retailerLogoUrl: retailerData?['logo_url'] as String?,
       status: _statusFromString(map['status'] as String? ?? 'rejected'),
       rejectionReason: map['rejection_reason'] as String?,
       redeemedAt: DateTime.parse(map['redeemed_at'] as String),

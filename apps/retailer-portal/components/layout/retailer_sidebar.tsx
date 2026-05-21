@@ -4,19 +4,26 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Logo } from '@better-off-local/ui';
 
-const navItems = [
+const ALL_NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: '⊞' },
   { href: '/profile', label: 'Profile', icon: '🏪' },
   { href: '/locations', label: 'Locations', icon: '📍' },
   { href: '/offers', label: 'Offers', icon: '🏷️' },
   { href: '/scan', label: 'Scan', icon: '📷' },
   { href: '/redemptions', label: 'Redemptions', icon: '✅' },
+  { href: '/analytics', label: 'Analytics', icon: '📊' },
   { href: '/billing', label: 'Billing', icon: '💳' },
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
-export function RetailerSidebar() {
+const SCANNER_ONLY_NAV_ITEMS = [
+  { href: '/scan', label: 'Scan', icon: '📷' },
+];
+
+export function RetailerSidebar({ accessRole }: { accessRole: string }) {
   const pathname = usePathname();
+  const navItems =
+    accessRole === 'scanner_only' ? SCANNER_ONLY_NAV_ITEMS : ALL_NAV_ITEMS;
 
   return (
     <aside className="w-56 shrink-0 border-r border-gray-200 bg-white flex flex-col">
