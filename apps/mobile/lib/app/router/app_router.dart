@@ -6,20 +6,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/providers/session_provider.dart';
 import '../../features/profile/providers/profile_providers.dart';
 
-/// Listens to [sessionProvider] and [profileProvider] and notifies [GoRouter]
-/// to re-evaluate its redirect whenever auth state or profile state changes.
-class _RouterNotifier extends ChangeNotifier {
-  _RouterNotifier(this._ref) {
-    _ref.listen<AsyncValue<Session?>>(
-      sessionProvider,
-      (_, __) => notifyListeners(),
-    );
-    _ref.listen(profileProvider, (_, __) => notifyListeners());
-  }
-
-  final Ref _ref;
-}
-
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/sign_in_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
@@ -47,6 +33,20 @@ import '../../features/online_redemption/presentation/online_scan_screen.dart';
 import '../../features/retailers/presentation/retailer_detail_screen.dart';
 import '../../features/shell/presentation/app_shell.dart';
 import 'route_names.dart';
+
+/// Listens to [sessionProvider] and [profileProvider] and notifies [GoRouter]
+/// to re-evaluate its redirect whenever auth state or profile state changes.
+class _RouterNotifier extends ChangeNotifier {
+  _RouterNotifier(this._ref) {
+    _ref.listen<AsyncValue<Session?>>(
+      sessionProvider,
+      (_, __) => notifyListeners(),
+    );
+    _ref.listen(profileProvider, (_, __) => notifyListeners());
+  }
+
+  final Ref _ref;
+}
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _RouterNotifier(ref);

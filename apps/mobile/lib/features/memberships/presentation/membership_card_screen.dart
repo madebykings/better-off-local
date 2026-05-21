@@ -16,6 +16,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../domain/membership.dart';
 import '../providers/membership_providers.dart';
+import '../../redemptions/domain/redemption_token.dart';
 import 'membership_controller.dart';
 import 'pass_qr_controller.dart';
 
