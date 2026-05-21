@@ -56,17 +56,52 @@ class OffersRemoteDataSource {
         .single();
   }
 
+  /// Fetches all consumer-facing offers for a retailer (live + expired).
+  /// Expired offers are included so the availability layer can show them
+  /// with an explanation rather than silently hiding them.
+  /// Sorting is handled client-side after merging with availability data.
   Future<List<Map<String, dynamic>>> fetchOffersByRetailer(
       String retailerId) async {
-    final now = DateTime.now().toUtc().toIso8601String();
     return await _client
         .from('offers')
         .select(_listSelect)
         .eq('retailer_id', retailerId)
-        .eq('status', 'live')
-        .or('end_at.is.null,end_at.gt.$now')
-        .or('start_at.is.null,start_at.lte.$now')
-        .order('created_at', ascending: false);
+        .inFilter('status', ['live', 'expired'])
+        .order('is_featured', ascending: false)
+        .order('created_at', ascending: true);
+  }
+
+  /// Calls the get_retailer_offers_availability RPC and returns the raw rows.
+  /// p_consumer_id may be null for unauthenticated browsing.
+  Future<List<Map<String, dynamic>>> fetchRetailerOffersAvailability({
+    required String retailerId,
+    String? consumerId,
+  }) async {
+    final result = await _client.rpc(
+      'get_retailer_offers_availability',
+      params: {
+        'p_retailer_id': retailerId,
+        'p_consumer_id': consumerId,
+      },
+    );
+    return List<Map<String, dynamic>>.from(result as List);
+  }
+
+  /// Calls the get_offer_availability RPC for a single offer.
+  /// Used as the pre-redemption gate check on the detail screen.
+  Future<Map<String, dynamic>?> fetchOfferAvailability({
+    required String offerId,
+    required String consumerId,
+  }) async {
+    final result = await _client.rpc(
+      'get_offer_availability',
+      params: {
+        'p_offer_id': offerId,
+        'p_consumer_id': consumerId,
+      },
+    );
+    final rows = List<Map<String, dynamic>>.from(result as List);
+    return rows.isNotEmpty ? rows.first : null;
   }
 
   Future<void> logOfferView({

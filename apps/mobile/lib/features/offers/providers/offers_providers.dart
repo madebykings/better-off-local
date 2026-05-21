@@ -6,6 +6,7 @@ import '../data/offers_remote_data_source.dart';
 import '../data/offers_repository_impl.dart';
 import '../domain/category.dart';
 import '../domain/offer.dart';
+import '../domain/offer_availability.dart';
 import '../domain/offers_repository.dart';
 
 final offersRemoteDataSourceProvider = Provider<OffersRemoteDataSource>(
@@ -43,6 +44,54 @@ final offerProvider =
 final retailerOffersProvider =
     FutureProvider.family<List<Offer>, String>((ref, retailerId) async {
   return ref.read(offersRepositoryProvider).getOffersByRetailer(retailerId);
+});
+
+/// Availability states for all offers at a given retailer.
+/// Keyed by offer_id. consumerId is taken from the current session
+/// (null for unauthenticated — will return requires_membership for all offers).
+final retailerOffersAvailabilityProvider =
+    FutureProvider.family<Map<String, OfferAvailability>, String>(
+        (ref, retailerId) async {
+  final session = ref.watch(sessionProvider).valueOrNull;
+  final ds = ref.read(offersRemoteDataSourceProvider);
+  final rows = await ds.fetchRetailerOffersAvailability(
+    retailerId: retailerId,
+    consumerId: session?.user.id,
+  );
+  return {
+    for (final row in rows)
+      row['offer_id'] as String: OfferAvailability.fromMap(row),
+  };
+});
+
+/// Availability state for a single offer.
+/// Used on the offer detail screen as a pre-redemption gate check.
+/// Returns null if the RPC returns no row (offer not found or retailer inactive).
+final offerAvailabilityProvider =
+    FutureProvider.family<OfferAvailability?, String>((ref, offerId) async {
+  final session = ref.watch(sessionProvider).valueOrNull;
+  // Require authentication — unauthenticated users see the paywall, not this.
+  if (session == null) {
+    return OfferAvailability(
+      offerId: offerId,
+      state: OfferAvailabilityState.requiresMembership,
+    );
+  }
+  final ds = ref.read(offersRemoteDataSourceProvider);
+  final row = await ds.fetchOfferAvailability(
+    offerId: offerId,
+    consumerId: session.user.id,
+  );
+  if (row == null) return null;
+  return OfferAvailability(
+    offerId: offerId,
+    state: OfferAvailabilityStateX.fromString(
+      row['availability_state'] as String? ?? '',
+    ),
+    availableAt: row['available_at'] != null
+        ? DateTime.parse(row['available_at'] as String)
+        : null,
+  );
 });
 
 /// All active categories.

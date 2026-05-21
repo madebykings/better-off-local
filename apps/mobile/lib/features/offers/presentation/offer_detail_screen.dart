@@ -7,7 +7,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../favourites/providers/favourites_providers.dart';
-import '../../memberships/providers/membership_providers.dart';
+import '../domain/offer_availability.dart';
 import '../providers/offers_providers.dart';
 
 class OfferDetailScreen extends ConsumerStatefulWidget {
@@ -46,9 +46,9 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
       ),
       data: (offer) {
         final isFavourited = favouriteIds.contains(offer.id);
-        final membershipAsync = ref.watch(currentMembershipProvider);
-        final isEntitled =
-            membershipAsync.valueOrNull?.isEntitled ?? false;
+        final availabilityAsync =
+            ref.watch(offerAvailabilityProvider(widget.offerId));
+        final availability = availabilityAsync.valueOrNull;
 
         return Scaffold(
           body: CustomScrollView(
@@ -171,33 +171,68 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
             child: Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: isEntitled
-                  ? PrimaryButton(
-                      label: 'Use this offer',
-                      onPressed: () => context.push(
-                        RouteNames.redemptionQR
-                            .replaceAll(':offerId', offer.id),
-                      ),
-                    )
-                  : Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Active membership required to redeem',
-                          style: AppTextStyles.bodyMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                        PrimaryButton(
-                          label: 'Get membership',
-                          onPressed: () => context.push(RouteNames.paywall),
-                        ),
-                      ],
-                    ),
+              child: _buildCTA(context, offer.id, availability),
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildCTA(
+    BuildContext context,
+    String offerId,
+    OfferAvailability? availability,
+  ) {
+    // Still loading availability — show disabled button to avoid layout shift.
+    if (availability == null) {
+      return const PrimaryButton(label: 'Use this offer', onPressed: null);
+    }
+
+    final state = availability.state;
+
+    if (state.isAvailable) {
+      return PrimaryButton(
+        label: 'Use this offer',
+        onPressed: () => context.push(
+          RouteNames.redemptionQR.replaceAll(':offerId', offerId),
+        ),
+      );
+    }
+
+    if (state.requiresMembership) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Active membership required to redeem',
+            style: AppTextStyles.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          PrimaryButton(
+            label: 'Get membership',
+            onPressed: () => context.push(RouteNames.paywall),
+          ),
+        ],
+      );
+    }
+
+    // Unavailable with a reason
+    final explanation = state.ctaExplanation ?? 'This offer is not available.';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          explanation,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        const PrimaryButton(label: 'Use this offer', onPressed: null),
+      ],
     );
   }
 
