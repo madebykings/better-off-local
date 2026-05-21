@@ -191,9 +191,12 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
 
     final state = availability.state;
 
+    // Use the instance getter so cooldown/not-started states show date context.
+    final buttonLabel = availability.ctaButtonLabel;
+
     if (state.isAvailable) {
       return PrimaryButton(
-        label: 'Use this offer',
+        label: buttonLabel,
         onPressed: () => context.push(
           RouteNames.redemptionQR.replaceAll(':offerId', offerId),
         ),
@@ -211,7 +214,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
           ),
           const SizedBox(height: 8),
           PrimaryButton(
-            label: 'Get membership',
+            label: buttonLabel,
             onPressed: () => context.push(RouteNames.paywall),
           ),
         ],
@@ -231,7 +234,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
-        const PrimaryButton(label: 'Use this offer', onPressed: null),
+        PrimaryButton(label: buttonLabel, onPressed: null),
       ],
     );
   }

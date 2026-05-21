@@ -183,7 +183,7 @@ serve(async (req) => {
   // genuinely unknown tokens rather than an RPC rejection.
   const { data: tokenExists } = await supabase
     .from('redemption_tokens')
-    .select('id')
+    .select('id, profile_id')
     .eq('token_hash', tokenHash)
     .maybeSingle();
 
@@ -205,6 +205,19 @@ serve(async (req) => {
       return json({ error: 'Failed to process redemption' }, 500);
     }
 
+    // On success, fetch the consumer's first name for staff confirmation.
+    let consumerName: string | null = null;
+    if (result.valid === true && tokenExists.profile_id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', tokenExists.profile_id)
+        .maybeSingle();
+      if (profile?.full_name) {
+        consumerName = profile.full_name.split(' ')[0];
+      }
+    }
+
     const response: Record<string, unknown> = {
       token_type:       'redemption',
       valid:            result.valid,
@@ -215,6 +228,7 @@ serve(async (req) => {
       offer_title:      result.offer_title ?? undefined,
       benefit_text:     result.benefit_text ?? undefined,
       next_available_at: result.next_available_at ?? undefined,
+      consumer_name:    consumerName ?? undefined,
     };
 
     return json(response);

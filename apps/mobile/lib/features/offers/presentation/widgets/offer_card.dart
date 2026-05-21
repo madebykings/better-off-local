@@ -23,12 +23,11 @@ class OfferCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isFavourited =
         ref.watch(favouriteOfferIdsProvider).contains(offer.id);
-    final isUnavailable =
-        availability != null && !availability!.isAvailable;
     final badgeLabel = availability?.state.badgeLabel;
+    final opacity = availability?.cardOpacity ?? 1.0;
 
     return Opacity(
-      opacity: isUnavailable ? 0.6 : 1.0,
+      opacity: opacity,
       child: Card(
         clipBehavior: Clip.antiAlias,
         elevation: 0,

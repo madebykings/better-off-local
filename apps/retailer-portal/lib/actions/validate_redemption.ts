@@ -11,7 +11,7 @@ export type RedemptionStatus =
   | 'server_error';
 
 export type ScanResult =
-  | { token_type: 'redemption'; valid: true; offer_title: string; benefit_text: string | null }
+  | { token_type: 'redemption'; valid: true; offer_title: string; benefit_text: string | null; consumer_name: string | null }
   | {
       token_type: 'redemption';
       valid: false;
@@ -135,6 +135,7 @@ export async function validateRedemption(
         valid: true,
         offer_title: (body.offer_title as string | null) ?? 'Offer',
         benefit_text: (body.benefit_text as string | null) ?? null,
+        consumer_name: (body.consumer_name as string | null) ?? null,
       };
     }
     return {

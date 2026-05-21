@@ -206,7 +206,7 @@ function ScanNextFooter({
         onClick={onScanNow}
         className="w-full bg-green-800 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
       >
-        Scan now
+        Scan next
       </button>
       {countdown !== null && countdown > 0 && (
         <p className="text-center text-xs text-gray-400">
@@ -243,9 +243,17 @@ function ResultCard({
             </p>
           )}
         </div>
-        <div className="bg-white rounded-md px-3 py-2 border border-green-200">
-          <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Offer</p>
-          <p className="text-sm font-medium text-gray-700">{result.offer_title}</p>
+        <div className="bg-white rounded-md px-3 py-2 border border-green-200 space-y-2">
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Offer</p>
+            <p className="text-sm font-medium text-gray-700">{result.offer_title}</p>
+          </div>
+          {result.consumer_name && (
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Member</p>
+              <p className="text-sm font-medium text-gray-700">{result.consumer_name}</p>
+            </div>
+          )}
         </div>
         <ScanNextFooter countdown={countdown} onScanNow={onScanNow} />
       </div>

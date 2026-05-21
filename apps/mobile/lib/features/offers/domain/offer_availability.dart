@@ -92,7 +92,7 @@ extension OfferAvailabilityStateX on OfferAvailabilityState {
     }
   }
 
-  /// Short badge label shown on the offer card for unavailable-but-visible offers.
+  /// Short overlay chip label shown on unavailable-but-visible offer cards.
   String? get badgeLabel {
     switch (this) {
       case OfferAvailabilityState.requiresMembership:
@@ -100,13 +100,14 @@ extension OfferAvailabilityStateX on OfferAvailabilityState {
       case OfferAvailabilityState.offerNotStarted:
         return 'Coming soon';
       case OfferAvailabilityState.totalCapReached:
-      case OfferAvailabilityState.lifetimeUsed:
         return 'Fully claimed';
+      case OfferAvailabilityState.lifetimeUsed:
+        return 'Claimed';
       case OfferAvailabilityState.retailerDailyCapReached:
       case OfferAvailabilityState.dailyCapReached:
-        return 'Try tomorrow';
+        return 'Used today';
       case OfferAvailabilityState.cooldown:
-        return 'Used recently';
+        return 'Cooling down';
       case OfferAvailabilityState.dayRestricted:
         return 'Day restricted';
       case OfferAvailabilityState.timeRestricted:
@@ -117,6 +118,19 @@ extension OfferAvailabilityStateX on OfferAvailabilityState {
       case OfferAvailabilityState.retailerInactive:
       case OfferAvailabilityState.offerExpired:
         return null;
+    }
+  }
+
+  /// Card opacity. Differentiates paywall-muted from fully greyed states so
+  /// requires_membership cards feel reachable while capped/used cards feel done.
+  double get cardOpacity {
+    switch (this) {
+      case OfferAvailabilityState.available:
+        return 1.0;
+      case OfferAvailabilityState.requiresMembership:
+        return 0.85;
+      default:
+        return 0.65;
     }
   }
 
@@ -146,6 +160,38 @@ extension OfferAvailabilityStateX on OfferAvailabilityState {
       case OfferAvailabilityState.retailerInactive:
       case OfferAvailabilityState.offerExpired:
         return null;
+    }
+  }
+
+  /// Static CTA button label. Use [OfferAvailability.ctaButtonLabel] instead
+  /// when you have a full [OfferAvailability] object — it adds date context for
+  /// cooldown and offer_not_started states.
+  String get ctaButtonLabel {
+    switch (this) {
+      case OfferAvailabilityState.available:
+        return 'Use this offer';
+      case OfferAvailabilityState.requiresMembership:
+        return 'Get membership';
+      case OfferAvailabilityState.offerNotStarted:
+        return 'Coming soon';
+      case OfferAvailabilityState.totalCapReached:
+        return 'Fully claimed';
+      case OfferAvailabilityState.lifetimeUsed:
+        return 'Already used';
+      case OfferAvailabilityState.retailerDailyCapReached:
+      case OfferAvailabilityState.dailyCapReached:
+        return 'Available tomorrow';
+      case OfferAvailabilityState.cooldown:
+        return 'Available again soon';
+      case OfferAvailabilityState.dayRestricted:
+        return 'Not available today';
+      case OfferAvailabilityState.timeRestricted:
+        return 'Not available right now';
+      case OfferAvailabilityState.newCustomersOnly:
+        return 'New customers only';
+      case OfferAvailabilityState.retailerInactive:
+      case OfferAvailabilityState.offerExpired:
+        return 'Offer unavailable';
     }
   }
 
@@ -202,4 +248,44 @@ class OfferAvailability {
 
   bool get isAvailable => state.isAvailable;
   bool get isVisible => state.isVisible;
+
+  /// Date-aware CTA button label. Overrides the static [state.ctaButtonLabel]
+  /// for states where [availableAt] adds useful context (cooldown, not started).
+  String get ctaButtonLabel {
+    if (availableAt != null) {
+      if (state == OfferAvailabilityState.cooldown) {
+        return 'Available again ${_fmtWhen(availableAt!)}';
+      }
+      if (state == OfferAvailabilityState.offerNotStarted) {
+        return 'Available from ${_fmtDate(availableAt!)}';
+      }
+    }
+    return state.ctaButtonLabel;
+  }
+
+  /// Card opacity for this offer. Delegates to [state.cardOpacity].
+  double get cardOpacity => state.cardOpacity;
+
+  static String _fmtDate(DateTime dt) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${dt.day} ${months[dt.month]}';
+  }
+
+  static String _fmtWhen(DateTime dt) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    if (dt.isBefore(tomorrow)) {
+      final h = dt.hour.toString().padLeft(2, '0');
+      final m = dt.minute.toString().padLeft(2, '0');
+      return 'at $h:$m';
+    }
+    if (dt.isBefore(tomorrow.add(const Duration(days: 1)))) {
+      return 'tomorrow';
+    }
+    return _fmtDate(dt);
+  }
 }
