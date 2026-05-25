@@ -64,7 +64,7 @@ export default async function SubmittedPage() {
             {
               step: '2',
               title: 'You receive an email',
-              body: 'Approved, or we'll ask for changes. Usually within 1–2 days.',
+              body: "Approved, or we'll ask for changes. Usually within 1\u20132 days.",
             },
             {
               step: '3',
