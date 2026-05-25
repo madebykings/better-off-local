@@ -16,11 +16,9 @@ class RedemptionsRepositoryImpl implements RedemptionsRepository {
 
   /// Returns a membership-level pass token (no offer_id / retailer_id).
   ///
-  /// Delegates to [RedemptionsRemoteDataSource.requestPassToken], which
-  /// currently throws [UnimplementedError] until the backend edge function is
-  /// ready. [PassQRController] catches [UnimplementedError] and transitions to
-  /// [PassQRPending] — a non-error placeholder state — so the card screen
-  /// remains fully usable.
+  /// Delegates to [RedemptionsRemoteDataSource.requestPassToken], which calls
+  /// the `create-membership-pass-token` edge function. Throws [Exception] on
+  /// non-200 responses; [PassQRController] maps these to [PassQRError].
   @override
   Future<RedemptionToken> requestPassToken() async {
     final map = await _dataSource.requestPassToken();

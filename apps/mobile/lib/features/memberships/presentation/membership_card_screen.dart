@@ -571,28 +571,6 @@ class _PassQRZoneState extends State<_PassQRZone>
             ],
           ),
 
-        // Backend edge function not yet deployed — non-blocking placeholder.
-        PassQRPending() => const SizedBox(
-            height: 240,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.qr_code_2, size: 64, color: AppColors.textDisabled),
-                SizedBox(height: 14),
-                Text(
-                  'Pass QR coming soon',
-                  style: AppTextStyles.titleMedium,
-                ),
-                SizedBox(height: 6),
-                Text(
-                  'Show this card to the retailer\nto verify your membership.',
-                  style: AppTextStyles.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-
         // Unexpected error — allow manual retry.
         PassQRError() => SizedBox(
             height: 240,

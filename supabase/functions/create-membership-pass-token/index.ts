@@ -82,19 +82,24 @@ serve(async (req) => {
   }
 
   // ── 3. Service-role client for all DB ops ────────────────────────────────
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    serviceRoleKey!,
   );
 
   // ── 4. Verify consumer has an active membership ──────────────────────────
-  const { data: membership } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from('consumer_memberships')
     .select('plan_interval, started_at')
     .eq('profile_id', user.id)
     .in('status', ['active', 'trialing'])
     .gt('current_period_end', new Date().toISOString())
     .maybeSingle();
+
+  if (membershipError) {
+    console.error('Membership query error:', JSON.stringify(membershipError));
+  }
 
   if (!membership) {
     return json({ error: 'No active membership' }, 403);

@@ -31,17 +31,7 @@ class PassQRReady extends PassQRState {
   final RedemptionToken token;
 }
 
-/// The backend edge function for membership pass tokens is not yet implemented.
-///
-/// This is a known, expected state — not an error. The card screen shows a
-/// clean placeholder. Once the `create-membership-pass-token` edge function
-/// is deployed, this state will no longer be emitted.
-class PassQRPending extends PassQRState {
-  const PassQRPending();
-}
-
 /// An unexpected error occurred fetching the pass token (network, auth, etc).
-/// Distinct from [PassQRPending] which is a planned temporary limitation.
 class PassQRError extends PassQRState {
   const PassQRError(this.message);
   final String message;
@@ -62,9 +52,8 @@ class PassQRError extends PassQRState {
 /// - Has null [RedemptionToken.offerId] and [RedemptionToken.retailerId]
 /// - Auto-refreshes 30 seconds before expiry so the QR is never stale
 ///
-/// Current behaviour: transitions to [PassQRPending] when the backend edge
-/// function is not yet available ([UnimplementedError]). All other failures
-/// go to [PassQRError] and can be retried manually.
+/// Failures (network, auth, rate-limit) go to [PassQRError] and can be
+/// retried manually via [refresh].
 class PassQRController extends StateNotifier<PassQRState> {
   PassQRController(this._ref) : super(const PassQRIdle());
 
@@ -86,10 +75,6 @@ class PassQRController extends StateNotifier<PassQRState> {
 
       state = PassQRReady(token);
       _scheduleAutoRefresh(token);
-    } on UnimplementedError {
-      // Backend edge function not yet deployed — expected, non-breaking.
-      // The card screen shows a placeholder; no retry button is needed.
-      state = const PassQRPending();
     } catch (e) {
       state = PassQRError(
         e.toString().replaceFirst('Exception: ', ''),

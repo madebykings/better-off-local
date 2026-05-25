@@ -295,15 +295,23 @@ function ResultCard({
 
   // ── Membership pass invalid ───────────────────────────────────────────────
   if (result.token_type === 'membership_pass' && !result.valid) {
+    // rejection_reason is set when the pass token has expired (TTL elapsed) —
+    // this is distinct from membership-not-active: the member is valid but
+    // needs to refresh their QR in the app.
+    const isExpiredQR = !!result.rejection_reason;
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 space-y-4">
         <div className="flex items-center gap-3">
           <span className="text-amber-500 text-3xl">✕</span>
-          <p className="font-semibold text-amber-800 text-lg">MEMBERSHIP NOT ACTIVE</p>
+          <p className="font-semibold text-amber-800 text-lg">
+            {isExpiredQR ? 'QR CODE EXPIRED' : 'MEMBERSHIP NOT ACTIVE'}
+          </p>
         </div>
         <div className="bg-white rounded-md p-3 border border-amber-200">
           <p className="text-sm text-gray-700">
-            Do not apply any discount. This member&apos;s subscription is not currently active.
+            {isExpiredQR
+              ? result.rejection_reason
+              : "Do not apply any discount. This member\u2019s subscription is not currently active."}
           </p>
         </div>
         <ScanNextFooter countdown={countdown} onScanNow={onScanNow} />

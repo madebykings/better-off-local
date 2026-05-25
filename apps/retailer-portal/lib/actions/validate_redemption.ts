@@ -20,7 +20,7 @@ export type ScanResult =
       next_available_at: string | null;
     }
   | { token_type: 'membership_pass'; valid: true; plan_interval: string; member_since: string | null }
-  | { token_type: 'membership_pass'; valid: false }
+  | { token_type: 'membership_pass'; valid: false; rejection_reason?: string }
   | { token_type: 'unknown'; valid: false; rejection_reason: string };
 
 /**
@@ -103,8 +103,13 @@ export async function validateRedemption(
   }
 
   if (res.status === 410) {
-    // Membership pass token expired.
-    return { token_type: 'membership_pass', valid: false };
+    // Pass token TTL elapsed — member is valid but QR is stale.
+    // Distinct from membership-not-active: the member should refresh their app.
+    return {
+      token_type: 'membership_pass',
+      valid: false,
+      rejection_reason: "QR code expired — ask the member to open their app and refresh their pass.",
+    };
   }
 
   if (!res.ok) {

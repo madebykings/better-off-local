@@ -8,9 +8,9 @@ import 'package:equatable/equatable.dart';
 ///    Issued for a specific [offerId] at a specific [retailerId]. Scanned by
 ///    the retailer portal to record a redemption. Both fields are non-null.
 ///
-/// 2. **Membership pass** (via `create-membership-pass-token` edge function,
-///    not yet implemented): Proves active BOL membership without tying to a
-///    specific offer. [offerId] and [retailerId] are null in this case.
+/// 2. **Membership pass** (via `create-membership-pass-token` edge function):
+///    Proves active BOL membership without tying to a specific offer.
+///    [offerId] and [retailerId] are null in this case.
 ///
 /// The raw [token] string is encoded into a QR code. It is never persisted —
 /// only the SHA-256 hash lives in the database.
