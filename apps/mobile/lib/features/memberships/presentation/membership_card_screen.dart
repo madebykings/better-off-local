@@ -126,14 +126,6 @@ class _MembershipCardScreenState extends ConsumerState<MembershipCardScreen>
                             .read(passQRControllerProvider.notifier)
                             .refresh(),
                       ),
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: _OnlineScanButton(
-                          onTap: () =>
-                              context.push(RouteNames.onlineScan),
-                        ),
-                      ),
                       const SizedBox(height: 24),
                       const _QuickActions(),
                       const SizedBox(height: 32),
@@ -858,58 +850,6 @@ class _PassSkeleton extends StatelessWidget {
             }),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Online scan button — full-width CTA below the pass card
-// ---------------------------------------------------------------------------
-
-class _OnlineScanButton extends StatelessWidget {
-  const _OnlineScanButton({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 15),
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.28),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.qr_code_scanner_outlined,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Scan Online Checkout',
-              style: AppTextStyles.labelSmall.copyWith(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

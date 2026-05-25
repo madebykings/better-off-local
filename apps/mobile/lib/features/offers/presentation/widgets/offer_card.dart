@@ -79,7 +79,7 @@ class OfferCard extends ConsumerWidget {
                     right: 8,
                     child: GestureDetector(
                       onTap: () =>
-                          toggleOfferFavourite(ref, offer.id, isFavourited),
+                          toggleOfferFavourite(ref, offer.id, isFavourited, context),
                       child: Container(
                         width: 30,
                         height: 30,
@@ -209,7 +209,7 @@ class OfferCardCompact extends ConsumerWidget {
                     right: 6,
                     child: GestureDetector(
                       onTap: () =>
-                          toggleOfferFavourite(ref, offer.id, isFavourited),
+                          toggleOfferFavourite(ref, offer.id, isFavourited, context),
                       child: Container(
                         width: 26,
                         height: 26,

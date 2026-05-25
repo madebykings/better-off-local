@@ -62,7 +62,7 @@ class RetailerDetailScreen extends ConsumerWidget {
                       color: isFavourited ? AppColors.error : null,
                     ),
                     onPressed: () => toggleRetailerFavourite(
-                        ref, retailer.id, isFavourited),
+                        ref, retailer.id, isFavourited, context),
                   ),
                 ],
                 flexibleSpace: retailer.coverImageUrl != null

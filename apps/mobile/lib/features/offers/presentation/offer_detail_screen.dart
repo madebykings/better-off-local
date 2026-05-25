@@ -67,7 +67,7 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                           : null,
                     ),
                     onPressed: () => toggleOfferFavourite(
-                        ref, offer.id, isFavourited),
+                        ref, offer.id, isFavourited, context),
                   ),
                 ],
                 flexibleSpace: offer.imageUrl != null

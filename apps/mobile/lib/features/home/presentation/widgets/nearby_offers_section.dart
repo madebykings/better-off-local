@@ -140,7 +140,7 @@ class _OfferTile extends ConsumerWidget {
                   right: 8,
                   child: GestureDetector(
                     onTap: () =>
-                        toggleOfferFavourite(ref, offer.id, isFavourited),
+                        toggleOfferFavourite(ref, offer.id, isFavourited, context),
                     child: Container(
                       width: 28,
                       height: 28,

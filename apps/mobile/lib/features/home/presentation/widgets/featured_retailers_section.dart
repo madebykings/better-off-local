@@ -141,7 +141,7 @@ class _RetailerCard extends ConsumerWidget {
               right: 8,
               child: GestureDetector(
                 onTap: () => toggleRetailerFavourite(
-                    ref, retailer.id, isFavourited),
+                    ref, retailer.id, isFavourited, context),
                 child: Container(
                   width: 30,
                   height: 30,
