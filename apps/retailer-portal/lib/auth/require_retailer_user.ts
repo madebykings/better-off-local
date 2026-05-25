@@ -35,7 +35,11 @@ export async function requireRetailerUser(): Promise<{
     .single();
 
   if (!retailerUser) {
-    redirect('/sign-in');
+    // Redirect to onboarding rather than sign-in — the user is authenticated
+    // but not yet linked to a retailer. Sending them back to sign-in would
+    // create a redirect loop because middleware sends authenticated sessions
+    // straight back to /dashboard.
+    redirect('/onboarding');
   }
 
   return {

@@ -8,12 +8,12 @@ import { createClient } from '@supabase/supabase-js';
  * route handlers, or API routes.
  *
  * Required env vars:
- *   SUPABASE_URL           — project URL
- *   SUPABASE_SERVICE_ROLE_KEY — service role secret key
+ *   SUPABASE_URL or NEXT_PUBLIC_SUPABASE_URL — project URL (either accepted)
+ *   SUPABASE_SERVICE_ROLE_KEY               — service role secret key
  */
 export function createServiceClient() {
   return createClient(
-    process.env.SUPABASE_URL!,
+    (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       auth: {

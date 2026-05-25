@@ -7,9 +7,9 @@
 --   2. Four auth users created via the Supabase dashboard
 --      (Authentication → Users → Invite / Add user):
 --
---        admin@betterofflocal.test
---        retailer@betterofflocal.test
---        retailer2@betterofflocal.test
+--        admin@testk.com
+--        retailer@testk.com
+--        retailer2@testk.com
 --        consumer@testk.com
 --
 --      Note: the handle_new_user trigger creates a profiles row automatically
@@ -96,7 +96,7 @@ select
   '00000000-0000-0000-0001-000000000001',
   id, 'owner', true
 from profiles
-where email = 'retailer@betterofflocal.test'
+where email = 'retailer@testk.com'
 on conflict (retailer_id, profile_id) do nothing;
 
 insert into retailer_categories (retailer_id, category_id)

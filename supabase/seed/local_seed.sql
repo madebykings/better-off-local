@@ -239,8 +239,9 @@ on conflict (id) do update set
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 6. Sample redemption history
---    Two past redemptions for the consumer against the featured offer.
---    Populates the redemption history screen without requiring a real scan.
+--    Two past redemptions for the consumer against the FREE CAKE offer.
+--    Using the free cake offer (no rules) keeps the hot drinks offer
+--    testable end-to-end without burning its per-user cap.
 --    redemption_token_id is null — permitted by schema.
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -252,7 +253,7 @@ select
   p.id,
   '00000000-0000-0000-0001-000000000001',
   '00000000-0000-0000-0003-000000000001',
-  '00000000-0000-0000-0002-000000000001',
+  '00000000-0000-0000-0002-000000000002',
   null,
   'success',
   now() - interval '7 days'
@@ -267,7 +268,7 @@ select
   p.id,
   '00000000-0000-0000-0001-000000000001',
   '00000000-0000-0000-0003-000000000001',
-  '00000000-0000-0000-0002-000000000001',
+  '00000000-0000-0000-0002-000000000002',
   null,
   'success',
   now() - interval '30 days'
