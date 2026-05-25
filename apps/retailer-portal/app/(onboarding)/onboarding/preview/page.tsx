@@ -95,7 +95,7 @@ export default async function PreviewPage() {
       email:           fullRetailer?.email           ?? null,
     },
     categories: (categoryRows ?? [])
-      .map((row) => row.categories as { name: string; slug: string } | null)
+      .map((row) => row.categories as unknown as { name: string; slug: string } | null)
       .filter((c): c is { name: string; slug: string } => Boolean(c)),
     location:   location ?? null,
     links:      links    ?? [],

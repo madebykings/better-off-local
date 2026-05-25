@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { Logo } from '@better-off-local/ui';
-import { parseOpeningHours, DAY_KEYS } from '@/lib/actions/opening_hours';
-import { reverseNormaliseLink, URL_LINK_TYPES, type UrlLinkType } from '@/lib/actions/links';
-import { ruleFromColumns } from '@/lib/actions/first_offer';
+import { parseOpeningHours, DAY_KEYS } from '@/lib/utils/opening_hours';
+import { reverseNormaliseLink, URL_LINK_TYPES, type UrlLinkType } from '@/lib/utils/links';
+import { ruleFromColumns } from '@/lib/utils/redemption_rules';
 import { SubmitButton } from '@/components/onboarding/submit_button';
 
 // ---------------------------------------------------------------------------

@@ -84,7 +84,7 @@ function CategoryIcon({
   iconSlug: string | null;
   className?: string;
 }) {
-  const paths = (iconSlug && ICON_PATHS[iconSlug]) ?? FALLBACK_PATHS;
+  const paths = (iconSlug && ICON_PATHS[iconSlug]) || FALLBACK_PATHS;
   return (
     <svg
       className={className}

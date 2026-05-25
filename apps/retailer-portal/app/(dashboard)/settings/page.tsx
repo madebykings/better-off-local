@@ -56,7 +56,7 @@ export default async function SettingsPage() {
       : Promise.resolve({ data: null }),
   ]);
 
-  const staff = (staffResult.data ?? []) as StaffRow[];
+  const staff = (staffResult.data ?? []) as unknown as StaffRow[];
   const activeInvite = inviteResult.data
     ? {
         id: inviteResult.data.id,

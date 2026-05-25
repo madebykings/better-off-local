@@ -47,7 +47,7 @@ export default async function RedemptionsPage() {
     .order('redeemed_at', { ascending: false })
     .limit(100);
 
-  const rows = (redemptions ?? []) as RedemptionRow[];
+  const rows = (redemptions ?? []) as unknown as RedemptionRow[];
 
   return (
     <div>

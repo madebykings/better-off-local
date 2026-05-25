@@ -3,13 +3,13 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { getPrevStep, getNextStep } from '@/lib/onboarding/steps';
+import { type RedemptionRule } from '@/lib/utils/redemption_rules';
 import {
-  saveFirstOffer,
   OFFER_TYPES,
   type FirstOfferFields,
   type OfferType,
-  type RedemptionRule,
-} from '@/lib/actions/first_offer';
+} from '@/lib/utils/first_offer';
+import { saveFirstOffer } from '@/lib/actions/first_offer';
 
 // ---------------------------------------------------------------------------
 // Offer type config

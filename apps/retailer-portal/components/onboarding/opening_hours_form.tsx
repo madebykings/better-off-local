@@ -3,14 +3,14 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { getPrevStep, getNextStep } from '@/lib/onboarding/steps';
+import { saveOpeningHours } from '@/lib/actions/opening_hours';
 import {
-  saveOpeningHours,
   DAY_KEYS,
   DEFAULT_HOURS,
   type DayKey,
   type DaySchedule,
   type OpeningHoursData,
-} from '@/lib/actions/opening_hours';
+} from '@/lib/utils/opening_hours';
 
 // ---------------------------------------------------------------------------
 // Constants

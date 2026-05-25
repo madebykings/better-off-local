@@ -128,7 +128,7 @@ export async function uploadRetailerImage(
     .eq('id', retailerId)
     .single();
 
-  const previousUrl: string | null = current?.[urlColumn] ?? null;
+  const previousUrl: string | null = (current as Record<string, unknown> | null)?.[urlColumn] as string | null ?? null;
 
   // ── Optimise ─────────────────────────────────────────────────────────────
   let optimisedBuffer: Buffer;
@@ -214,7 +214,7 @@ export async function removeRetailerImage(
     .eq('id', retailerId)
     .single();
 
-  const existingUrl: string | null = current?.[urlColumn] ?? null;
+  const existingUrl: string | null = (current as Record<string, unknown> | null)?.[urlColumn] as string | null ?? null;
 
   // Null the column first — even if Storage deletion fails, the DB is clean.
   const { error: dbError } = await service

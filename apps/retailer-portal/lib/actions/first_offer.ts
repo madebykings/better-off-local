@@ -3,56 +3,17 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export const OFFER_TYPES = [
-  'percentage_discount',
-  'fixed_discount',
-  'free_item',
-  'other',
-] as const;
-
-export type OfferType = (typeof OFFER_TYPES)[number];
-
-export const REDEMPTION_RULES = [
-  'unlimited',
-  'once_per_member',
-  'once_per_day',
-  'once_per_week',
-  'once_per_month',
-] as const;
-
-export type RedemptionRule = (typeof REDEMPTION_RULES)[number];
-
-export type FirstOfferFields = {
-  benefitText: string;   // e.g. "10% off", "Free coffee" — large display value
-  headline: string;      // e.g. "10% off every visit" — full offer title
-  description: string;   // terms / description, required, min 20 chars → offers.description
-  offerType: OfferType;
-  redemptionRule: RedemptionRule;
-  startDate: string;     // YYYY-MM-DD or ''
-  endDate: string;       // YYYY-MM-DD or ''
-  totalCap: string;      // positive integer string or ''
-};
-
-export type FirstOfferActionResult = {
-  error?: string;
-  fieldErrors?: Partial<Record<keyof FirstOfferFields, string>>;
-};
-
-export const EMPTY_OFFER: FirstOfferFields = {
-  benefitText: '',
-  headline: '',
-  description: '',
-  offerType: 'percentage_discount',
-  redemptionRule: 'unlimited',
-  startDate: '',
-  endDate: '',
-  totalCap: '',
-};
+import {
+  type RedemptionRule,
+  type RuleColumns,
+  ruleToColumns,
+} from '@/lib/utils/redemption_rules';
+import {
+  type OfferType,
+  type FirstOfferFields,
+  type FirstOfferActionResult,
+  OFFER_TYPES,
+} from '@/lib/utils/first_offer';
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -117,39 +78,6 @@ async function getRetailerId(userId: string): Promise<string | null> {
     .eq('profile_id', userId)
     .maybeSingle();
   return data?.retailer_id ?? null;
-}
-
-// ---------------------------------------------------------------------------
-// Redemption rule ↔ offer_rules columns
-// ---------------------------------------------------------------------------
-
-type RuleColumns = {
-  max_redemptions_per_user: number | null;
-  max_redemptions_per_day: number | null;
-  cooldown_hours: number | null;
-};
-
-export function ruleToColumns(rule: RedemptionRule): RuleColumns {
-  switch (rule) {
-    case 'unlimited':
-      return { max_redemptions_per_user: null, max_redemptions_per_day: null, cooldown_hours: null };
-    case 'once_per_member':
-      return { max_redemptions_per_user: 1, max_redemptions_per_day: null, cooldown_hours: null };
-    case 'once_per_day':
-      return { max_redemptions_per_user: null, max_redemptions_per_day: 1, cooldown_hours: null };
-    case 'once_per_week':
-      return { max_redemptions_per_user: null, max_redemptions_per_day: null, cooldown_hours: 168 };
-    case 'once_per_month':
-      return { max_redemptions_per_user: null, max_redemptions_per_day: null, cooldown_hours: 720 };
-  }
-}
-
-export function ruleFromColumns(cols: RuleColumns): RedemptionRule {
-  if (cols.max_redemptions_per_user === 1) return 'once_per_member';
-  if (cols.max_redemptions_per_day === 1) return 'once_per_day';
-  if (cols.cooldown_hours === 168) return 'once_per_week';
-  if (cols.cooldown_hours === 720) return 'once_per_month';
-  return 'unlimited';
 }
 
 // ---------------------------------------------------------------------------
@@ -238,7 +166,7 @@ export async function saveFirstOffer(
   }
 
   // Upsert offer_rules (unique constraint on offer_id).
-  const ruleColumns = ruleToColumns(fields.redemptionRule);
+  const ruleColumns: RuleColumns = ruleToColumns(fields.redemptionRule);
   const { error: rulesError } = await service
     .from('offer_rules')
     .upsert(

@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { parseOpeningHours, DAY_KEYS } from '@/lib/actions/opening_hours';
+import { parseOpeningHours, DAY_KEYS } from '@/lib/utils/opening_hours';
 
 // ---------------------------------------------------------------------------
 // Types

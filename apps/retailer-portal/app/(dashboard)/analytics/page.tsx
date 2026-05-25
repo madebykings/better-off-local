@@ -195,7 +195,7 @@ export default async function AnalyticsPage() {
 
   // ── Per-offer breakdown ───────────────────────────────────────────────────
 
-  const offers = (offersResult.data ?? []) as OfferRow[];
+  const offers = (offersResult.data ?? []) as unknown as OfferRow[];
 
   // Build count maps: offer_id → count
   const viewsByOffer = new Map<string, number>();
@@ -225,7 +225,7 @@ export default async function AnalyticsPage() {
 
   // ── Recent scans ──────────────────────────────────────────────────────────
 
-  const recentScans = (recentScansResult.data ?? []) as ScanRow[];
+  const recentScans = (recentScansResult.data ?? []) as unknown as ScanRow[];
 
   // ── Headline card definitions ─────────────────────────────────────────────
 

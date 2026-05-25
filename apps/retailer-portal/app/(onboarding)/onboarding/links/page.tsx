@@ -5,12 +5,8 @@ import {
 import { createServiceClient } from '@/lib/supabase/service';
 import { StepWrapper } from '@/components/onboarding/step_wrapper';
 import { LinksForm } from '@/components/onboarding/links_form';
-import {
-  URL_LINK_TYPES,
-  type UrlLinkType,
-  type LinksFields,
-  reverseNormaliseLink,
-} from '@/lib/actions/links';
+import { URL_LINK_TYPES, type UrlLinkType, reverseNormaliseLink } from '@/lib/utils/links';
+import { type LinksFields } from '@/lib/actions/links';
 
 export default async function LinksPage() {
   const { retailer } = await requireOnboardingRetailer();

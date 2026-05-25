@@ -5,7 +5,7 @@ import {
 import { createServiceClient } from '@/lib/supabase/service';
 import { StepWrapper } from '@/components/onboarding/step_wrapper';
 import { OpeningHoursForm } from '@/components/onboarding/opening_hours_form';
-import { parseOpeningHours, DEFAULT_HOURS } from '@/lib/actions/opening_hours';
+import { parseOpeningHours, DEFAULT_HOURS } from '@/lib/utils/opening_hours';
 
 export default async function OpeningHoursPage() {
   const { retailer } = await requireOnboardingRetailer();

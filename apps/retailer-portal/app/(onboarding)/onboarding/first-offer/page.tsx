@@ -5,13 +5,13 @@ import {
 import { createServiceClient } from '@/lib/supabase/service';
 import { StepWrapper } from '@/components/onboarding/step_wrapper';
 import { FirstOfferForm } from '@/components/onboarding/first_offer_form';
+import { ruleFromColumns } from '@/lib/utils/redemption_rules';
 import {
   EMPTY_OFFER,
-  ruleFromColumns,
   type FirstOfferFields,
   type OfferType,
   OFFER_TYPES,
-} from '@/lib/actions/first_offer';
+} from '@/lib/utils/first_offer';
 
 // YYYY-MM-DDTHH:mm:ssZ  →  "YYYY-MM-DD" for <input type="date">
 function toDateInput(iso: string | null): string {
@@ -77,7 +77,7 @@ export default async function FirstOfferPage() {
       .eq('retailer_id', retailer.id);
 
     categorySlugs = (categoryRows ?? [])
-      .map((row) => (row.categories as { slug: string } | null)?.slug)
+      .map((row) => (row.categories as unknown as { slug: string } | null)?.slug)
       .filter((slug): slug is string => Boolean(slug));
   }
 
