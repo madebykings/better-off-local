@@ -68,7 +68,7 @@ export default async function DashboardPage() {
         .eq('retailer_id', retailerId),
       supabase
         .from('redemptions')
-        .select('id, status, redeemed_at, offers(title), profiles(full_name)')
+        .select('id, status, redeemed_at, offers(title), profiles!redemptions_profile_id_fkey(full_name)')
         .eq('retailer_id', retailerId)
         .order('redeemed_at', { ascending: false })
         .limit(5),
@@ -81,7 +81,7 @@ export default async function DashboardPage() {
   const totalRedemptions = redemptionsResult.count ?? 0;
   const totalViews = viewsResult.count ?? 0;
   const totalSaves = savesResult.count ?? 0;
-  const recentRedemptions = (recentResult.data ?? []) as RecentRedemption[];
+  const recentRedemptions = (recentResult.data ?? []) as unknown as RecentRedemption[];
 
   const metrics = [
     { label: 'Live offers', value: liveOffers, icon: '🏷️' },

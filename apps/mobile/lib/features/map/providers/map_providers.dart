@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/location_provider.dart';
+import '../../../features/offers/domain/offer_summary.dart';
 import '../../../features/offers/providers/offers_providers.dart';
 import '../../../features/retailers/domain/retailer.dart';
 import '../../../features/retailers/providers/retailer_providers.dart';
@@ -12,24 +13,36 @@ export '../presentation/map_controller.dart';
 
 // ── Enriched retailer list for the map ───────────────────────────────────────
 
-/// All live retailers enriched with their best featured offer and distance
-/// from the current user position (if available). No radius filter — the map
-/// shows the full dataset and lets the user pan freely.
-///
-/// Re-evaluates when location changes so distances update automatically.
-final mapAllRetailersProvider = FutureProvider<List<Retailer>>((ref) async {
+/// Private: fetches live retailers and their best featured offers from the DB.
+/// No location dependency — stable across GPS updates so DB is not re-queried
+/// every time the user moves.
+final _mapBaseDataProvider = FutureProvider<
+    ({List<Retailer> retailers, Map<String, OfferSummary> featured})>((ref) async {
   final retailers =
       await ref.read(retailerRepositoryProvider).getLiveRetailers();
-  if (retailers.isEmpty) return [];
+  if (retailers.isEmpty) return (retailers: <Retailer>[], featured: <String, OfferSummary>{});
 
   final retailerIds = retailers.map((r) => r.id).toList();
   final featuredOffers = await ref
       .read(offersRepositoryProvider)
       .getFeaturedOffersByRetailers(retailerIds);
 
+  return (retailers: retailers, featured: featuredOffers);
+});
+
+/// All live retailers enriched with their best featured offer and distance
+/// from the current user position (if available). No radius filter — the map
+/// shows the full dataset and lets the user pan freely.
+///
+/// Distance is recalculated in-memory when location changes; DB is not
+/// re-queried on GPS updates.
+final mapAllRetailersProvider = Provider<List<Retailer>>((ref) {
+  final base = ref.watch(_mapBaseDataProvider).valueOrNull;
+  if (base == null || base.retailers.isEmpty) return [];
+
   final location = ref.watch(locationProvider);
 
-  return retailers.map((r) {
+  return base.retailers.map((r) {
     double? distKm;
     if (location != null && r.latitude != null && r.longitude != null) {
       distKm = _haversineKm(
@@ -58,7 +71,7 @@ final mapAllRetailersProvider = FutureProvider<List<Retailer>>((ref) async {
       longitude: r.longitude,
       distanceKm: distKm,
       categories: r.categories,
-      featuredOffer: featuredOffers[r.id],
+      featuredOffer: base.featured[r.id],
     );
   }).toList();
 });
@@ -68,10 +81,9 @@ final mapAllRetailersProvider = FutureProvider<List<Retailer>>((ref) async {
 /// Live retailers that have coordinates, filtered by the current search query.
 /// Used to populate both map markers and the bottom-sheet list.
 final mapRetailersProvider = Provider<List<Retailer>>((ref) {
-  final allAsync = ref.watch(mapAllRetailersProvider);
+  final all = ref.watch(mapAllRetailersProvider);
   final query =
       ref.watch(mapControllerProvider.select((s) => s.searchQuery));
-  final all = allAsync.valueOrNull ?? [];
 
   final withCoords =
       all.where((r) => r.latitude != null && r.longitude != null).toList();

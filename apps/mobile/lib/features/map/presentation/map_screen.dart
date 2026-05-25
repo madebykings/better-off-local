@@ -275,7 +275,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
 // ── Search bar ────────────────────────────────────────────────────────────────
 
-class _SearchBar extends StatelessWidget {
+class _SearchBar extends StatefulWidget {
   const _SearchBar({
     required this.controller,
     required this.onChanged,
@@ -285,6 +285,30 @@ class _SearchBar extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
+
+  @override
+  State<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends State<_SearchBar> {
+  bool _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onControllerChanged);
+  }
+
+  void _onControllerChanged() {
+    final hasText = widget.controller.text.isNotEmpty;
+    if (hasText != _hasText) setState(() => _hasText = hasText);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onControllerChanged);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -302,8 +326,8 @@ class _SearchBar extends StatelessWidget {
         ],
       ),
       child: TextField(
-        controller: controller,
-        onChanged: onChanged,
+        controller: widget.controller,
+        onChanged: widget.onChanged,
         textAlignVertical: TextAlignVertical.center,
         style: AppTextStyles.bodyMedium,
         decoration: InputDecoration(
@@ -312,11 +336,11 @@ class _SearchBar extends StatelessWidget {
               .copyWith(color: AppColors.textDisabled),
           prefixIcon: const Icon(Icons.search,
               color: AppColors.textDisabled, size: 20),
-          suffixIcon: controller.text.isNotEmpty
+          suffixIcon: _hasText
               ? IconButton(
                   icon: const Icon(Icons.close,
                       size: 18, color: AppColors.textSecondary),
-                  onPressed: onClear,
+                  onPressed: widget.onClear,
                 )
               : null,
           border: InputBorder.none,

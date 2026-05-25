@@ -86,20 +86,7 @@ class _HomeHeader extends StatelessWidget {
                     size: 20,
                   ),
                 ),
-                // Green notification dot
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.cream, width: 1.5),
-                    ),
-                  ),
-                ),
+                // Notification dot — omitted until unread-count provider exists.
               ],
             ),
           ),
