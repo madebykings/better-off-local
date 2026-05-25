@@ -23,9 +23,10 @@ insert into retailers (
 
 -- Demo retailer location
 insert into retailer_locations (
-  retailer_id, name, address_line_1, town, postcode,
+  id, retailer_id, name, address_line_1, town, postcode,
   latitude, longitude, is_primary, is_active
 ) values (
+  '00000000-0000-0000-0003-000000000001',
   '00000000-0000-0000-0001-000000000001',
   'Alloa Branch',
   '12 Mill Street',
@@ -34,7 +35,7 @@ insert into retailer_locations (
   56.1167, -3.7925,
   true,
   true
-) on conflict do nothing;
+) on conflict (id) do nothing;
 
 -- ============================================================
 -- Demo offers
@@ -49,7 +50,7 @@ insert into offers (
     '10% off all hot drinks',
     'Show your membership card for 10% off any hot drink.',
     '10% off',
-    'percentage',
+    'percentage_discount',
     'live',
     true,
     false
@@ -60,7 +61,7 @@ insert into offers (
     'Free slice of cake with any lunch',
     'Buy any lunch main and get a free slice of homemade cake.',
     'Free cake',
-    'freebie',
+    'free_item',
     'live',
     false,
     false

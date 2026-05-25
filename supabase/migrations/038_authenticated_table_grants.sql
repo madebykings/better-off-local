@@ -30,17 +30,30 @@ grant select on categories to authenticated;
 -- making it deny-all. The app queries it directly to filter offers by category.
 -- We add the missing policy here alongside the grant.
 -- RLS: categories for approved live retailers are public information.
-create policy "Public can read categories for live retailers"
-  on retailer_categories for select
-  using (
-    exists (
-      select 1 from retailers r
-      where r.id = retailer_categories.retailer_id
-        and r.approval_status = 'approved'
-        and r.visibility_status = 'live'
-        and r.is_active = true
-    )
-  );
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename  = 'retailer_categories'
+      and policyname = 'Public can read categories for live retailers'
+  ) then
+    execute $policy$
+      create policy "Public can read categories for live retailers"
+        on retailer_categories for select
+        using (
+          exists (
+            select 1 from retailers r
+            where r.id = retailer_categories.retailer_id
+              and r.approval_status = 'approved'
+              and r.visibility_status = 'live'
+              and r.is_active = true
+          )
+        )
+    $policy$;
+  end if;
+end
+$$;
 
 grant select on retailer_categories to authenticated;
 
@@ -79,6 +92,14 @@ grant insert on offer_views to authenticated;
 
 -- RLS: "push_tokens: owner access" (for all)
 grant insert, update on push_tokens to authenticated;
+
+-- retailer_users is not queried directly by the app, but it IS referenced in
+-- RLS policy subqueries on offers, retailers, and retailer_locations
+-- (e.g. "Retailer users can manage their own offers"). PostgreSQL evaluates
+-- all policies — including those that don't match the current user — so
+-- authenticated must have SELECT on retailer_users for those subqueries to run.
+-- RLS: "Retailer users can read their own retailer links" (profile_id = auth.uid())
+grant select on retailer_users to authenticated;
 
 -- ── Intentionally excluded ────────────────────────────────────────────────────
 -- redemption_tokens  — created/validated by edge functions only; no direct

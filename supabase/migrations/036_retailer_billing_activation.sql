@@ -19,7 +19,15 @@ FROM (
 WHERE rs.retailer_id = r.id
   AND r.stripe_customer_id IS NULL;
 
+-- Drop the view that selects * from retailer_subscriptions (captures the column),
+-- drop the column, then recreate the view.
+DROP VIEW IF EXISTS active_retailer_subscriptions;
 ALTER TABLE retailer_subscriptions DROP COLUMN IF EXISTS stripe_customer_id;
+CREATE OR REPLACE VIEW active_retailer_subscriptions AS
+  SELECT *
+  FROM retailer_subscriptions
+  WHERE status = 'active'
+    AND current_period_end > now();
 
 -- ── Additional tracking columns for retailer_subscriptions ───────────────────
 

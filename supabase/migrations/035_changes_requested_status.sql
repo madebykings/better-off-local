@@ -9,20 +9,9 @@
 --      'submitted' (both initial submission and resubmissions). Used to order
 --      the admin review queue by submission time.
 
--- ── 1. Extend approval_status check constraint ────────────────────────────────
+-- ── 1. Extend retailer_approval_status enum ──────────────────────────────────
 
-ALTER TABLE retailers
-  DROP CONSTRAINT IF EXISTS retailers_approval_status_check;
-
-ALTER TABLE retailers
-  ADD CONSTRAINT retailers_approval_status_check
-  CHECK (approval_status IN (
-    'pending',
-    'approved',
-    'rejected',
-    'suspended',
-    'changes_requested'
-  ));
+ALTER TYPE retailer_approval_status ADD VALUE IF NOT EXISTS 'changes_requested';
 
 -- ── 2. Add submitted_at column ────────────────────────────────────────────────
 

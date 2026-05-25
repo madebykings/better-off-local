@@ -10,7 +10,7 @@
 --        admin@betterofflocal.test
 --        retailer@betterofflocal.test
 --        retailer2@betterofflocal.test
---        consumer@betterofflocal.test
+--        consumer@testk.com
 --
 --      Note: the handle_new_user trigger creates a profiles row automatically
 --      on user creation. Run this script after users exist.
@@ -33,16 +33,16 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 
 update profiles set role = 'admin',        full_name = 'BOL Admin'
-where email = 'admin@betterofflocal.test';
+where email = 'admin@testk.com';
 
 update profiles set role = 'retailer_user', full_name = 'Old Mill Café'
-where email = 'retailer@betterofflocal.test';
+where email = 'retailer@testk.com';
 
 update profiles set role = 'retailer_user', full_name = 'Alloa Books'
-where email = 'retailer2@betterofflocal.test';
+where email = 'retailer2@testk.com';
 
 update profiles set full_name = 'Test Consumer'
-where email = 'consumer@betterofflocal.test';
+where email = 'consumer@testk.com';
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 2. Live retailer — The Old Mill Café
@@ -174,7 +174,7 @@ select
   '00000000-0000-0000-0001-000000000002',
   id, 'owner', true
 from profiles
-where email = 'retailer2@betterofflocal.test'
+where email = 'retailer2@testk.com'
 on conflict (retailer_id, profile_id) do nothing;
 
 insert into retailer_categories (retailer_id, category_id)
@@ -239,15 +239,16 @@ select
   now(), now() + interval '1 year', now(),
   null, null  -- seed row, no real Stripe subscription
 from profiles
-where email = 'consumer@betterofflocal.test'
+where email = 'consumer@testk.com'
 on conflict (id) do update set
   status             = excluded.status,
   current_period_end = excluded.current_period_end;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 6. Sample redemption history
---    Two past redemptions for the consumer against the featured offer.
---    Populates the redemption history screen without requiring a real scan.
+--    Two past redemptions for the consumer against the FREE CAKE offer.
+--    Using the free cake offer (no rules) keeps the hot drinks offer
+--    testable end-to-end without burning its per-user cap.
 --    redemption_token_id is null — permitted by schema.
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -259,12 +260,12 @@ select
   p.id,
   '00000000-0000-0000-0001-000000000001',
   '00000000-0000-0000-0003-000000000001',
-  '00000000-0000-0000-0002-000000000001',
+  '00000000-0000-0000-0002-000000000002',
   null,
   'success',
   now() - interval '7 days'
 from profiles p
-where p.email = 'consumer@betterofflocal.test';
+where p.email = 'consumer@testk.com';
 
 insert into redemptions (
   profile_id, retailer_id, retailer_location_id, offer_id,
@@ -274,9 +275,9 @@ select
   p.id,
   '00000000-0000-0000-0001-000000000001',
   '00000000-0000-0000-0003-000000000001',
-  '00000000-0000-0000-0002-000000000001',
+  '00000000-0000-0000-0002-000000000002',
   null,
   'success',
   now() - interval '30 days'
 from profiles p
-where p.email = 'consumer@betterofflocal.test';
+where p.email = 'consumer@testk.com';
