@@ -14,12 +14,13 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <!-- ── Google Maps API key ───────────────────────────────────────── -->
-        <!-- Replace YOUR_GOOGLE_MAPS_API_KEY with a real key before building. -->
-        <!-- Restrict to this app's SHA-1 fingerprint + package name in        -->
-        <!-- Google Cloud Console → APIs & Services → Credentials.             -->
+        <!-- Injected via manifestPlaceholders in build.gradle.kts.            -->
+        <!-- Set GOOGLE_MAPS_API_KEY in android/local.properties.              -->
+        <!-- Restrict to this app SHA-1 + package name in Google Cloud Console -->
+        <!-- under APIs and Services - Credentials.                            -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_GOOGLE_MAPS_API_KEY"/>
+            android:value="${GOOGLE_MAPS_API_KEY}"/>
 
         <activity
             android:name=".MainActivity"

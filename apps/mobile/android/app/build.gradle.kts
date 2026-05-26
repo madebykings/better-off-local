@@ -23,6 +23,11 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Inject Google Maps API key into AndroidManifest.xml.
+        // Set GOOGLE_MAPS_API_KEY=AIza... in android/local.properties.
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] =
+            project.findProperty("GOOGLE_MAPS_API_KEY")?.toString() ?: ""
     }
 
     buildTypes {
