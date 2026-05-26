@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/providers/supabase_provider.dart';
 import '../providers/membership_providers.dart';
@@ -65,6 +66,12 @@ class MembershipController
           .createCheckoutSession(plan: plan);
       state = MembershipCheckoutReady(url);
     } catch (e) {
+      // A 401 from the edge function means the token was rejected server-side
+      // (expired or otherwise invalid). Treat identically to a missing session.
+      if (e is FunctionException && e.status == 401) {
+        state = const MembershipSessionExpired();
+        return;
+      }
       final raw = e.toString();
       final message = raw.startsWith('Exception: ')
           ? raw.substring('Exception: '.length)

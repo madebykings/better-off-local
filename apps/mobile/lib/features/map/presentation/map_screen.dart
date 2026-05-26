@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
+import '../../../core/config/env.dart';
 import '../../../core/providers/analytics_provider.dart';
 import '../../../core/providers/location_provider.dart';
 import '../../../core/providers/session_provider.dart';
@@ -34,10 +36,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   final _sheetController = DraggableScrollableController();
   final _searchController = TextEditingController();
   bool _hasFitBounds = false;
+  bool _mapCreated = false;
+  bool _cameraMoved = false;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('[MAP KEY] Dart env value=${Env.googleMapsApiKey.isEmpty ? "MISSING" : "present (${Env.googleMapsApiKey.length} chars)"}');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Check permission without prompting.
       ref.read(locationNotifierProvider.notifier).init();
@@ -169,11 +174,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           GoogleMap(
             onMapCreated: (controller) {
               _mapController = controller;
+              setState(() => _mapCreated = true);
+              debugPrint('[MAP] onMapCreated fired');
               final current = ref.read(mapRetailersProvider);
               if (!_hasFitBounds && current.isNotEmpty) {
                 _hasFitBounds = true;
                 _fitMarkers(current);
               }
+            },
+            onCameraMove: (_) {
+              if (!_cameraMoved) setState(() => _cameraMoved = true);
             },
             initialCameraPosition: _kDefaultCamera,
             markers: _buildMarkers(retailers, mapState.selectedRetailerId, profileId),
@@ -277,6 +287,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 foregroundColor: AppColors.primary,
                 elevation: 2,
                 child: const Icon(Icons.my_location, size: 20),
+              ),
+            ),
+
+          // ── Staging debug overlay (debug builds only) ─────────────────
+          if (kDebugMode)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 62,
+              right: 12,
+              child: _MapDebugOverlay(
+                mapCreated: _mapCreated,
+                cameraMoved: _cameraMoved,
+                retailerCount: retailers.length,
               ),
             ),
         ],
@@ -413,7 +435,7 @@ class _RetailersErrorSheet extends StatelessWidget {
                   const Icon(Icons.wifi_off_outlined,
                       size: 40, color: AppColors.textSecondary),
                   const SizedBox(height: 12),
-                  Text(
+                  const Text(
                     'Could not load retailers',
                     style: AppTextStyles.titleMedium,
                     textAlign: TextAlign.center,
@@ -732,4 +754,52 @@ class _Initials extends StatelessWidget {
           ),
         ),
       );
+}
+
+// ── Staging debug overlay (kDebugMode only) ───────────────────────────────────
+
+class _MapDebugOverlay extends StatelessWidget {
+  const _MapDebugOverlay({
+    required this.mapCreated,
+    required this.cameraMoved,
+    required this.retailerCount,
+  });
+
+  final bool mapCreated;
+  final bool cameraMoved;
+  final int retailerCount;
+
+  @override
+  Widget build(BuildContext context) {
+    const key = Env.googleMapsApiKey;
+    final keyLabel = key.isEmpty
+        ? 'MISSING'
+        : 'YES (…${key.substring(key.length > 4 ? key.length - 4 : 0)})';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DefaultTextStyle(
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontFamily: 'monospace',
+          height: 1.5,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('MAP DEBUG'),
+            Text('key: $keyLabel'),
+            Text('onMapCreated: ${mapCreated ? "YES" : "NO"}'),
+            Text('cameraMoved: ${cameraMoved ? "YES" : "NO"}'),
+            Text('retailers: $retailerCount'),
+          ],
+        ),
+      ),
+    );
+  }
 }

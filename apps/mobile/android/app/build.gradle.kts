@@ -1,7 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// local.properties is gitignored and not automatically exposed as Gradle project
+// properties. Load it explicitly so secrets like GOOGLE_MAPS_API_KEY can be
+// injected into AndroidManifest.xml via manifestPlaceholders.
+val localProperties = Properties().also { props ->
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { props.load(it) }
 }
 
 android {
@@ -27,7 +37,7 @@ android {
         // Inject Google Maps API key into AndroidManifest.xml.
         // Set GOOGLE_MAPS_API_KEY=AIza... in android/local.properties.
         manifestPlaceholders["GOOGLE_MAPS_API_KEY"] =
-            project.findProperty("GOOGLE_MAPS_API_KEY")?.toString() ?: ""
+            localProperties.getProperty("GOOGLE_MAPS_API_KEY") ?: ""
     }
 
     buildTypes {
