@@ -1,12 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show Session;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
+import '../../../core/providers/session_provider.dart';
+import '../../../core/providers/supabase_provider.dart';
 import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/primary_button.dart';
-import '../../auth/presentation/auth_controller.dart';
 import 'membership_controller.dart';
 
 // ---------------------------------------------------------------------------
@@ -74,20 +77,37 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
     final ctrlState = ref.watch(membershipControllerProvider);
     final isLoading = ctrlState is MembershipLoading;
 
+    // Session state — read both the router stream and the sync client value so
+    // we can detect any mismatch between what the router sees and what the
+    // controller will read at checkout time.
+    final routerSession = ref.watch(sessionProvider).valueOrNull;
+    final clientAuth = ref.read(supabaseClientProvider).auth;
+    final clientSession = clientAuth.currentSession;
+    final hasSession = clientSession != null;
+
     ref.listen<MembershipControllerState>(membershipControllerProvider,
         (_, next) async {
       if (next is MembershipCheckoutReady) {
         final uri = Uri.parse(next.url);
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Could not open checkout. Please try again.'),
+        final canLaunch = await canLaunchUrl(uri);
+        debugPrint('[Checkout] url=${next.url.substring(0, next.url.length.clamp(0, 60))}... '
+            'scheme=${uri.scheme} canLaunch=$canLaunch');
+        bool launched = false;
+        if (canLaunch) {
+          launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+          debugPrint('[Checkout] launchUrl returned=$launched');
+        }
+        if (!launched && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                canLaunch
+                    ? 'Browser could not open checkout. Please try again.'
+                    : 'No browser found to open checkout (canLaunch=false).',
               ),
-            );
-          }
+              duration: const Duration(seconds: 8),
+            ),
+          );
         }
         ref.read(membershipControllerProvider.notifier).reset();
       }
@@ -96,12 +116,14 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           ScaffoldMessenger.of(context)
             ..hideCurrentSnackBar()
             ..showSnackBar(const SnackBar(
-              content: Text('Please sign in again'),
+              content: Text(
+                'Checkout authorization failed. Please try signing out and back in.',
+              ),
+              duration: Duration(seconds: 8),
             ));
         }
         ref.read(membershipControllerProvider.notifier).reset();
-        // Sign out clears the session stream; router redirects to sign-in.
-        ref.read(authControllerProvider.notifier).signOut();
+        // Not signing out — keeping session alive to diagnose auth state.
       }
       if (next is MembershipControllerError) {
         if (mounted) {
@@ -183,12 +205,21 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
                                         ? 'Get started · £49.99/year'
                                         : 'Get started · £5.99/month'),
                                 isLoading: isLoading,
+                                enabled: hasSession,
                                 onPressed: _startCheckout,
                               ),
                               const SizedBox(height: 20),
                               const _TrustIndicators(),
                               const SizedBox(height: 16),
                               const _LegalFooter(),
+                              if (kDebugMode) ...[
+                                const SizedBox(height: 12),
+                                _SessionDebugPanel(
+                                  routerSession: routerSession,
+                                  clientSession: clientSession,
+                                  userId: clientAuth.currentUser?.id,
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -907,6 +938,55 @@ class _LegalFooter extends StatelessWidget {
         height: 1.65,
       ),
       textAlign: TextAlign.center,
+    );
+  }
+}
+
+// ── Session debug panel (kDebugMode only) ─────────────────────────────────────
+
+class _SessionDebugPanel extends StatelessWidget {
+  const _SessionDebugPanel({
+    required this.routerSession,
+    required this.clientSession,
+    required this.userId,
+  });
+
+  final Session? routerSession;
+  final Session? clientSession;
+  final String? userId;
+
+  @override
+  Widget build(BuildContext context) {
+    final token = clientSession?.accessToken;
+    final uidLabel = userId == null
+        ? 'NONE'
+        : '${userId!.substring(0, userId!.length.clamp(0, 8))}…';
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black12),
+      ),
+      child: DefaultTextStyle(
+        style: const TextStyle(
+          fontSize: 10,
+          fontFamily: 'monospace',
+          color: Colors.black54,
+          height: 1.65,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('SESSION DEBUG'),
+            Text('router: ${routerSession != null ? "YES" : "NO"}'),
+            Text('client: ${clientSession != null ? "YES" : "NO"}'),
+            Text('user: $uidLabel'),
+            Text('token: ${token != null ? "YES (${token.length} chars)" : "NO"}'),
+          ],
+        ),
+      ),
     );
   }
 }
