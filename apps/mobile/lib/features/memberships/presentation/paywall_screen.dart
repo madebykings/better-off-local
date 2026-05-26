@@ -6,6 +6,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/widgets/brand_logo.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../auth/presentation/auth_controller.dart';
 import 'membership_controller.dart';
 
 // ---------------------------------------------------------------------------
@@ -89,6 +90,18 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen>
           }
         }
         ref.read(membershipControllerProvider.notifier).reset();
+      }
+      if (next is MembershipSessionExpired) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(const SnackBar(
+              content: Text('Please sign in again'),
+            ));
+        }
+        ref.read(membershipControllerProvider.notifier).reset();
+        // Sign out clears the session stream; router redirects to sign-in.
+        ref.read(authControllerProvider.notifier).signOut();
       }
       if (next is MembershipControllerError) {
         if (mounted) {

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/location_provider.dart';
@@ -21,6 +22,13 @@ final mapBaseDataProvider = FutureProvider<
     ({List<Retailer> retailers, Map<String, OfferSummary> featured})>((ref) async {
   final retailers =
       await ref.read(retailerRepositoryProvider).getLiveRetailers();
+  debugPrint('[MAP] DB retailer count: ${retailers.length}');
+  if (retailers.isNotEmpty) {
+    final r = retailers.first;
+    debugPrint('[MAP] First retailer: "${r.name}", '
+        'lat=${r.latitude}, lon=${r.longitude}, '
+        'isPrimary location attached=${r.latitude != null}');
+  }
   if (retailers.isEmpty) return (retailers: <Retailer>[], featured: <String, OfferSummary>{});
 
   final retailerIds = retailers.map((r) => r.id).toList();
@@ -88,6 +96,7 @@ final mapRetailersProvider = Provider<List<Retailer>>((ref) {
 
   final withCoords =
       all.where((r) => r.latitude != null && r.longitude != null).toList();
+  debugPrint('[MAP] Retailers total: ${all.length}, with coordinates: ${withCoords.length}');
 
   if (query.isEmpty) return withCoords;
 

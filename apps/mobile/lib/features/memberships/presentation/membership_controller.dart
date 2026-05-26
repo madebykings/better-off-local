@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/supabase_provider.dart';
 import '../providers/membership_providers.dart';
 
 sealed class MembershipControllerState {
@@ -20,6 +22,12 @@ class MembershipCheckoutReady extends MembershipControllerState {
   final String url;
 }
 
+/// No active session found when checkout was attempted.
+/// The caller should sign the user out and route them to sign-in.
+class MembershipSessionExpired extends MembershipControllerState {
+  const MembershipSessionExpired();
+}
+
 class MembershipControllerError extends MembershipControllerState {
   const MembershipControllerError(this.message);
   final String message;
@@ -36,6 +44,21 @@ class MembershipController
   /// The PaywallScreen listener is responsible for launching the URL.
   Future<void> startCheckout({required String plan}) async {
     state = const MembershipLoading();
+
+    // functions.invoke() sends Authorization: Bearer only when currentSession
+    // is non-null. A null session means the anon key is sent alone and the
+    // edge function immediately returns 401 Unauthorized before reaching Stripe.
+    final auth = _ref.read(supabaseClientProvider).auth;
+    final session = auth.currentSession;
+    debugPrint('[Checkout] user=${auth.currentUser?.id}, '
+        'hasSession=${session != null}, '
+        'hasToken=${session?.accessToken != null}');
+
+    if (session == null) {
+      state = const MembershipSessionExpired();
+      return;
+    }
+
     try {
       final url = await _ref
           .read(membershipRepositoryProvider)

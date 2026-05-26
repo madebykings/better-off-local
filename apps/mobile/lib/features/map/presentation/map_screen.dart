@@ -104,6 +104,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     String? selectedId,
     String? profileId,
   ) {
+    debugPrint('[MAP] Building ${retailers.length} markers');
     return {
       for (final r in retailers)
         Marker(
