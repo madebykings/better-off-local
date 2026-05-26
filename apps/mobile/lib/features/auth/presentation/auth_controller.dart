@@ -45,8 +45,16 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> signUp(String email, String password) async {
     state = const AuthLoading();
     try {
-      await _ref.read(authRepositoryProvider).signUpWithEmail(email, password);
-      // Supabase may require email confirmation — router reacts to session stream.
+      final hasSession = await _ref
+          .read(authRepositoryProvider)
+          .signUpWithEmail(email, password);
+      if (hasSession) {
+        // Auto-confirmed — session stream fires and router redirects.
+        state = const AuthInitial();
+      } else {
+        // Email confirmation required — no session yet, spinner must clear.
+        state = AuthEmailConfirmationSent(email);
+      }
     } on AuthException catch (e) {
       state = AuthError(_parseAuthError(e));
     } catch (e) {

@@ -86,9 +86,9 @@ void main() {
     });
 
     group('signUp', () {
-      test('emits AuthLoading then back to initial on success', () async {
+      test('emits AuthLoading then AuthInitial when session created (auto-confirmed)', () async {
         when(() => mockRepository.signUpWithEmail(any(), any()))
-            .thenAnswer((_) async {});
+            .thenAnswer((_) async => true);
 
         final states = <AuthState>[];
         final sub = container.listen(
@@ -102,6 +102,27 @@ void main() {
             .signUp('new@example.com', 'password123');
 
         expect(states, [isA<AuthLoading>(), isA<AuthInitial>()]);
+        sub.close();
+      });
+
+      test('emits AuthEmailConfirmationSent when no session (email confirmation required)', () async {
+        when(() => mockRepository.signUpWithEmail(any(), any()))
+            .thenAnswer((_) async => false);
+
+        final states = <AuthState>[];
+        final sub = container.listen(
+          authControllerProvider,
+          (_, next) => states.add(next),
+          fireImmediately: false,
+        );
+
+        await container
+            .read(authControllerProvider.notifier)
+            .signUp('new@example.com', 'password123');
+
+        expect(states, [isA<AuthLoading>(), isA<AuthEmailConfirmationSent>()]);
+        final confirmation = states.last as AuthEmailConfirmationSent;
+        expect(confirmation.email, 'new@example.com');
         sub.close();
       });
 

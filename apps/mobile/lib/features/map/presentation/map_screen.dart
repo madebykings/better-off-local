@@ -132,6 +132,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget build(BuildContext context) {
     final locationState = ref.watch(locationNotifierProvider);
     final retailers = ref.watch(mapRetailersProvider);
+    final retailersLoadState = ref.watch(mapRetailersLoadStateProvider);
     final selectedRetailer = ref.watch(selectedMapRetailerProvider);
     final mapState = ref.watch(mapControllerProvider);
     final session = ref.watch(sessionProvider).valueOrNull;
@@ -212,45 +213,55 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               maxChildSize: 0.85,
               snap: true,
               snapSizes: const [0.12, 0.42, 0.85],
-              builder: (context, scrollController) => _BottomSheet(
-                scrollController: scrollController,
-                retailers: retailers,
-                selectedRetailer: selectedRetailer,
-                locationState: locationState,
-                profileId: profileId,
-                onDismissSelected: () =>
-                    ref.read(mapControllerProvider.notifier).clearSelection(),
-                onRetailerTap: (r) {
-                  // Select the retailer (highlights its marker + shows preview).
-                  ref.read(mapControllerProvider.notifier).selectRetailer(r.id);
-                  // Pan map to the pin so the user can see it highlighted.
-                  if (r.latitude != null && r.longitude != null) {
-                    _mapController?.animateCamera(
-                      CameraUpdate.newLatLng(
-                          LatLng(r.latitude!, r.longitude!)),
-                    );
-                  }
-                },
-                onViewSelected: selectedRetailer != null
-                    ? () {
-                        final r = selectedRetailer;
-                        ref
-                            .read(discoveryAnalyticsProvider)
-                            .logRetailerOpenedFromMap(profileId, r.id);
-                        context.push(
-                          RouteNames.retailerDetail
-                              .replaceAll(':retailerId', r.id),
-                        );
-                      }
-                    : null,
-                onEnableLocation: locationState.isDenied &&
-                        locationState.status ==
-                            LocationStatus.deniedForever
-                    ? () =>
-                        ref.read(locationNotifierProvider.notifier).openSettings()
-                    : () =>
-                        ref.read(locationNotifierProvider.notifier).requestAndFetch(),
-              ),
+              builder: (context, scrollController) {
+                if (retailersLoadState is AsyncError) {
+                  return _RetailersErrorSheet(
+                    scrollController: scrollController,
+                    error: retailersLoadState.error.toString(),
+                    onRetry: () => ref.invalidate(mapBaseDataProvider),
+                  );
+                }
+                return _BottomSheet(
+                  scrollController: scrollController,
+                  retailers: retailers,
+                  selectedRetailer: selectedRetailer,
+                  locationState: locationState,
+                  profileId: profileId,
+                  isLoading: retailersLoadState is AsyncLoading,
+                  onDismissSelected: () =>
+                      ref.read(mapControllerProvider.notifier).clearSelection(),
+                  onRetailerTap: (r) {
+                    // Select the retailer (highlights its marker + shows preview).
+                    ref.read(mapControllerProvider.notifier).selectRetailer(r.id);
+                    // Pan map to the pin so the user can see it highlighted.
+                    if (r.latitude != null && r.longitude != null) {
+                      _mapController?.animateCamera(
+                        CameraUpdate.newLatLng(
+                            LatLng(r.latitude!, r.longitude!)),
+                      );
+                    }
+                  },
+                  onViewSelected: selectedRetailer != null
+                      ? () {
+                          final r = selectedRetailer;
+                          ref
+                              .read(discoveryAnalyticsProvider)
+                              .logRetailerOpenedFromMap(profileId, r.id);
+                          context.push(
+                            RouteNames.retailerDetail
+                                .replaceAll(':retailerId', r.id),
+                          );
+                        }
+                      : null,
+                  onEnableLocation: locationState.isDenied &&
+                          locationState.status ==
+                              LocationStatus.deniedForever
+                      ? () =>
+                          ref.read(locationNotifierProvider.notifier).openSettings()
+                      : () =>
+                          ref.read(locationNotifierProvider.notifier).requestAndFetch(),
+                );
+              },
             ),
           ),
 
@@ -354,6 +365,85 @@ class _SearchBarState extends State<_SearchBar> {
 
 // ── Bottom sheet content ──────────────────────────────────────────────────────
 
+// ── Error sheet — shown when the retailer fetch fails ─────────────────────────
+
+class _RetailersErrorSheet extends StatelessWidget {
+  const _RetailersErrorSheet({
+    required this.scrollController,
+    required this.error,
+    required this.onRetry,
+  });
+
+  final ScrollController scrollController;
+  final String error;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      clipBehavior: Clip.antiAlias,
+      elevation: 8,
+      shadowColor: Colors.black26,
+      child: CustomScrollView(
+        controller: scrollController,
+        slivers: [
+          SliverToBoxAdapter(
+            child: Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+          ),
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.wifi_off_outlined,
+                      size: 40, color: AppColors.textSecondary),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Could not load retailers',
+                    style: AppTextStyles.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    error,
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: AppColors.textSecondary),
+                    textAlign: TextAlign.center,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 20),
+                  TextButton.icon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Bottom sheet content ──────────────────────────────────────────────────────
+
 class _BottomSheet extends StatelessWidget {
   const _BottomSheet({
     required this.scrollController,
@@ -361,6 +451,7 @@ class _BottomSheet extends StatelessWidget {
     required this.selectedRetailer,
     required this.locationState,
     required this.profileId,
+    required this.isLoading,
     required this.onDismissSelected,
     required this.onRetailerTap,
     required this.onViewSelected,
@@ -372,6 +463,7 @@ class _BottomSheet extends StatelessWidget {
   final Retailer? selectedRetailer;
   final LocationState locationState;
   final String? profileId;
+  final bool isLoading;
   final VoidCallback onDismissSelected;
   /// Selects a retailer from the list (highlights its marker).
   final ValueChanged<Retailer> onRetailerTap;
@@ -432,14 +524,22 @@ class _BottomSheet extends StatelessWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Text(
-                retailers.isEmpty
-                    ? 'No retailers found'
-                    : '${retailers.length} '
-                        '${retailers.length == 1 ? 'place' : 'places'} on map',
-                style: AppTextStyles.labelSmall
-                    .copyWith(color: AppColors.textSecondary),
-              ),
+              child: isLoading
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: Center(
+                        child: LinearProgressIndicator(),
+                      ),
+                    )
+                  : Text(
+                      retailers.isEmpty
+                          ? 'No retailers found'
+                          : '${retailers.length} '
+                              '${retailers.length == 1 ? 'place' : 'places'} on map',
+                      style: AppTextStyles.labelSmall
+                          .copyWith(color: AppColors.textSecondary),
+                    ),
             ),
           ),
 

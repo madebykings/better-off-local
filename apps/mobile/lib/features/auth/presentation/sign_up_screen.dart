@@ -40,7 +40,8 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(authControllerProvider) is AuthLoading;
+    final authState = ref.watch(authControllerProvider);
+    final isLoading = authState is AuthLoading;
 
     ref.listen<AuthState>(authControllerProvider, (_, next) {
       if (next is AuthError) {
@@ -54,6 +55,47 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
           );
       }
     });
+
+    if (authState is AuthEmailConfirmationSent) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: BackButton(onPressed: () => context.pop()),
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.pagePadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: AppSpacing.xl),
+                const Icon(Icons.mark_email_read_outlined, size: 56),
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Check your email',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  'We sent a confirmation link to ${authState.email}. '
+                  'Tap it to activate your account, then come back to sign in.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                PrimaryButton(
+                  label: 'Back to sign in',
+                  onPressed: () => context.pop(),
+                  isLoading: false,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(

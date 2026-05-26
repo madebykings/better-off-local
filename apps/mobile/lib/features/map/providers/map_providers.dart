@@ -13,10 +13,11 @@ export '../presentation/map_controller.dart';
 
 // ── Enriched retailer list for the map ───────────────────────────────────────
 
-/// Private: fetches live retailers and their best featured offers from the DB.
+/// Fetches live retailers and their best featured offers from the DB.
 /// No location dependency — stable across GPS updates so DB is not re-queried
-/// every time the user moves.
-final _mapBaseDataProvider = FutureProvider<
+/// every time the user moves. Exposed publicly so callers can invalidate it
+/// to trigger a retry after a load failure.
+final mapBaseDataProvider = FutureProvider<
     ({List<Retailer> retailers, Map<String, OfferSummary> featured})>((ref) async {
   final retailers =
       await ref.read(retailerRepositoryProvider).getLiveRetailers();
@@ -37,7 +38,7 @@ final _mapBaseDataProvider = FutureProvider<
 /// Distance is recalculated in-memory when location changes; DB is not
 /// re-queried on GPS updates.
 final mapAllRetailersProvider = Provider<List<Retailer>>((ref) {
-  final base = ref.watch(_mapBaseDataProvider).valueOrNull;
+  final base = ref.watch(mapBaseDataProvider).valueOrNull;
   if (base == null || base.retailers.isEmpty) return [];
 
   final location = ref.watch(locationProvider);
@@ -116,6 +117,19 @@ final selectedMapRetailerProvider = Provider<Retailer?>((ref) {
   } catch (_) {
     return null;
   }
+});
+
+// ── Base data load status — for error/loading UI in the map screen ────────────
+
+/// Exposes the async state of the underlying retailer fetch so the map screen
+/// can show a loading indicator or error banner rather than silently showing
+/// an empty list when the query fails.
+final mapRetailersLoadStateProvider =
+    Provider<AsyncValue<void>>((ref) {
+  final async = ref.watch(mapBaseDataProvider);
+  if (async.isLoading) return const AsyncLoading();
+  if (async.hasError) return AsyncError(async.error!, async.stackTrace!);
+  return const AsyncData(null);
 });
 
 // ── Haversine ─────────────────────────────────────────────────────────────────

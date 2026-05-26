@@ -41,9 +41,13 @@ class MembershipController
           .read(membershipRepositoryProvider)
           .createCheckoutSession(plan: plan);
       state = MembershipCheckoutReady(url);
-    } catch (_) {
-      state = const MembershipControllerError(
-        'Could not start checkout. Please try again.',
+    } catch (e) {
+      final raw = e.toString();
+      final message = raw.startsWith('Exception: ')
+          ? raw.substring('Exception: '.length)
+          : raw;
+      state = MembershipControllerError(
+        message.isNotEmpty ? message : 'Could not start checkout. Please try again.',
       );
     }
   }

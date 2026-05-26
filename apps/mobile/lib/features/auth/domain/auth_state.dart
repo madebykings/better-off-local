@@ -25,6 +25,13 @@ class AuthUnauthenticated extends AuthState {
   const AuthUnauthenticated();
 }
 
+class AuthEmailConfirmationSent extends AuthState {
+  const AuthEmailConfirmationSent(this.email);
+  final String email;
+  @override
+  List<Object?> get props => [email];
+}
+
 class AuthError extends AuthState {
   const AuthError(this.message);
   final String message;
