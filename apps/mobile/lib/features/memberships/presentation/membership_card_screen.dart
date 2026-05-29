@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -47,10 +48,16 @@ class _MembershipCardScreenState extends ConsumerState<MembershipCardScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _entranceCtrl.forward();
 
-      // Request the pass QR token if the membership is entitled.
+      // Request QR immediately if membership is already resolved (cached).
       final membership = ref.read(currentMembershipProvider).valueOrNull;
+      debugPrint('[MembershipCard] initState: membership=${membership?.status}, '
+          'entitled=${membership?.isEntitled}');
       if (membership != null && membership.isEntitled) {
+        debugPrint('[MembershipCard] initState: data cached — requesting QR');
         ref.read(passQRControllerProvider.notifier).requestToken();
+      } else {
+        debugPrint('[MembershipCard] initState: membership not yet resolved — '
+            'ref.listen will trigger QR once loaded');
       }
     });
   }
@@ -66,6 +73,24 @@ class _MembershipCardScreenState extends ConsumerState<MembershipCardScreen>
     final membershipAsync = ref.watch(currentMembershipProvider);
     final profileAsync = ref.watch(profileProvider);
     final qrState = ref.watch(passQRControllerProvider);
+
+    // When membership resolves asynchronously (common on first open), trigger
+    // the QR fetch if the controller is still idle. The initState check handles
+    // the case where data is already cached; this covers the async load path.
+    ref.listen<AsyncValue<Membership?>>(currentMembershipProvider, (_, next) {
+      debugPrint('[MembershipCard] provider update: ${next.runtimeType}, '
+          'value=${next.valueOrNull?.status}, '
+          'entitled=${next.valueOrNull?.isEntitled}');
+      final membership = next.valueOrNull;
+      if (membership != null && membership.isEntitled) {
+        final currentQr = ref.read(passQRControllerProvider);
+        debugPrint('[MembershipCard] membership entitled, QR state: ${currentQr.runtimeType}');
+        if (currentQr is PassQRIdle) {
+          debugPrint('[MembershipCard] requesting QR after async membership load');
+          ref.read(passQRControllerProvider.notifier).requestToken();
+        }
+      }
+    });
 
     return Scaffold(
       backgroundColor: AppColors.cream,

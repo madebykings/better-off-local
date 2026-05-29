@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/session_provider.dart';
@@ -21,9 +22,16 @@ final membershipRepositoryProvider = Provider<MembershipRepository>(
 /// Returns null when unauthenticated or when no membership row exists.
 final currentMembershipProvider = FutureProvider<Membership?>((ref) async {
   final session = ref.watch(sessionProvider).valueOrNull;
-  if (session == null) return null;
+  if (session == null) {
+    debugPrint('[Membership] no session — returning null');
+    return null;
+  }
 
-  return ref
+  final membership = await ref
       .read(membershipRepositoryProvider)
       .fetchMembership(session.user.id);
+
+  debugPrint('[Membership] fetched: id=${membership?.id}, '
+      'status=${membership?.status}, entitled=${membership?.isEntitled}');
+  return membership;
 });

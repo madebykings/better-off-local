@@ -56,6 +56,8 @@ class MembershipController
         'hasToken=${session?.accessToken != null}');
 
     if (session == null) {
+      debugPrint('[Checkout] FAIL path=session-null '
+          'user=${auth.currentUser?.id}');
       state = const MembershipSessionExpired();
       return;
     }
@@ -69,6 +71,8 @@ class MembershipController
       // A 401 from the edge function means the token was rejected server-side
       // (expired or otherwise invalid). Treat identically to a missing session.
       if (e is FunctionException && e.status == 401) {
+        debugPrint('[Checkout] FAIL path=function-401 '
+            'user=${auth.currentUser?.id}');
         state = const MembershipSessionExpired();
         return;
       }

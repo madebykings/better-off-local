@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../redemptions/domain/redemption_token.dart';
@@ -65,6 +66,7 @@ class PassQRController extends StateNotifier<PassQRState> {
   /// Called on Card tab mount and automatically 30 seconds before each token
   /// expires. Safe to call multiple times — cancels any pending refresh timer.
   Future<void> requestToken() async {
+    debugPrint('[PassQR] requestToken: fetching pass token');
     state = const PassQRLoading();
     _refreshTimer?.cancel();
 
@@ -73,9 +75,13 @@ class PassQRController extends StateNotifier<PassQRState> {
           .read(redemptionsRepositoryProvider)
           .requestPassToken();
 
+      debugPrint('[PassQR] requestToken: token received, '
+          'payload=${token.token.substring(0, 8)}…, '
+          'expiresAt=${token.expiresAt}');
       state = PassQRReady(token);
       _scheduleAutoRefresh(token);
     } catch (e) {
+      debugPrint('[PassQR] requestToken: error — $e');
       state = PassQRError(
         e.toString().replaceFirst('Exception: ', ''),
       );
