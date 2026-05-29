@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { requireAdmin } from '@/lib/auth/require_admin';
 
 export const metadata: Metadata = { title: 'Member – Admin' };
 
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default async function MemberDetailPage({ params }: Props) {
+  await requireAdmin();
   const { memberId } = await params;
   return (
     <div>

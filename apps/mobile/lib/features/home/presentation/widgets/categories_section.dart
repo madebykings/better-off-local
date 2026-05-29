@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../../core/widgets/brand_logo.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../../offers/providers/offers_providers.dart';
 
@@ -58,11 +59,7 @@ class CategoriesSection extends ConsumerWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            _iconForCategory(cat.name),
-                            color: AppColors.primary,
-                            size: 22,
-                          ),
+                          _categoryIconWidget(cat.name),
                           const SizedBox(height: 6),
                           Text(
                             _labelForCategory(cat.name),
@@ -89,7 +86,22 @@ class CategoriesSection extends ConsumerWidget {
   }
 }
 
-IconData _iconForCategory(String name) {
+/// Returns a sized icon widget for the given category name.
+/// Named categories use a tinted Material icon; unrecognised categories
+/// show the Better Off Local icon mark so the tile still looks on-brand.
+Widget _categoryIconWidget(String name) {
+  final icon = _iconForCategory(name);
+  if (icon != null) {
+    return Icon(icon, color: AppColors.primary, size: 22);
+  }
+  return const BrandLogo(
+    variant: BrandLogoVariant.icon,
+    scheme: BrandLogoScheme.light,
+    height: 22,
+  );
+}
+
+IconData? _iconForCategory(String name) {
   final n = name.toLowerCase();
   if (n.contains('coffee') || n.contains('cafe') || n.contains('café')) {
     return Icons.coffee;
@@ -98,8 +110,15 @@ IconData _iconForCategory(String name) {
       n.contains('dining')) {
     return Icons.restaurant;
   }
-  if (n.contains('fitness') || n.contains('gym') || n.contains('sport') ||
-      n.contains('health')) {
+  if (n.contains('bar') || n.contains('pub') || n.contains('drink') ||
+      n.contains('beer') || n.contains('wine') || n.contains('cocktail')) {
+    return Icons.sports_bar;
+  }
+  if (n.contains('health') || n.contains('wellbeing') ||
+      n.contains('wellness')) {
+    return Icons.favorite_border;
+  }
+  if (n.contains('fitness') || n.contains('gym') || n.contains('sport')) {
     return Icons.fitness_center;
   }
   if (n.contains('beauty') || n.contains('hair') || n.contains('salon') ||
@@ -124,13 +143,12 @@ IconData _iconForCategory(String name) {
   if (n.contains('pet')) {
     return Icons.pets;
   }
-  return Icons.storefront_outlined;
+  return null; // unrecognised → BrandLogo icon mark
 }
 
 /// Shorten long category names for the tile label.
 String _labelForCategory(String name) {
   if (name.length <= 9) return name;
-  // Try to use the first word only if it's meaningful
   final first = name.split(' ').first;
   if (first.length <= 9) return first;
   return '${name.substring(0, 8)}…';
