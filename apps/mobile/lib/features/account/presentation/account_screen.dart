@@ -58,7 +58,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           ),
 
           // ── Membership ──────────────────────────────────────────────────────
-          _SectionLabel('Membership'),
+          const _SectionLabel('Membership'),
           _SectionCard(
             children: [
               _MembershipTile(
@@ -71,7 +71,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           ),
 
           // ── Activity ────────────────────────────────────────────────────────
-          _SectionLabel('Activity'),
+          const _SectionLabel('Activity'),
           _SectionCard(
             children: [
               _NavTile(
@@ -89,7 +89,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           ),
 
           // ── Support ─────────────────────────────────────────────────────────
-          _SectionLabel('Support'),
+          const _SectionLabel('Support'),
           _SectionCard(
             children: [
               _NavTile(
@@ -108,14 +108,14 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 onTap: () => _launchUrl(AppConstants.termsUrl),
               ),
               const _Divider(),
-              ListTile(
-                leading: const Icon(Icons.info_outline,
+              const ListTile(
+                leading: Icon(Icons.info_outline,
                     color: AppColors.textSecondary, size: 20),
-                title: const Text('Version',
+                title: Text('Version',
                     style: TextStyle(fontSize: 14)),
                 trailing: Text(
                   AppConstants.appVersion,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13, color: AppColors.textDisabled),
                 ),
                 dense: true,
@@ -124,7 +124,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           ),
 
           // ── Sign out ────────────────────────────────────────────────────────
-          _SectionLabel('Account'),
+          const _SectionLabel('Account'),
           _SectionCard(
             children: [
               ListTile(
