@@ -298,7 +298,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               child: _MapDebugOverlay(
                 mapCreated: _mapCreated,
                 cameraMoved: _cameraMoved,
-                retailerCount: retailers.length,
+                markerCount: retailers.length,
+                firstMarkerLat: retailers.isNotEmpty ? retailers.first.latitude : null,
+                firstMarkerLng: retailers.isNotEmpty ? retailers.first.longitude : null,
               ),
             ),
         ],
@@ -762,12 +764,16 @@ class _MapDebugOverlay extends StatelessWidget {
   const _MapDebugOverlay({
     required this.mapCreated,
     required this.cameraMoved,
-    required this.retailerCount,
+    required this.markerCount,
+    required this.firstMarkerLat,
+    required this.firstMarkerLng,
   });
 
   final bool mapCreated;
   final bool cameraMoved;
-  final int retailerCount;
+  final int markerCount;
+  final double? firstMarkerLat;
+  final double? firstMarkerLng;
 
   @override
   Widget build(BuildContext context) {
@@ -775,6 +781,10 @@ class _MapDebugOverlay extends StatelessWidget {
     final keyLabel = key.isEmpty
         ? 'MISSING'
         : 'YES (…${key.substring(key.length > 4 ? key.length - 4 : 0)})';
+
+    final pinLabel = firstMarkerLat != null
+        ? '${firstMarkerLat!.toStringAsFixed(4)}, ${firstMarkerLng!.toStringAsFixed(4)}'
+        : 'none';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -796,7 +806,8 @@ class _MapDebugOverlay extends StatelessWidget {
             Text('key: $keyLabel'),
             Text('onMapCreated: ${mapCreated ? "YES" : "NO"}'),
             Text('cameraMoved: ${cameraMoved ? "YES" : "NO"}'),
-            Text('retailers: $retailerCount'),
+            Text('markers: $markerCount'),
+            Text('pin[0]: $pinLabel'),
           ],
         ),
       ),
