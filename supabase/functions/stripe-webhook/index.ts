@@ -1,256 +1,642 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import Stripe from 'https://esm.sh/stripe@14.0.0?target=deno';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 /**
- * Stripe webhook handler.
+ * Stripe webhook handler — no Stripe SDK, Web Crypto signature verification.
  *
- * Consumer membership events:
- *   invoice.paid                   → mark membership active, update period dates
- *   invoice.payment_failed         → mark membership past_due
- *   customer.subscription.deleted  → mark membership cancelled
+ * Every 500 response has a unique body string so the failure point is
+ * identifiable from the Stripe delivery log without needing function logs.
  *
- * Retailer subscription events (identified by subscription metadata.type = 'retailer_subscription'):
- *   checkout.session.completed     → link stripe_subscription_id to retailer_subscriptions row
- *   invoice.paid                   → mark subscription active, set visibility_status=live
- *   invoice.payment_failed         → mark subscription past_due (stay live during grace period)
- *   customer.subscription.deleted  → mark subscription cancelled/expired, hide retailer
- *                                    unless within RETAILER_GRACE_DAYS of period end
+ * Required Stripe webhook events:
+ *   checkout.session.completed
+ *   invoice.paid
+ *   invoice.payment_failed
+ *   customer.subscription.deleted
  *
- * Required env vars:
- *   STRIPE_SECRET_KEY
- *   STRIPE_WEBHOOK_SECRET
- *   SUPABASE_URL
- *   SUPABASE_SERVICE_ROLE_KEY
- *   RETAILER_GRACE_DAYS            — days after period_end before hiding on cancellation (default: 0)
+ * Required secrets:
+ *   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+ *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+ *   RETAILER_GRACE_DAYS (default: 0)
  */
 
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
-  apiVersion: '2024-06-20',
-  httpClient: Stripe.createFetchHttpClient(),
-});
+// ---------------------------------------------------------------------------
+// Minimal Stripe REST types
+// ---------------------------------------------------------------------------
 
-serve(async (req) => {
-  const signature = req.headers.get('stripe-signature');
-  const body = await req.text();
+interface StripeSubscriptionItem {
+  price?: { recurring?: { interval?: string } };
+  // Stripe API ≥ 2025 may move period timestamps to the item level.
+  current_period_start?: number;
+  current_period_end?: number;
+}
 
-  let event: Stripe.Event;
+interface StripeSubscription {
+  id: string;
+  status: string;
+  metadata: Record<string, string>;
+  customer: string;
+  items: { data: StripeSubscriptionItem[] };
+  // Root-level period timestamps — present in older API versions.
+  // Newer versions may omit these; always use periodStart/periodEnd helpers.
+  current_period_start?: number;
+  current_period_end?: number;
+  start_date?: number;
+  cancel_at_period_end: boolean;
+}
+
+interface StripeCheckoutSession {
+  id: string;
+  mode: string;
+  subscription: string | null;
+  customer: string | null;
+  metadata: Record<string, string>;
+}
+
+interface StripeInvoice {
+  subscription: string | null;
+  customer: string | null;
+}
+
+interface StripeEvent {
+  id: string;
+  type: string;
+  data: { object: unknown };
+}
+
+// ---------------------------------------------------------------------------
+// Stripe REST helper
+// ---------------------------------------------------------------------------
+
+async function stripeGet<T>(path: string): Promise<T> {
+  const secretKey = Deno.env.get('STRIPE_SECRET_KEY');
+  if (!secretKey) throw new Error('STRIPE_SECRET_KEY not set');
+
+  console.log(`[webhook] stripe GET /${path}`);
+  let res: Response;
   try {
-    event = await stripe.webhooks.constructEventAsync(
-      body,
-      signature!,
-      Deno.env.get('STRIPE_WEBHOOK_SECRET')!,
-    );
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err);
-    return new Response('Invalid signature', { status: 400 });
+    res = await fetch(`https://api.stripe.com/v1/${path}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    });
+  } catch (fetchErr) {
+    const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+    console.error(`[webhook] stripe GET /${path} network error:`, msg);
+    throw new Error(`Stripe network error: ${msg}`);
   }
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = (data as { error?: { message?: string } }).error?.message ?? `HTTP ${res.status}`;
+    console.error(`[webhook] stripe GET /${path} API error: status=${res.status} msg=${msg}`);
+    throw new Error(`Stripe API error: ${msg}`);
+  }
+
+  console.log(`[webhook] stripe GET /${path} ok`);
+  return data as T;
+}
+
+// ---------------------------------------------------------------------------
+// Webhook signature verification — Web Crypto HMAC-SHA256, no SDK
+// ---------------------------------------------------------------------------
+
+async function verifyAndParseEvent(
+  body: string,
+  sigHeader: string,
+  secret: string,
+): Promise<StripeEvent> {
+  const parts: Record<string, string[]> = {};
+  for (const part of sigHeader.split(',')) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    const k = part.slice(0, eq);
+    const v = part.slice(eq + 1);
+    (parts[k] ??= []).push(v);
+  }
+
+  const timestamp = parts['t']?.[0];
+  const sigs = parts['v1'] ?? [];
+  if (!timestamp || sigs.length === 0) throw new Error('Malformed stripe-signature header');
+
+  const ts = parseInt(timestamp, 10);
+  if (Number.isNaN(ts) || Math.abs(Date.now() / 1000 - ts) > 300) {
+    throw new Error(`Webhook timestamp outside 300s tolerance (ts=${timestamp})`);
+  }
+
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
   );
+  const sigBytes = await crypto.subtle.sign(
+    'HMAC',
+    keyMaterial,
+    encoder.encode(`${timestamp}.${body}`),
+  );
+  const expected = Array.from(new Uint8Array(sigBytes))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  if (!sigs.some((s) => s === expected)) throw new Error('Signature mismatch');
+
+  return JSON.parse(body) as StripeEvent;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+type MembershipStatus = 'inactive' | 'trialing' | 'active' | 'past_due' | 'cancelled' | 'expired';
+
+function mapStripeStatus(s: string): MembershipStatus {
+  switch (s) {
+    case 'active':             return 'active';
+    case 'trialing':           return 'trialing';
+    case 'past_due':           return 'past_due';
+    case 'canceled':           return 'cancelled';
+    case 'incomplete_expired': return 'expired';
+    default:                   return 'inactive';
+  }
+}
+
+function planInterval(sub: StripeSubscription): 'monthly' | 'annual' {
+  return sub.items.data[0]?.price?.recurring?.interval === 'year' ? 'annual' : 'monthly';
+}
+
+/**
+ * Convert a Stripe Unix timestamp (seconds) to an ISO string.
+ * Returns null for any value that would produce an invalid Date.
+ */
+function stripeTimestampToIso(value: unknown): string | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return null;
+  const d = new Date(value * 1000);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+/**
+ * Resolve current_period_start/end from the subscription root, falling back
+ * to the first subscription item if the root fields are absent (Stripe API ≥ 2025).
+ * Logs the raw values so failures are visible in function logs.
+ */
+function resolvePeriodDates(
+  sub: StripeSubscription,
+  context: string,
+): { periodStart: string | null; periodEnd: string | null } {
+  const item = sub.items.data[0];
+
+  const rawStart = sub.current_period_start ?? item?.current_period_start;
+  const rawEnd   = sub.current_period_end   ?? item?.current_period_end;
+
+  console.log(`[webhook] ${context} period date resolution`, {
+    rootPeriodStart:   sub.current_period_start   ?? null,
+    rootPeriodEnd:     sub.current_period_end     ?? null,
+    itemPeriodStart:   item?.current_period_start ?? null,
+    itemPeriodEnd:     item?.current_period_end   ?? null,
+    resolvedStart:     rawStart ?? null,
+    resolvedEnd:       rawEnd   ?? null,
+    startDate:         sub.start_date             ?? null,
+    status:            sub.status,
+  });
+
+  return {
+    periodStart: stripeTimestampToIso(rawStart),
+    periodEnd:   stripeTimestampToIso(rawEnd),
+  };
+}
+
+/**
+ * Build the consumer_memberships upsert payload.
+ * Throws with a descriptive message if required date fields are unresolvable.
+ */
+function buildMembershipPayload(
+  sub: StripeSubscription,
+  customerId: string,
+  context: string,
+): Record<string, unknown> {
+  const { periodStart, periodEnd } = resolvePeriodDates(sub, context);
+
+  if (!periodEnd) {
+    throw new Error(
+      `Missing subscription period dates: current_period_end unresolvable for subscription ${sub.id}`,
+    );
+  }
+
+  return {
+    profile_id:              sub.metadata.supabase_user_id,
+    stripe_customer_id:      customerId,
+    stripe_subscription_id:  sub.id,
+    plan_interval:           planInterval(sub),
+    status:                  mapStripeStatus(sub.status),
+    current_period_start:    periodStart,
+    current_period_end:      periodEnd,
+    cancel_at_period_end:    sub.cancel_at_period_end,
+    started_at:              stripeTimestampToIso(sub.start_date) ?? periodStart,
+    ended_at:                null,
+  };
+}
+
+function logSupabaseError(
+  label: string,
+  err: { message: string; code?: string; details?: string; hint?: string },
+  context: Record<string, unknown>,
+) {
+  console.error(`[webhook] ${label}:`, {
+    message: err.message,
+    code: err.code ?? null,
+    details: err.details ?? null,
+    hint: err.hint ?? null,
+    ...context,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Handler
+// ---------------------------------------------------------------------------
+
+serve(async (req) => {
+  // ── Env sanity check ────────────────────────────────────────────────────────
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
+
+  console.log('[webhook] init', {
+    supabaseUrlPresent: Boolean(supabaseUrl),
+    supabaseKeyPresent: Boolean(supabaseKey),
+    webhookSecretPresent: Boolean(webhookSecret),
+    stripeKeyPresent: Boolean(Deno.env.get('STRIPE_SECRET_KEY')),
+  });
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('[webhook] FATAL: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    return new Response('Server misconfigured: missing Supabase env', { status: 500 });
+  }
+  if (!webhookSecret) {
+    console.error('[webhook] FATAL: missing STRIPE_WEBHOOK_SECRET');
+    return new Response('Server misconfigured: missing webhook secret', { status: 500 });
+  }
+
+  // ── Signature verification ──────────────────────────────────────────────────
+  const sigHeader = req.headers.get('stripe-signature') ?? '';
+  const body = await req.text();
+
+  console.log('[webhook] signature header present:', sigHeader.length > 0, 'body bytes:', body.length);
+
+  let event: StripeEvent;
+  try {
+    event = await verifyAndParseEvent(body, sigHeader, webhookSecret);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[webhook] signature verification failed:', msg);
+    return new Response(`Signature error: ${msg}`, { status: 400 });
+  }
+
+  console.log(`[webhook] event=${event.type} id=${event.id}`);
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     switch (event.type) {
+
       // ── checkout.session.completed ──────────────────────────────────────────
       case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
-        if (session.metadata?.type !== 'retailer_subscription') break;
+        const session = event.data.object as StripeCheckoutSession;
+        console.log('[webhook] checkout.session.completed', {
+          sessionId: session.id,
+          mode: session.mode,
+          metadataType: session.metadata?.type ?? null,
+          subscriptionPresent: Boolean(session.subscription),
+          customerPresent: Boolean(session.customer),
+        });
 
-        const retailerId = session.metadata?.retailer_id;
-        const subscriptionId = session.subscription as string;
-        if (!retailerId || !subscriptionId) break;
+        // ── Retailer ──────────────────────────────────────────────────────────
+        if (session.metadata?.type === 'retailer_subscription') {
+          const retailerId = session.metadata?.retailer_id;
+          const subscriptionId = session.subscription;
+          if (!retailerId || !subscriptionId) {
+            console.warn('[webhook] checkout.session.completed retailer: missing retailer_id or subscription', { sessionId: session.id, retailerId, subscriptionId });
+            break;
+          }
+          const { error } = await supabase
+            .from('retailer_subscriptions')
+            .update({ stripe_subscription_id: subscriptionId })
+            .eq('retailer_id', retailerId)
+            .eq('stripe_checkout_session_id', session.id);
+          if (error) {
+            logSupabaseError('checkout.session.completed retailer: link failed', error, { retailerId, subscriptionId });
+            return new Response('DB error: retailer subscription link', { status: 500 });
+          }
+          console.log('[webhook] checkout.session.completed retailer: subscription linked', { retailerId, subscriptionId });
+          break;
+        }
 
-        // Link the Stripe subscription ID to the pending row we created during checkout.
-        await supabase
-          .from('retailer_subscriptions')
-          .update({ stripe_subscription_id: subscriptionId })
-          .eq('retailer_id', retailerId)
-          .eq('stripe_checkout_session_id', session.id);
+        // ── Consumer ──────────────────────────────────────────────────────────
+        if (session.mode !== 'subscription') {
+          console.log('[webhook] checkout.session.completed: non-subscription mode, skipping', { mode: session.mode });
+          break;
+        }
+
+        const subscriptionId = session.subscription;
+        if (!subscriptionId) {
+          console.error('[webhook] checkout.session.completed consumer: session.subscription is null', { sessionId: session.id });
+          return new Response('Missing subscription: checkout session has no subscription id', { status: 500 });
+        }
+
+        // supabase_user_id is in subscription_data.metadata, not session.metadata.
+        let sub: StripeSubscription;
+        try {
+          sub = await stripeGet<StripeSubscription>(`subscriptions/${subscriptionId}`);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[webhook] checkout.session.completed consumer: subscription retrieve failed', { subscriptionId, error: msg });
+          return new Response(`Stripe retrieve error: subscription ${subscriptionId}`, { status: 500 });
+        }
+
+        const userId = sub.metadata?.supabase_user_id ?? null;
+        const plan = planInterval(sub);
+        const status = mapStripeStatus(sub.status);
+
+        console.log('[webhook] checkout.session.completed consumer: subscription retrieved', {
+          subscriptionId: sub.id,
+          subStatus: sub.status,
+          mappedStatus: status,
+          plan,
+          userIdPresent: Boolean(userId),
+          rawPeriodEnd: sub.current_period_end ?? null,
+          currentPeriodEnd: stripeTimestampToIso(sub.current_period_end),
+          customerPresent: Boolean(sub.customer),
+          metadataKeys: Object.keys(sub.metadata ?? {}),
+        });
+
+        if (!userId) {
+          console.error('[webhook] checkout.session.completed consumer: supabase_user_id missing from subscription metadata', {
+            subscriptionId: sub.id,
+            metadataKeys: Object.keys(sub.metadata ?? {}),
+          });
+          return new Response('Missing user metadata: supabase_user_id not in subscription metadata', { status: 500 });
+        }
+
+        let payload: Record<string, unknown>;
+        try {
+          payload = buildMembershipPayload(sub, session.customer ?? sub.customer, 'checkout.session.completed');
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[webhook] checkout.session.completed consumer: date build failed', { error: msg, subscriptionId: sub.id });
+          return new Response(`Missing subscription period dates: ${msg}`, { status: 500 });
+        }
+
+        console.log('[webhook] checkout.session.completed consumer: upserting membership', {
+          subscriptionId: sub.id,
+          planInterval: payload.plan_interval,
+          status: payload.status,
+          currentPeriodEnd: payload.current_period_end,
+          userIdPresent: Boolean(payload.profile_id),
+        });
+
+        const { error: upsertErr } = await supabase
+          .from('consumer_memberships')
+          .upsert(payload, { onConflict: 'stripe_subscription_id' });
+
+        if (upsertErr) {
+          logSupabaseError('checkout.session.completed consumer: upsert failed', upsertErr, {
+            subscriptionId: sub.id,
+            userIdPresent: Boolean(userId),
+          });
+          return new Response('DB error: consumer membership upsert', { status: 500 });
+        }
+
+        console.log('[webhook] checkout.session.completed consumer: membership upserted OK', {
+          subscriptionId: sub.id,
+          plan,
+          status,
+          userIdPresent: Boolean(userId),
+        });
         break;
       }
 
       // ── invoice.paid ────────────────────────────────────────────────────────
       case 'invoice.paid': {
-        const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
-        if (!subscriptionId) break;
+        const invoice = event.data.object as StripeInvoice;
+        const subscriptionId = invoice.subscription;
+        console.log('[webhook] invoice.paid', { subscriptionId, customerPresent: Boolean(invoice.customer) });
 
-        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        if (!subscriptionId) {
+          console.warn('[webhook] invoice.paid: no subscription id — skipping');
+          break;
+        }
 
-        // ── Retailer subscription ─────────────────────────────────────────────
+        let sub: StripeSubscription;
+        try {
+          sub = await stripeGet<StripeSubscription>(`subscriptions/${subscriptionId}`);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[webhook] invoice.paid: subscription retrieve failed', { subscriptionId, error: msg });
+          return new Response(`Stripe retrieve error: subscription ${subscriptionId}`, { status: 500 });
+        }
+
+        // ── Retailer ──────────────────────────────────────────────────────────
         if (sub.metadata?.type === 'retailer_subscription') {
           const retailerId = sub.metadata?.retailer_id;
           if (!retailerId) {
-            console.warn('invoice.paid (retailer): no retailer_id in subscription metadata');
+            console.warn('[webhook] invoice.paid retailer: no retailer_id in metadata', { subscriptionId });
             break;
           }
-
-          await supabase
+          const { periodStart: rPeriodStart, periodEnd: rPeriodEnd } = resolvePeriodDates(sub, 'invoice.paid retailer');
+          const { error: subErr } = await supabase
             .from('retailer_subscriptions')
             .update({
               stripe_subscription_id: sub.id,
               status: 'active',
-              current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-              current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+              current_period_start: rPeriodStart,
+              current_period_end: rPeriodEnd,
               cancel_at_period_end: sub.cancel_at_period_end,
-              started_at: new Date(sub.start_date * 1000).toISOString(),
+              started_at: stripeTimestampToIso(sub.start_date) ?? rPeriodStart,
               ended_at: null,
             })
             .eq('retailer_id', retailerId)
             .eq('stripe_subscription_id', sub.id);
-
-          // Set live only when approved + subscription now active.
-          const { data: retailer } = await supabase
-            .from('retailers')
-            .select('approval_status')
-            .eq('id', retailerId)
-            .single();
-
-          if (retailer?.approval_status === 'approved') {
-            await supabase
-              .from('retailers')
-              .update({ visibility_status: 'live' })
-              .eq('id', retailerId);
+          if (subErr) {
+            logSupabaseError('invoice.paid retailer: subscription update failed', subErr, { retailerId, subscriptionId: sub.id });
+            return new Response('DB error: retailer subscription update', { status: 500 });
           }
-
-          await supabase.from('admin_actions').insert({
-            admin_profile_id: null,
-            action_type: 'retailer_subscription_activated',
-            target_table: 'retailers',
-            target_id: retailerId,
+          // Non-critical: visibility and audit.
+          const { data: retailer } = await supabase.from('retailers').select('approval_status').eq('id', retailerId).single();
+          if (retailer?.approval_status === 'approved') {
+            const { error: visErr } = await supabase.from('retailers').update({ visibility_status: 'live' }).eq('id', retailerId);
+            if (visErr) logSupabaseError('invoice.paid retailer: visibility update failed (non-critical)', visErr, { retailerId });
+          }
+          const { error: auditErr } = await supabase.from('admin_actions').insert({
+            admin_profile_id: null, action_type: 'retailer_subscription_activated',
+            target_table: 'retailers', target_id: retailerId,
             reason: `Stripe subscription ${sub.id} activated`,
             metadata_json: { stripe_subscription_id: sub.id },
           });
-
+          if (auditErr) logSupabaseError('invoice.paid retailer: admin_actions insert failed (non-critical)', auditErr, { retailerId });
+          console.log('[webhook] invoice.paid retailer: activated', { retailerId, subscriptionId: sub.id });
           break;
         }
 
-        // ── Consumer membership (existing logic) ───────────────────────────────
-        const userId = sub.metadata?.supabase_user_id;
+        // ── Consumer ──────────────────────────────────────────────────────────
+        const userId = sub.metadata?.supabase_user_id ?? null;
+        const plan = planInterval(sub);
+        const status = mapStripeStatus(sub.status);
+
+        console.log('[webhook] invoice.paid consumer', {
+          subscriptionId: sub.id,
+          userIdPresent: Boolean(userId),
+          plan,
+          subStatus: sub.status,
+          mappedStatus: status,
+          metadataKeys: Object.keys(sub.metadata ?? {}),
+        });
+
         if (!userId) {
-          console.warn('invoice.paid: no supabase_user_id in subscription metadata');
+          console.warn('[webhook] invoice.paid consumer: no supabase_user_id in subscription metadata — skipping upsert', {
+            subscriptionId: sub.id,
+            metadataKeys: Object.keys(sub.metadata ?? {}),
+          });
           break;
         }
 
-        const interval = sub.items.data[0]?.price?.recurring?.interval;
-        const planInterval = interval === 'year' ? 'annual' : 'monthly';
+        let payload: Record<string, unknown>;
+        try {
+          payload = buildMembershipPayload(sub, invoice.customer ?? sub.customer, 'invoice.paid');
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[webhook] invoice.paid consumer: date build failed', { error: msg, subscriptionId: sub.id });
+          return new Response(`Missing subscription period dates: ${msg}`, { status: 500 });
+        }
 
-        await supabase.from('consumer_memberships').upsert(
-          {
-            profile_id: userId,
-            stripe_customer_id: invoice.customer as string,
-            stripe_subscription_id: sub.id,
-            plan_interval: planInterval,
-            status: 'active',
-            current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-            cancel_at_period_end: sub.cancel_at_period_end,
-            started_at: new Date(sub.start_date * 1000).toISOString(),
-            ended_at: null,
-          },
-          { onConflict: 'stripe_subscription_id' },
-        );
+        console.log('[webhook] invoice.paid consumer: upserting membership', {
+          subscriptionId: sub.id,
+          planInterval: payload.plan_interval,
+          status: payload.status,
+          currentPeriodEnd: payload.current_period_end,
+          userIdPresent: Boolean(payload.profile_id),
+        });
+
+        const { error: upsertErr } = await supabase
+          .from('consumer_memberships')
+          .upsert(payload, { onConflict: 'stripe_subscription_id' });
+
+        if (upsertErr) {
+          logSupabaseError('invoice.paid consumer: upsert failed', upsertErr, {
+            subscriptionId: sub.id,
+            userIdPresent: Boolean(userId),
+          });
+          return new Response('DB error: consumer membership upsert', { status: 500 });
+        }
+
+        console.log('[webhook] invoice.paid consumer: membership upserted OK', {
+          subscriptionId: sub.id,
+          plan,
+          status,
+        });
         break;
       }
 
       // ── invoice.payment_failed ───────────────────────────────────────────────
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
+        const invoice = event.data.object as StripeInvoice;
+        const subscriptionId = invoice.subscription;
+        console.log('[webhook] invoice.payment_failed', { subscriptionId });
         if (!subscriptionId) break;
 
-        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        let sub: StripeSubscription;
+        try {
+          sub = await stripeGet<StripeSubscription>(`subscriptions/${subscriptionId}`);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[webhook] invoice.payment_failed: subscription retrieve failed', { subscriptionId, error: msg });
+          return new Response(`Stripe retrieve error: subscription ${subscriptionId}`, { status: 500 });
+        }
 
-        // ── Retailer subscription ─────────────────────────────────────────────
         if (sub.metadata?.type === 'retailer_subscription') {
           const retailerId = sub.metadata?.retailer_id;
           if (!retailerId) break;
-
-          await supabase
+          const { error } = await supabase
             .from('retailer_subscriptions')
             .update({ status: 'past_due' })
             .eq('retailer_id', retailerId)
             .eq('stripe_subscription_id', subscriptionId);
-
-          // Retailer stays live during Stripe's dunning / grace period.
-          // They will be hidden only if subscription is deleted (customer.subscription.deleted).
+          if (error) {
+            logSupabaseError('invoice.payment_failed retailer: update failed', error, { retailerId, subscriptionId });
+            return new Response('DB error: retailer subscription past_due', { status: 500 });
+          }
+          console.log('[webhook] invoice.payment_failed retailer: past_due', { retailerId, subscriptionId });
           break;
         }
 
-        // ── Consumer membership ───────────────────────────────────────────────
-        await supabase
+        const { error } = await supabase
           .from('consumer_memberships')
           .update({ status: 'past_due' })
           .eq('stripe_subscription_id', subscriptionId);
+        if (error) {
+          logSupabaseError('invoice.payment_failed consumer: update failed', error, { subscriptionId });
+          return new Response('DB error: consumer membership past_due', { status: 500 });
+        }
+        console.log('[webhook] invoice.payment_failed consumer: past_due', { subscriptionId });
         break;
       }
 
       // ── customer.subscription.deleted ───────────────────────────────────────
       case 'customer.subscription.deleted': {
-        const sub = event.data.object as Stripe.Subscription;
+        const sub = event.data.object as StripeSubscription;
+        console.log('[webhook] customer.subscription.deleted', {
+          subscriptionId: sub.id,
+          metadataType: sub.metadata?.type ?? null,
+        });
 
-        // ── Retailer subscription ─────────────────────────────────────────────
         if (sub.metadata?.type === 'retailer_subscription') {
           const retailerId = sub.metadata?.retailer_id;
           if (!retailerId) break;
-
           const graceDays = parseInt(Deno.env.get('RETAILER_GRACE_DAYS') ?? '0', 10);
-          const periodEnd = sub.current_period_end * 1000;
-          const graceDeadline = periodEnd + graceDays * 86_400_000;
+          const graceDeadline = sub.current_period_end * 1000 + graceDays * 86_400_000;
           const withinGrace = Date.now() < graceDeadline;
-
-          const endedAt = new Date().toISOString();
-
-          await supabase
+          const { error: subErr } = await supabase
             .from('retailer_subscriptions')
-            .update({
-              status: withinGrace ? 'expired' : 'cancelled',
-              cancel_at_period_end: false,
-              ended_at: endedAt,
-            })
+            .update({ status: withinGrace ? 'expired' : 'cancelled', cancel_at_period_end: false, ended_at: new Date().toISOString() })
             .eq('retailer_id', retailerId)
             .eq('stripe_subscription_id', sub.id);
-
+          if (subErr) {
+            logSupabaseError('customer.subscription.deleted retailer: update failed', subErr, { retailerId, subscriptionId: sub.id });
+            return new Response('DB error: retailer subscription cancelled', { status: 500 });
+          }
           if (!withinGrace) {
-            await supabase
-              .from('retailers')
-              .update({ visibility_status: 'hidden' })
-              .eq('id', retailerId);
-
-            await supabase.from('admin_actions').insert({
-              admin_profile_id: null,
-              action_type: 'retailer_subscription_cancelled',
-              target_table: 'retailers',
-              target_id: retailerId,
+            const { error: visErr } = await supabase.from('retailers').update({ visibility_status: 'hidden' }).eq('id', retailerId);
+            if (visErr) logSupabaseError('customer.subscription.deleted retailer: visibility failed (non-critical)', visErr, { retailerId });
+            const { error: auditErr } = await supabase.from('admin_actions').insert({
+              admin_profile_id: null, action_type: 'retailer_subscription_cancelled',
+              target_table: 'retailers', target_id: retailerId,
               reason: `Stripe subscription ${sub.id} deleted`,
               metadata_json: { stripe_subscription_id: sub.id },
             });
+            if (auditErr) logSupabaseError('customer.subscription.deleted retailer: audit failed (non-critical)', auditErr, { retailerId });
           }
-
+          console.log('[webhook] customer.subscription.deleted retailer', { retailerId, subscriptionId: sub.id, withinGrace });
           break;
         }
 
-        // ── Consumer membership ───────────────────────────────────────────────
-        await supabase
+        const { error } = await supabase
           .from('consumer_memberships')
-          .update({
-            status: 'cancelled',
-            cancel_at_period_end: false,
-            ended_at: new Date().toISOString(),
-          })
+          .update({ status: 'cancelled', cancel_at_period_end: false, ended_at: new Date().toISOString() })
           .eq('stripe_subscription_id', sub.id);
+        if (error) {
+          logSupabaseError('customer.subscription.deleted consumer: update failed', error, { subscriptionId: sub.id });
+          return new Response('DB error: consumer membership cancelled', { status: 500 });
+        }
+        console.log('[webhook] customer.subscription.deleted consumer: cancelled', { subscriptionId: sub.id });
         break;
       }
 
       default:
-        // Unhandled event types — log and return 200 to prevent Stripe retries.
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log(`[webhook] unhandled event type: ${event.type}`);
     }
   } catch (err) {
-    console.error('Error processing webhook event:', err);
-    return new Response('Internal error', { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[webhook] unhandled exception:', msg);
+    return new Response(`Internal error: ${msg}`, { status: 500 });
   }
 
   return new Response(JSON.stringify({ received: true }), {
