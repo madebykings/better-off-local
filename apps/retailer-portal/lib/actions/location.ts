@@ -192,3 +192,71 @@ export async function saveRetailerLocation(
 
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Dashboard update (no step advancement)
+// ---------------------------------------------------------------------------
+
+/**
+ * Updates the primary location for the authenticated retailer.
+ * Identical to saveRetailerLocation but never advances onboarding_step.
+ * Safe to call from the post-onboarding dashboard.
+ */
+export async function updateRetailerLocation(
+  fields: LocationFields,
+): Promise<LocationActionResult | null> {
+  const fieldErrors = validateLocation(fields);
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) redirect('/sign-in');
+
+  const service = createServiceClient();
+  const { data: link } = await service
+    .from('retailer_users')
+    .select('retailer_id')
+    .eq('profile_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!link) return { error: 'No retailer account found.' };
+
+  const postcode = normalisePostcode(fields.postcode);
+  const payload = {
+    address_line_1: fields.addressLine1.trim(),
+    address_line_2: fields.addressLine2.trim() || null,
+    town: fields.town.trim(),
+    county: fields.county.trim() || null,
+    postcode,
+    country: 'United Kingdom',
+  };
+
+  const { data: existing } = await service
+    .from('retailer_locations')
+    .select('id')
+    .eq('retailer_id', link.retailer_id)
+    .eq('is_primary', true)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await service
+      .from('retailer_locations')
+      .update(payload)
+      .eq('id', existing.id);
+    if (error) {
+      console.error('[updateRetailerLocation] update error:', error.message);
+      return { error: 'Failed to save location. Please try again.' };
+    }
+  } else {
+    const { error } = await service
+      .from('retailer_locations')
+      .insert({ ...payload, retailer_id: link.retailer_id, is_primary: true, is_active: true });
+    if (error) {
+      console.error('[updateRetailerLocation] insert error:', error.message);
+      return { error: 'Failed to save location. Please try again.' };
+    }
+  }
+
+  return null;
+}
