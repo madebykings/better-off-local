@@ -6,8 +6,21 @@
 --
 -- consumer_discovery_retailers: adds location_count so retailer cards
 -- can show "3 locations" when a retailer has multiple active venues.
+--
+-- Why DROP + CREATE instead of CREATE OR REPLACE:
+-- PostgreSQL only allows CREATE OR REPLACE VIEW when the new column list is
+-- a strict superset of the existing one with any additions at the END.
+-- Both views here insert new columns mid-list (before created_at / category_names),
+-- which Postgres rejects with "cannot change name of view column".
+-- Dropping first and recreating is the safe alternative; the grants from
+-- migration 037 are revoked on DROP and must be reapplied here.
+-- No other views or functions depend on these two views.
 
-create or replace view consumer_discovery_offers as
+-- ── consumer_discovery_offers ─────────────────────────────────────────────────
+
+drop view if exists consumer_discovery_offers;
+
+create view consumer_discovery_offers as
   select
     o.id,
     o.retailer_id,
@@ -30,7 +43,11 @@ create or replace view consumer_discovery_offers as
     and (o.start_at is null or o.start_at <= now())
     and (o.end_at   is null or o.end_at   > now());
 
-create or replace view consumer_discovery_retailers as
+-- ── consumer_discovery_retailers ──────────────────────────────────────────────
+
+drop view if exists consumer_discovery_retailers;
+
+create view consumer_discovery_retailers as
   select
     r.id,
     r.name,
@@ -71,6 +88,8 @@ create or replace view consumer_discovery_retailers as
   where r.approval_status = 'approved'
     and r.visibility_status = 'live'
     and r.is_active = true;
+
+-- ── Grants (reapplied after DROP) ─────────────────────────────────────────────
 
 grant select on consumer_discovery_offers    to anon, authenticated;
 grant select on consumer_discovery_retailers to anon, authenticated;
