@@ -48,6 +48,9 @@ dependencies:
   # QR code scanning via camera (online checkout flow)
   mobile_scanner: ^5.2.0
 
+  # Image picking from gallery or camera (profile avatar upload)
+  image_picker: ^1.1.2
+
   # Relative time formatting ("2 minutes ago")
   timeago: ^3.6.1
 

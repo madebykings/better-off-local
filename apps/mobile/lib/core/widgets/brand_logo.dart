@@ -38,6 +38,9 @@ class BrandLogo extends StatelessWidget {
       _assetPath,
       height: height,
       fit: BoxFit.contain,
+      // Left-align within any Expanded container so the wordmark
+      // sits against the left edge rather than centering in the available space.
+      alignment: Alignment.centerLeft,
       errorBuilder: (context, error, stackTrace) => Icon(
         Icons.storefront,
         size: height,

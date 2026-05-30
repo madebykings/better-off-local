@@ -1,4 +1,9 @@
 abstract class AppConstants {
+  // Launch region — used in community banner copy.
+  // Update this constant to change the displayed region name without a DB lookup.
+  // Future: fetch from platform_config Supabase table so admin can update remotely.
+  static const String launchRegion = 'Clackmannanshire';
+
   // API
   static const Duration apiTimeout = Duration(seconds: 30);
 

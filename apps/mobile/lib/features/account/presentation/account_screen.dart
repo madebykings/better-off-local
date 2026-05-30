@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/session_provider.dart';
+import '../../../core/providers/supabase_provider.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../memberships/domain/membership.dart';
 import '../../memberships/providers/membership_providers.dart';
@@ -22,6 +25,7 @@ class AccountScreen extends ConsumerStatefulWidget {
 
 class _AccountScreenState extends ConsumerState<AccountScreen> {
   bool _signingOut = false;
+  bool _uploadingAvatar = false;
 
   @override
   Widget build(BuildContext context) {
@@ -53,10 +57,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               _ProfileTile(
                 name: profile?.fullName,
                 email: profile?.email,
+                avatarUrl: profile?.avatarUrl,
                 loading: profileAsync.isLoading,
-                onEditName: () => _editName(
-                  currentName: profile?.fullName ?? '',
-                ),
+                uploadingAvatar: _uploadingAvatar,
+                onEditName: () => _editName(currentName: profile?.fullName ?? ''),
+                onChangeAvatar: _pickAndUploadAvatar,
+                onChangeEmail: _changeEmail,
               ),
             ],
           ),
@@ -125,10 +131,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
             child: Text(
               'Version ${AppConstants.appVersion}',
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textDisabled,
-              ),
+              style: const TextStyle(fontSize: 11, color: AppColors.textDisabled),
               textAlign: TextAlign.center,
             ),
           ),
@@ -139,29 +142,72 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
   }
 
-  Future<void> _managePlan() async {
-    // Show a loading indicator while we fetch the portal URL.
+  // ---------------------------------------------------------------------------
+  // Avatar
+  // ---------------------------------------------------------------------------
+
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 400,
+      maxHeight: 400,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+
+    final session = ref.read(sessionProvider).valueOrNull;
+    if (session == null) return;
+
+    final bytes = await picked.readAsBytes();
     if (!mounted) return;
-    final scaffold = ScaffoldMessenger.of(context);
+
+    if (bytes.length > 5 * 1024 * 1024) {
+      _showError('Image must be under 5 MB.');
+      return;
+    }
+
+    final ext = picked.path.split('.').last.toLowerCase();
+    if (!['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
+      _showError('Please pick a JPG, PNG, or WebP image.');
+      return;
+    }
+
+    setState(() => _uploadingAvatar = true);
 
     try {
-      final url = await ref
-          .read(membershipRepositoryProvider)
-          .createPortalSession();
-      if (!mounted) return;
-      final uri = Uri.parse(url);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      scaffold.showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: AppColors.error,
-        ),
+      final supabase = ref.read(supabaseClientProvider);
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final storagePath = '${session.user.id}/avatar-$ts.$ext';
+      final contentType = ext == 'jpg' ? 'image/jpeg' : 'image/$ext';
+
+      await supabase.storage.from('consumer-assets').uploadBinary(
+        storagePath,
+        bytes,
+        fileOptions: FileOptions(contentType: contentType, upsert: true),
       );
+
+      final url = supabase.storage
+          .from('consumer-assets')
+          .getPublicUrl(storagePath);
+
+      await ref.read(profileRepositoryProvider).updateProfile(
+            userId: session.user.id,
+            avatarUrl: url,
+          );
+
+      if (!mounted) return;
+      ref.invalidate(profileProvider);
+    } catch (e) {
+      if (mounted) _showError('Upload failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Name edit
+  // ---------------------------------------------------------------------------
 
   Future<void> _editName({required String currentName}) async {
     final controller = TextEditingController(text: currentName);
@@ -200,8 +246,103 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           userId: session.user.id,
           fullName: confirmed,
         );
+
+    // Guard mounted before touching ref after the async gap.
+    if (!mounted) return;
     ref.invalidate(profileProvider);
   }
+
+  // ---------------------------------------------------------------------------
+  // Email change
+  // ---------------------------------------------------------------------------
+
+  Future<void> _changeEmail() async {
+    final controller = TextEditingController();
+    final newEmail = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Change email'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your new email address. A confirmation link will be sent to it before the change takes effect.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                hintText: 'new@example.com',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Send confirmation'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (newEmail == null || newEmail.isEmpty || !mounted) return;
+
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      await supabase.auth.updateUser(UserAttributes(email: newEmail));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Confirmation sent to $newEmail. Check your inbox.'),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      if (mounted) _showError('Could not update email. Please try again.');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Manage plan → Stripe Customer Portal
+  // ---------------------------------------------------------------------------
+
+  Future<void> _managePlan() async {
+    if (!mounted) return;
+    final scaffold = ScaffoldMessenger.of(context);
+
+    try {
+      final url = await ref
+          .read(membershipRepositoryProvider)
+          .createPortalSession();
+      if (!mounted) return;
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sign out
+  // ---------------------------------------------------------------------------
 
   Future<void> _confirmSignOut() async {
     final confirmed = await showDialog<bool>(
@@ -228,24 +369,40 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     }
   }
 
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Profile tile — shows avatar + name (editable) + email
+// Profile tile — avatar (editable) + name (editable) + email (changeable)
 // ---------------------------------------------------------------------------
 
 class _ProfileTile extends StatelessWidget {
   const _ProfileTile({
     this.name,
     this.email,
+    this.avatarUrl,
     required this.loading,
+    required this.uploadingAvatar,
     required this.onEditName,
+    required this.onChangeAvatar,
+    required this.onChangeEmail,
   });
 
   final String? name;
   final String? email;
+  final String? avatarUrl;
   final bool loading;
+  final bool uploadingAvatar;
   final VoidCallback onEditName;
+  final VoidCallback onChangeAvatar;
+  final VoidCallback onChangeEmail;
 
   @override
   Widget build(BuildContext context) {
@@ -267,47 +424,113 @@ class _ProfileTile extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: AppColors.primary,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
+          // Avatar — tappable to change
+          GestureDetector(
+            onTap: uploadingAvatar ? null : onChangeAvatar,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: AppColors.primary,
+                  backgroundImage: avatarUrl != null
+                      ? NetworkImage(avatarUrl!)
+                      : null,
+                  child: avatarUrl == null
+                      ? Text(
+                          initials,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                          ),
+                        )
+                      : null,
+                ),
+                // Camera badge
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      color: uploadingAvatar ? Colors.grey : AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: uploadingAvatar
+                        ? const Padding(
+                            padding: EdgeInsets.all(3),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.5,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.camera_alt,
+                            size: 11, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
           ),
+
           const SizedBox(width: 14),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name ?? 'Your name',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: name != null ? AppColors.textPrimary : AppColors.textDisabled,
-                  ),
-                ),
-                if (email != null)
-                  Text(
-                    email!,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
+                // Name row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        name ?? 'Add your name',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: name != null
+                              ? AppColors.textPrimary
+                              : AppColors.textDisabled,
+                        ),
+                      ),
                     ),
+                    GestureDetector(
+                      onTap: onEditName,
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(Icons.edit_outlined,
+                            size: 16, color: AppColors.textDisabled),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                // Email row
+                if (email != null)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          email!,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: onChangeEmail,
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.edit_outlined,
+                              size: 16, color: AppColors.textDisabled),
+                        ),
+                      ),
+                    ],
                   ),
               ],
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined,
-                size: 18, color: AppColors.textDisabled),
-            tooltip: 'Edit name',
-            onPressed: onEditName,
           ),
         ],
       ),

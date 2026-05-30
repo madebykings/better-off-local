@@ -1,17 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/providers/location_provider.dart';
 
-/// Community banner — replaces the savings counter card on the home screen.
-/// Reinforces the local community positioning of Better Off Local.
-class SavingsSummaryCard extends StatelessWidget {
+/// Community banner on the home screen.
+///
+/// Shows the launch region name when the user has granted location access
+/// (the locationProvider has a position), otherwise falls back to "your
+/// community" to avoid showing a place name for users outside the region.
+///
+/// To update the region name centrally, change [AppConstants.launchRegion].
+/// Future: read from a platform_config Supabase table so admins can update
+/// it without a code change.
+class SavingsSummaryCard extends ConsumerWidget {
   const SavingsSummaryCard({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position = ref.watch(locationProvider);
+    final regionName = position != null ? AppConstants.launchRegion : 'your community';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
@@ -40,7 +53,7 @@ class SavingsSummaryCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Support the businesses that make Clackmannanshire great.',
+              'Support the businesses that make $regionName great.',
               style: AppTextStyles.bodyMedium.copyWith(
                 color: Colors.white.withValues(alpha: 0.75),
               ),

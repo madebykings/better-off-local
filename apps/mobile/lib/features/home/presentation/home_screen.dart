@@ -55,7 +55,7 @@ class _HomeHeader extends StatelessWidget {
           const Expanded(
             child: BrandLogo(
               variant: BrandLogoVariant.horizontal,
-              height: 32,
+              height: 40,
             ),
           ),
           // Notification bell
