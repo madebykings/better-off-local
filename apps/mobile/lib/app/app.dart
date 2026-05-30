@@ -89,10 +89,13 @@ class _AppState extends ConsumerState<App> {
         if (path == '/join') {
           final code = uri.queryParameters['ref'];
           if (code != null && code.isNotEmpty) {
-            await _secureStorage.write(
+            // Fire-and-forget: storage write must not block the router.
+            // _handleLink is void (called from a stream listener lambda);
+            // unawaited() is the explicit fire-and-forget pattern.
+            unawaited(_secureStorage.write(
               key: StorageKeys.pendingReferralCode,
               value: code.trim().toUpperCase(),
-            );
+            ));
             debugPrint('[deep_link] referral code captured: $code');
           }
         }
