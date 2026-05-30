@@ -74,6 +74,10 @@ class _NotificationTile extends ConsumerWidget {
         return Icons.card_membership_outlined;
       case NotificationType.redemption:
         return Icons.qr_code_outlined;
+      case NotificationType.referral:
+        return Icons.card_giftcard_outlined;
+      case NotificationType.region:
+        return Icons.map_outlined;
       case NotificationType.system:
         return Icons.info_outline;
     }

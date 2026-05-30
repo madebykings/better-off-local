@@ -406,6 +406,14 @@ async function handleReferralReward(
       })
       .eq('id', reward.id);
 
+    // Fire in-app notification for referrer (non-critical)
+    await supabase.rpc('notify_referral_reward', {
+      p_referrer_profile_id: referrerProfileId,
+      p_reward_amount_pence: cappedReward,
+    }).catch((e: unknown) => {
+      console.warn('[referral] notify_referral_reward failed (non-critical):', e);
+    });
+
     console.log('[referral] reward applied', {
       referrerProfileId,
       rewardId: reward.id,

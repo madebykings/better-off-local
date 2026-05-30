@@ -1,0 +1,401 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../../../app/theme/app_colors.dart';
+import '../../../app/theme/app_text_styles.dart';
+import '../../../core/providers/supabase_provider.dart';
+import '../../../core/widgets/loading_indicator.dart';
+import '../domain/region.dart';
+import '../providers/region_providers.dart';
+
+/// Shows the progress of the member's region toward its member threshold,
+/// with retailer + offer stats and a referral share CTA.
+class RegionProgressScreen extends ConsumerWidget {
+  const RegionProgressScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final client = ref.watch(supabaseClientProvider);
+    final userId = client.auth.currentUser?.id;
+
+    return Scaffold(
+      backgroundColor: AppColors.cream,
+      appBar: AppBar(
+        backgroundColor: AppColors.cream,
+        elevation: 0,
+        title: const Text('Region progress'),
+      ),
+      body: _RegionProgressBody(userId: userId),
+    );
+  }
+}
+
+class _RegionProgressBody extends ConsumerWidget {
+  const _RegionProgressBody({this.userId});
+  final String? userId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (userId == null) {
+      return const Center(child: Text('Sign in required'));
+    }
+
+    // Fetch the member's region_id from profiles
+    final regionIdAsync = ref.watch(_memberRegionIdProvider(userId!));
+
+    return regionIdAsync.when(
+      loading: () => const LoadingIndicator(),
+      error: (_, __) => const Center(child: Text('Could not load region.')),
+      data: (regionId) {
+        if (regionId == null) {
+          return const Center(
+            child: Text('No region selected. Update in Account settings.'),
+          );
+        }
+        return _RegionStatsView(regionId: regionId);
+      },
+    );
+  }
+}
+
+final _memberRegionIdProvider = FutureProvider.family<String?, String>(
+  (ref, userId) async {
+    final client = ref.watch(supabaseClientProvider);
+    final row = await client
+        .from('profiles')
+        .select('region_id')
+        .eq('id', userId)
+        .maybeSingle();
+    return row?['region_id'] as String?;
+  },
+);
+
+class _RegionStatsView extends ConsumerWidget {
+  const _RegionStatsView({required this.regionId});
+  final String regionId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(regionStatsProvider(regionId));
+
+    return statsAsync.when(
+      loading: () => const LoadingIndicator(),
+      error: (_, __) => const Center(child: Text('Could not load region stats.')),
+      data: (region) {
+        if (region == null) {
+          return const Center(child: Text('Region not found.'));
+        }
+        return _StatsBody(region: region);
+      },
+    );
+  }
+}
+
+class _StatsBody extends StatelessWidget {
+  const _StatsBody({required this.region});
+  final Region region;
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (region.progressFraction * 100).round();
+    final remaining = (region.memberThreshold - region.activeMemberCount)
+        .clamp(0, region.memberThreshold);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Hero card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryLight],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  region.name,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Community growth',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Progress bar
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${region.activeMemberCount} members',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      'Target: ${region.memberThreshold}',
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: region.progressFraction,
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
+                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                    minHeight: 8,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                if (region.hasReachedThreshold)
+                  const Text(
+                    'Threshold reached! Businesses are now joining.',
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  )
+                else
+                  Text(
+                    '$remaining more members to unlock retailer billing',
+                    style:
+                        const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                const SizedBox(height: 4),
+                Text(
+                  '$pct% of the way there',
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Stats row
+          Row(
+            children: [
+              _StatCard(
+                icon: Icons.store_outlined,
+                label: 'Retailers',
+                value: '${region.activeRetailerCount}',
+              ),
+              const SizedBox(width: 12),
+              _StatCard(
+                icon: Icons.local_offer_outlined,
+                label: 'Live offers',
+                value: '${region.liveOfferCount}',
+              ),
+              const SizedBox(width: 12),
+              _StatCard(
+                icon: Icons.people_outline,
+                label: 'Members',
+                value: '${region.activeMemberCount}',
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Invite CTA
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Help your community grow',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  remaining > 0
+                      ? 'Invite $remaining more friends to unlock local discounts for everyone in ${region.name}.'
+                      : 'Keep spreading the word — every member strengthens the local economy.',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _shareRegion(region),
+                        icon: const Icon(Icons.share_outlined, size: 17),
+                        label: const Text('Share & invite'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // What reaching threshold means
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'What happens at ${region.memberThreshold} members?',
+                  style: AppTextStyles.titleMedium.copyWith(fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                _BulletPoint(
+                  'Retailers in ${region.name} activate their paid subscriptions',
+                ),
+                const _BulletPoint(
+                  'More businesses join, bringing more local offers',
+                ),
+                const _BulletPoint(
+                  'Your membership becomes more valuable with each new retailer',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _shareRegion(Region region) {
+    Share.share(
+      'Join Better Off Local in ${region.name} — ${region.activeMemberCount}/${region.memberThreshold} members and counting! '
+      'Help unlock local discounts for everyone.\nhttps://betterofflocal.com/join',
+      subject: 'Join Better Off Local in ${region.name}',
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: AppColors.primary, size: 20),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BulletPoint extends StatelessWidget {
+  const _BulletPoint(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ', style: TextStyle(color: AppColors.primary)),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -109,6 +109,27 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 label: 'Refer a friend',
                 onTap: () => context.push(RouteNames.referral),
               ),
+              const _Divider(),
+              _NavTile(
+                icon: Icons.map_outlined,
+                label: 'Region progress',
+                onTap: () => context.push(RouteNames.regionProgress),
+              ),
+            ],
+          ),
+
+          // ── Region ─────────────────────────────────────────────────────────
+          const _SectionLabel('Region'),
+          _SectionCard(
+            children: [
+              _NavTile(
+                icon: Icons.location_on_outlined,
+                label: 'Change region',
+                onTap: () => context.push(
+                  RouteNames.regionSelection,
+                  extra: false, // isOnboarding = false
+                ),
+              ),
             ],
           ),
 

@@ -7,6 +7,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../core/widgets/brand_logo.dart';
 import '../../../../core/widgets/section_header.dart';
+import '../../../offers/providers/category_follows_providers.dart';
 import '../../../offers/providers/offers_providers.dart';
 
 class CategoriesSection extends ConsumerWidget {
@@ -29,12 +30,15 @@ class CategoriesSection extends ConsumerWidget {
           child: categoriesAsync.when(
             loading: () => const SizedBox.shrink(),
             error: (_, __) => const SizedBox.shrink(),
-            data: (categories) => ListView.builder(
+            data: (categories) {
+              final followedIds = ref.watch(followedCategoryIdsProvider).valueOrNull ?? {};
+              return ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               itemCount: categories.length,
               itemBuilder: (context, i) {
                 final cat = categories[i];
+                final isFollowed = followedIds.contains(cat.id);
                 return Padding(
                   padding: const EdgeInsets.only(right: 10),
                   child: GestureDetector(
@@ -43,11 +47,32 @@ class CategoriesSection extends ConsumerWidget {
                           cat.id;
                       context.go(RouteNames.explore);
                     },
+                    onLongPress: () async {
+                      await toggleCategoryFollow(ref, cat.id, isFollowed);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isFollowed
+                                  ? 'Unfollowed ${cat.name}'
+                                  : 'Following ${cat.name} — you\'ll get offer alerts',
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
                     child: Container(
                       width: 72,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isFollowed
+                            ? AppColors.primary.withValues(alpha: 0.08)
+                            : Colors.white,
                         borderRadius: BorderRadius.circular(12),
+                        border: isFollowed
+                            ? Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.3))
+                            : null,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.06),
@@ -56,29 +81,46 @@ class CategoriesSection extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Stack(
                         children: [
-                          _categoryIconWidget(cat.name),
-                          const SizedBox(height: 6),
-                          Text(
-                            _labelForCategory(cat.name),
-                            style: AppTextStyles.labelSmall.copyWith(
-                              fontSize: 10,
-                              letterSpacing: 0,
-                              color: AppColors.textPrimary,
+                          Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _categoryIconWidget(cat.name),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _labelForCategory(cat.name),
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    fontSize: 10,
+                                    letterSpacing: 0,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
+                          if (isFollowed)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Icon(
+                                Icons.notifications_active,
+                                size: 10,
+                                color: AppColors.primary.withValues(alpha: 0.7),
+                              ),
+                            ),
                         ],
                       ),
                     ),
                   ),
                 );
               },
-            ),
+            );
+            },
           ),
         ),
       ],

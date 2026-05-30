@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/route_names.dart';
+import '../../../features/notifications/providers/notifications_providers.dart';
 
 /// Root shell widget wrapping the bottom navigation tabs.
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.child});
 
   final Widget child;
@@ -26,9 +28,10 @@ class AppShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
     final selectedIndex = _selectedIndex(location);
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
 
     return Scaffold(
       body: child,
@@ -36,13 +39,33 @@ class AppShell extends StatelessWidget {
         selectedIndex: selectedIndex,
         onDestinationSelected: (index) =>
             context.go(_tabs[index].route),
-        destinations: _tabs
+        destinations: _tabs.asMap().entries
             .map(
-              (tab) => NavigationDestination(
-                icon: Icon(tab.icon),
-                selectedIcon: Icon(tab.activeIcon),
-                label: tab.label,
-              ),
+              (entry) {
+                final i = entry.key;
+                final tab = entry.value;
+                // Show notification badge on the Account tab (index 4)
+                final showBadge = i == 4 && unreadCount > 0;
+                return NavigationDestination(
+                  icon: showBadge
+                      ? Badge(
+                          label: unreadCount <= 9
+                              ? Text('$unreadCount')
+                              : const Text('9+'),
+                          child: Icon(tab.icon),
+                        )
+                      : Icon(tab.icon),
+                  selectedIcon: showBadge
+                      ? Badge(
+                          label: unreadCount <= 9
+                              ? Text('$unreadCount')
+                              : const Text('9+'),
+                          child: Icon(tab.activeIcon),
+                        )
+                      : Icon(tab.activeIcon),
+                  label: tab.label,
+                );
+              },
             )
             .toList(),
       ),

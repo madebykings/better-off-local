@@ -1,6 +1,13 @@
 import 'package:equatable/equatable.dart';
 
-enum NotificationType { offer, system, membership, redemption }
+enum NotificationType {
+  offer,
+  system,
+  membership,
+  redemption,
+  referral,
+  region,
+}
 
 class AppNotification extends Equatable {
   const AppNotification({

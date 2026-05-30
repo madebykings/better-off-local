@@ -7,6 +7,8 @@ import '../../core/providers/session_provider.dart';
 import '../../features/profile/providers/profile_providers.dart';
 
 import '../../features/referral/presentation/referral_screen.dart';
+import '../../features/region/presentation/region_selection_screen.dart';
+import '../../features/region/presentation/region_progress_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/sign_in_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
@@ -79,19 +81,36 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return RouteNames.home;
       }
 
-      // Profile completion gate: only runs when authenticated.
+      // Profile completion + region selection gates.
       if (isAuthenticated) {
         final profile = ref.read(profileProvider).valueOrNull;
         final isOnCompleteProfile =
             state.matchedLocation == RouteNames.completeProfile;
+        final isOnRegionSelection =
+            state.matchedLocation == RouteNames.regionSelection;
 
-        // While profile is loading (null async), do not redirect yet.
-        // Only redirect if we have a confirmed incomplete profile.
+        // Gate 1: profile name is required before anything else.
         if (profile != null && !profile.isComplete && !isOnCompleteProfile) {
           return RouteNames.completeProfile;
         }
 
         if (profile != null && profile.isComplete && isOnCompleteProfile) {
+          // After profile completion, check region next.
+          if (!profile.hasRegion) return RouteNames.regionSelection;
+          return RouteNames.home;
+        }
+
+        // Gate 2: region selection — required after profile, before home.
+        // Skip for the profile completion and public routes.
+        if (profile != null &&
+            profile.isComplete &&
+            !profile.hasRegion &&
+            !isOnRegionSelection &&
+            !isOnCompleteProfile) {
+          return RouteNames.regionSelection;
+        }
+
+        if (profile != null && profile.hasRegion && isOnRegionSelection) {
           return RouteNames.home;
         }
       }
@@ -125,6 +144,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.completeProfile,
         builder: (context, state) => const CompleteProfileScreen(),
+      ),
+
+      // ── Region selection (authenticated, post-profile gate) ────────────
+      GoRoute(
+        path: RouteNames.regionSelection,
+        builder: (context, state) {
+          // extra = false means it's a change-region flow (pop on save).
+          final isOnboarding = state.extra != false;
+          return RegionSelectionScreen(isOnboarding: isOnboarding);
+        },
       ),
 
       // ── Membership gating ──────────────────────────────────────────────
@@ -194,6 +223,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'referral',
                 builder: (context, state) => const ReferralScreen(),
+              ),
+              GoRoute(
+                path: 'region',
+                builder: (context, state) => const RegionProgressScreen(),
               ),
             ],
           ),

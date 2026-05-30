@@ -39,4 +39,8 @@ abstract class RouteNames {
 
   // Referral programme
   static const referral = '/account/referral';
+
+  // Region
+  static const regionSelection = '/region-selection';
+  static const regionProgress  = '/account/region';
 }

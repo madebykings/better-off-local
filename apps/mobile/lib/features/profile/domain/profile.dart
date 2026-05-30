@@ -17,6 +17,7 @@ class Profile extends Equatable {
     this.email,
     this.phone,
     this.avatarUrl,
+    this.regionId,
   });
 
   final String id;
@@ -26,8 +27,10 @@ class Profile extends Equatable {
   final String? email;
   final String? phone;
   final String? avatarUrl;
+  final String? regionId;
 
   bool get isComplete => fullName != null && fullName!.trim().isNotEmpty;
+  bool get hasRegion => regionId != null;
 
   factory Profile.fromMap(Map<String, dynamic> map) {
     return Profile(
@@ -38,6 +41,7 @@ class Profile extends Equatable {
       email: map['email'] as String?,
       phone: map['phone'] as String?,
       avatarUrl: map['avatar_url'] as String?,
+      regionId: map['region_id'] as String?,
     );
   }
 
@@ -58,5 +62,5 @@ class Profile extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, role, isActive, fullName, email, phone, avatarUrl];
+  List<Object?> get props => [id, role, isActive, fullName, email, phone, avatarUrl, regionId];
 }
