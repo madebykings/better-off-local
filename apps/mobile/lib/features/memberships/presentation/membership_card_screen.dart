@@ -700,6 +700,9 @@ class _CountdownLabel extends StatelessWidget {
 // Status chip — ported from original screen
 // ---------------------------------------------------------------------------
 
+/// Status chip rendered on the green gradient card header.
+/// Uses a solid white background for all states so the chip is always
+/// legible against the background, with coloured text per state.
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.status});
 
@@ -707,29 +710,52 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      MembershipStatus.active => ('Active', AppColors.success),
-      MembershipStatus.trialing => ('Trial', AppColors.info),
-      MembershipStatus.pastDue => ('Past due', AppColors.warning),
-      MembershipStatus.cancelled => ('Cancelled', AppColors.error),
-      MembershipStatus.expired => ('Expired', AppColors.error),
-      MembershipStatus.inactive => ('Inactive', AppColors.textDisabled),
+    final isActive = status == MembershipStatus.active;
+    final (label, textColor) = switch (status) {
+      MembershipStatus.active   => ('Active',   AppColors.success),
+      MembershipStatus.trialing => ('Trial',    AppColors.info),
+      MembershipStatus.pastDue  => ('Past due', AppColors.warning),
+      MembershipStatus.cancelled=> ('Cancelled',AppColors.error),
+      MembershipStatus.expired  => ('Expired',  AppColors.error),
+      MembershipStatus.inactive => ('Inactive', AppColors.textSecondary),
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: color,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isActive) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+        ],
       ),
     );
   }

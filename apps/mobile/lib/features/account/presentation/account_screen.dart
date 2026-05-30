@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/providers/session_provider.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../memberships/domain/membership.dart';
 import '../../memberships/providers/membership_providers.dart';
@@ -53,6 +54,9 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 name: profile?.fullName,
                 email: profile?.email,
                 loading: profileAsync.isLoading,
+                onEditName: () => _editName(
+                  currentName: profile?.fullName ?? '',
+                ),
               ),
             ],
           ),
@@ -66,6 +70,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 loading: membershipAsync.isLoading,
                 onViewPass: () => context.go(RouteNames.card),
                 onSubscribe: () => context.push(RouteNames.paywall),
+                onManagePlan: _managePlan,
               ),
             ],
           ),
@@ -88,45 +93,16 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             ],
           ),
 
-          // ── Support ─────────────────────────────────────────────────────────
-          const _SectionLabel('Support'),
-          _SectionCard(
-            children: [
-              _NavTile(
-                icon: Icons.privacy_tip_outlined,
-                label: 'Privacy Policy',
-                trailing: const Icon(Icons.open_in_new, size: 14,
-                    color: AppColors.textDisabled),
-                onTap: () => _launchUrl(AppConstants.privacyPolicyUrl),
-              ),
-              const _Divider(),
-              _NavTile(
-                icon: Icons.description_outlined,
-                label: 'Terms & Conditions',
-                trailing: const Icon(Icons.open_in_new, size: 14,
-                    color: AppColors.textDisabled),
-                onTap: () => _launchUrl(AppConstants.termsUrl),
-              ),
-              const _Divider(),
-              const ListTile(
-                leading: Icon(Icons.info_outline,
-                    color: AppColors.textSecondary, size: 20),
-                title: Text('Version',
-                    style: TextStyle(fontSize: 14)),
-                trailing: Text(
-                  AppConstants.appVersion,
-                  style: TextStyle(
-                      fontSize: 13, color: AppColors.textDisabled),
-                ),
-                dense: true,
-              ),
-            ],
-          ),
-
-          // ── Sign out ────────────────────────────────────────────────────────
+          // ── Account ─────────────────────────────────────────────────────────
           const _SectionLabel('Account'),
           _SectionCard(
             children: [
+              _NavTile(
+                icon: Icons.settings_outlined,
+                label: 'Settings',
+                onTap: () => context.go(RouteNames.settings),
+              ),
+              const _Divider(),
               ListTile(
                 leading: _signingOut
                     ? const SizedBox(
@@ -145,10 +121,91 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             ],
           ),
 
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+            child: Text(
+              'Version ${AppConstants.appVersion}',
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textDisabled,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+
           const SizedBox(height: 32),
         ],
       ),
     );
+  }
+
+  // Replaced in Batch B with a real Stripe Customer Portal session call.
+  // For now shows the key self-service option: view the membership pass.
+  Future<void> _managePlan() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Manage plan'),
+        content: const Text(
+          'To cancel or change your plan, visit the Stripe billing portal.\n\n'
+          'Tap "Billing portal" to open it in your browser.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _launchUrl('https://billing.stripe.com/p/login/test_00g');
+            },
+            child: const Text('Billing portal'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editName({required String currentName}) async {
+    final controller = TextEditingController(text: currentName);
+    final confirmed = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit name'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            hintText: 'Your full name',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+
+    if (confirmed == null || confirmed.isEmpty || !mounted) return;
+    final session = ref.read(sessionProvider).valueOrNull;
+    if (session == null) return;
+
+    await ref.read(profileRepositoryProvider).updateProfile(
+          userId: session.user.id,
+          fullName: confirmed,
+        );
+    ref.invalidate(profileProvider);
   }
 
   Future<void> _confirmSignOut() async {
@@ -173,7 +230,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     if (confirmed == true && mounted) {
       setState(() => _signingOut = true);
       await ref.read(authRepositoryProvider).signOut();
-      // Router will redirect to welcome/sign-in via sessionProvider listener.
     }
   }
 
@@ -186,15 +242,21 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// Profile tile
+// Profile tile — shows avatar + name (editable) + email
 // ---------------------------------------------------------------------------
 
 class _ProfileTile extends StatelessWidget {
-  const _ProfileTile({this.name, this.email, required this.loading});
+  const _ProfileTile({
+    this.name,
+    this.email,
+    required this.loading,
+    required this.onEditName,
+  });
 
   final String? name;
   final String? email;
   final bool loading;
+  final VoidCallback onEditName;
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +275,7 @@ class _ProfileTile extends StatelessWidget {
         .join();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
       child: Row(
         children: [
           CircleAvatar(
@@ -233,14 +295,14 @@ class _ProfileTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (name != null)
-                  Text(
-                    name!,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                Text(
+                  name ?? 'Your name',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: name != null ? AppColors.textPrimary : AppColors.textDisabled,
                   ),
+                ),
                 if (email != null)
                   Text(
                     email!,
@@ -251,6 +313,12 @@ class _ProfileTile extends StatelessWidget {
                   ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined,
+                size: 18, color: AppColors.textDisabled),
+            tooltip: 'Edit name',
+            onPressed: onEditName,
           ),
         ],
       ),
@@ -268,12 +336,14 @@ class _MembershipTile extends StatelessWidget {
     required this.loading,
     required this.onViewPass,
     required this.onSubscribe,
+    required this.onManagePlan,
   });
 
   final Membership? membership;
   final bool loading;
   final VoidCallback onViewPass;
   final VoidCallback onSubscribe;
+  final VoidCallback onManagePlan;
 
   String _formatDate(DateTime? dt) =>
       dt == null ? '—' : DateFormat('d MMM yyyy').format(dt.toLocal());
@@ -300,7 +370,7 @@ class _MembershipTile extends StatelessWidget {
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton(
+              child: ElevatedButton(
                 onPressed: onSubscribe,
                 child: const Text('Subscribe'),
               ),
@@ -312,11 +382,11 @@ class _MembershipTile extends StatelessWidget {
 
     final m = membership!;
     final (statusLabel, statusColor) = switch (m.status) {
-      MembershipStatus.active => ('Active', AppColors.success),
-      MembershipStatus.trialing => ('Trial', AppColors.info),
-      MembershipStatus.pastDue => ('Past due', AppColors.warning),
-      MembershipStatus.cancelled => ('Cancelled', AppColors.error),
-      MembershipStatus.expired => ('Expired', AppColors.error),
+      MembershipStatus.active   => ('Active',   AppColors.success),
+      MembershipStatus.trialing => ('Trial',    AppColors.info),
+      MembershipStatus.pastDue  => ('Past due', AppColors.warning),
+      MembershipStatus.cancelled=> ('Cancelled',AppColors.error),
+      MembershipStatus.expired  => ('Expired',  AppColors.error),
       MembershipStatus.inactive => ('Inactive', AppColors.textDisabled),
     };
 
@@ -333,8 +403,7 @@ class _MembershipTile extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
@@ -360,17 +429,26 @@ class _MembershipTile extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             '$renewLabel ${_formatDate(m.currentPeriodEnd)}',
-            style: const TextStyle(
-                fontSize: 12, color: AppColors.textDisabled),
+            style: const TextStyle(fontSize: 12, color: AppColors.textDisabled),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: onViewPass,
-              icon: const Icon(Icons.credit_card_outlined, size: 16),
-              label: const Text('View membership pass'),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onViewPass,
+                  icon: const Icon(Icons.credit_card_outlined, size: 16),
+                  label: const Text('View pass'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: onManagePlan,
+                  child: const Text('Manage plan'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -437,22 +515,19 @@ class _NavTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.trailing,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: AppColors.textSecondary, size: 20),
       title: Text(label, style: const TextStyle(fontSize: 14)),
-      trailing: trailing ??
-          const Icon(Icons.chevron_right,
-              size: 18, color: AppColors.textDisabled),
+      trailing: const Icon(Icons.chevron_right,
+          size: 18, color: AppColors.textDisabled),
       dense: true,
       onTap: onTap,
     );

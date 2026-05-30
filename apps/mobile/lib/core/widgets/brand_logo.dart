@@ -6,15 +6,10 @@ enum BrandLogoScheme { light, dark }
 
 /// Better Off Local brand logo widget.
 ///
-/// Loads a PNG asset from `assets/images/`. Falls back to a storefront icon
-/// if the asset is not yet present (e.g. before PNG exports have been copied
-/// via scripts/copy-brand-assets.js).
-///
-/// PNG files must be exported at 1×, 2×, and 3× densities:
-///   assets/images/logo-horizontal-light.png
-///   assets/images/logo-horizontal-light@2x.png
-///   assets/images/logo-horizontal-light@3x.png
-///   (and so on for each variant/scheme combination)
+/// Assets live in `assets/branding/`:
+///   logo-horizontal.png       — dark wordmark on transparent (light backgrounds)
+///   logo-white.png            — white wordmark on transparent (dark backgrounds)
+///   logo-icon-transparent.png — icon mark on transparent (any background)
 class BrandLogo extends StatelessWidget {
   const BrandLogo({
     super.key,
@@ -28,9 +23,13 @@ class BrandLogo extends StatelessWidget {
   final double height;
 
   String get _assetPath {
-    final v = variant == BrandLogoVariant.horizontal ? 'horizontal' : 'icon';
-    final s = scheme == BrandLogoScheme.light ? 'light' : 'dark';
-    return 'assets/images/logo-$v-$s.png';
+    if (variant == BrandLogoVariant.icon) {
+      return 'assets/branding/logo-icon-transparent.png';
+    }
+    // Horizontal wordmark: dark version for light backgrounds, white for dark.
+    return scheme == BrandLogoScheme.dark
+        ? 'assets/branding/logo-white.png'
+        : 'assets/branding/logo-horizontal.png';
   }
 
   @override
