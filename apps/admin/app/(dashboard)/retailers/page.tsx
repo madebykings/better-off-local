@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
+import { createRetailer, deactivateRetailer } from '@/lib/actions/admin';
 
 export const metadata: Metadata = { title: 'Retailers – Admin' };
 
@@ -93,6 +94,43 @@ export default async function RetailersPage({ searchParams }: Props) {
         <p className="text-sm text-gray-500 mt-1">Review, approve, and manage all retailers on the platform.</p>
       </div>
 
+      {/* Add retailer */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">Add retailer</h2>
+        <form action={createRetailer} className="flex items-end gap-3 flex-wrap">
+          <div>
+            <label htmlFor="r-name" className="block text-xs text-gray-500 mb-1">Business name *</label>
+            <input
+              id="r-name"
+              name="name"
+              type="text"
+              placeholder="e.g. The Coffee Spot"
+              required
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 w-56"
+            />
+          </div>
+          <div>
+            <label htmlFor="r-type" className="block text-xs text-gray-500 mb-1">Business type</label>
+            <input
+              id="r-type"
+              name="business_type"
+              type="text"
+              placeholder="e.g. Food & Drink"
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 w-44"
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded-lg bg-green-800 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+          >
+            Create
+          </button>
+        </form>
+        <p className="mt-2 text-xs text-gray-400">
+          Created retailers are pre-approved (draft visibility). They still need to subscribe to go live.
+        </p>
+      </div>
+
       {/* Filters */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
@@ -177,10 +215,22 @@ export default async function RetailersPage({ searchParams }: Props) {
                     </td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(r.created_at)}</td>
                     <td className="px-4 py-3 text-right">
-                      <Link href={`/retailers/${r.id}`}
-                        className="text-sm text-green-700 hover:text-green-900 font-medium">
-                        Review →
-                      </Link>
+                      <div className="flex items-center justify-end gap-3">
+                        <form action={deactivateRetailer}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <input type="hidden" name="is_active" value={String(r.is_active)} />
+                          <button
+                            type="submit"
+                            className={`text-xs underline ${r.is_active ? 'text-red-500 hover:text-red-700' : 'text-green-700 hover:text-green-900'}`}
+                          >
+                            {r.is_active ? 'Deactivate' : 'Reactivate'}
+                          </button>
+                        </form>
+                        <Link href={`/retailers/${r.id}`}
+                          className="text-sm text-green-700 hover:text-green-900 font-medium">
+                          Review →
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 );

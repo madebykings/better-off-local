@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
+import { cancelMembership } from '@/lib/actions/admin';
 
 export const metadata: Metadata = { title: 'Member – Admin' };
 
@@ -107,6 +108,24 @@ export default async function MemberDetailPage({ params }: Props) {
             </div>
           ))}
         </dl>
+
+        {m.status !== 'cancelled' && m.status !== 'expired' && (
+          <div className="mt-5 pt-5 border-t border-gray-100">
+            <form action={cancelMembership}>
+              <input type="hidden" name="membership_id" value={m.id} />
+              <button
+                type="submit"
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 transition-colors"
+              >
+                Cancel membership
+              </button>
+            </form>
+            <p className="mt-1 text-xs text-gray-400">
+              This immediately marks the membership as cancelled and logs an admin action.
+              It does not cancel the Stripe subscription — do that separately in the Stripe dashboard.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Redemption history */}
