@@ -25,6 +25,7 @@ export interface LocationActionResult {
 // Extended fields for named multi-venue management.
 export interface VenueFields extends LocationFields {
   name: string;
+  regionId: string;  // uuid of selected region, or '' if none
 }
 
 export interface VenueActionResult {
@@ -281,6 +282,9 @@ function validateVenue(fields: VenueFields): Partial<Record<keyof VenueFields, s
   if (!fields.name.trim()) {
     errors.name = 'Venue name is required (e.g. "High Street Branch").';
   }
+  if (!fields.regionId) {
+    errors.regionId = 'Please select the region this venue is in.';
+  }
   const locationErrors = validateLocation(fields);
   return { ...errors, ...locationErrors };
 }
@@ -316,34 +320,45 @@ export async function createVenue(
 
   const service = createServiceClient();
 
-  // Entitlement check.
-  const { data: sub } = await service
-    .from('retailer_subscriptions')
-    .select('extra_venues_quantity, venue_allowance_override')
-    .eq('retailer_id', ctx.retailerId)
-    .eq('status', 'active')
-    .maybeSingle();
-
-  const allowance = sub?.venue_allowance_override ?? (1 + (sub?.extra_venues_quantity ?? 0));
-
   const { count: activeCount } = await service
     .from('retailer_locations')
     .select('id', { count: 'exact', head: true })
     .eq('retailer_id', ctx.retailerId)
     .eq('is_active', true);
 
-  if ((activeCount ?? 0) >= allowance) {
-    return { error: 'You have reached your venue allowance. Purchase an additional venue slot first.' };
-  }
-
   // First venue becomes primary automatically.
   const isPrimary = (activeCount ?? 0) === 0;
+
+  // Determine billing_status from region member count.
+  let billingStatus = 'free_growth_region';
+
+  if (fields.regionId && !isPrimary) {
+    const { data: region } = await service
+      .from('regions')
+      .select('member_threshold')
+      .eq('id', fields.regionId)
+      .maybeSingle();
+
+    const { data: memberCount } = await service
+      .rpc('region_active_member_count', { p_region_id: fields.regionId });
+
+    const threshold = region?.member_threshold ?? 100;
+    const count = (memberCount as number | null) ?? 0;
+
+    if (count >= threshold) {
+      return {
+        error: 'This region has reached its member threshold. Purchase a venue slot (£10/year) to add a venue here.',
+      };
+    }
+  }
 
   const postcode = normalisePostcode(fields.postcode);
   const { data: location, error } = await service
     .from('retailer_locations')
     .insert({
       retailer_id: ctx.retailerId,
+      region_id: fields.regionId || null,
+      billing_status: billingStatus,
       name: fields.name.trim(),
       address_line_1: fields.addressLine1.trim(),
       address_line_2: fields.addressLine2.trim() || null,
@@ -395,6 +410,7 @@ export async function updateVenue(
   const { error } = await service
     .from('retailer_locations')
     .update({
+      region_id: fields.regionId || null,
       name: fields.name.trim(),
       address_line_1: fields.addressLine1.trim(),
       address_line_2: fields.addressLine2.trim() || null,

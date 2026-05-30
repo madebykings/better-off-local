@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { updateVenue, type VenueFields } from '@/lib/actions/location';
 
+export type RegionOption = { id: string; name: string };
+
 function inputCls(hasError: boolean) {
   return [
     'block w-full rounded-lg border px-3 py-2.5 text-sm text-gray-900',
@@ -58,9 +60,11 @@ function Field({
 export function VenueForm({
   locationId,
   initialData,
+  regions = [],
 }: {
   locationId: string;
   initialData: VenueFields;
+  regions?: RegionOption[];
 }) {
   const [fields, setFields] = useState<VenueFields>(initialData);
   const [errors, setErrors] = useState<Partial<Record<keyof VenueFields, string>>>({});
@@ -120,6 +124,33 @@ export function VenueForm({
         error={errors.name}
         autoComplete="organization"
       />
+
+      {regions.length > 0 && (
+        <div>
+          <label htmlFor="venue-region" className="mb-1.5 block text-sm font-medium text-gray-700">
+            Region <span className="text-red-400 ml-0.5">*</span>
+          </label>
+          <select
+            id="venue-region"
+            value={fields.regionId}
+            onChange={(e) => {
+              setFields((prev) => ({ ...prev, regionId: e.target.value }));
+              if (errors.regionId) setErrors((prev) => ({ ...prev, regionId: undefined }));
+              setSaved(false);
+            }}
+            className={inputCls(!!errors.regionId) + ' cursor-pointer'}
+          >
+            <option value="">Select region…</option>
+            {regions.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+          {errors.regionId && <p className="mt-1 text-xs text-red-500" role="alert">{errors.regionId}</p>}
+          <p className="mt-1.5 text-xs text-gray-400">
+            The area this venue is in. Used to determine when billing applies.
+          </p>
+        </div>
+      )}
 
       <Field
         label="Address line 1"

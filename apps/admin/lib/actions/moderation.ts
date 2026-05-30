@@ -55,22 +55,62 @@ export async function approveRetailer(retailerId: string, reason?: string) {
     .single();
   if (current?.approval_status === 'approved') return;
 
-  // NOTE: visibility_status is deliberately NOT set to 'live' here.
-  // A retailer goes live when approved + active subscription (enforced elsewhere).
+  // Determine visibility and primary venue billing_status based on region.
+  // If no region is set on the primary venue, default to free_growth_region and go live.
+  const { data: primaryVenue } = await supabase
+    .from('retailer_locations')
+    .select('id, region_id')
+    .eq('retailer_id', retailerId)
+    .eq('is_primary', true)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  let billingStatus: string = 'free_growth_region';
+  let visibilityStatus: string = 'live';
+
+  if (primaryVenue?.region_id) {
+    const { data: region } = await supabase
+      .from('regions')
+      .select('member_threshold')
+      .eq('id', primaryVenue.region_id)
+      .maybeSingle();
+
+    const { data: activeCount } = await supabase
+      .rpc('region_active_member_count', { p_region_id: primaryVenue.region_id });
+
+    const threshold = region?.member_threshold ?? 100;
+    const count = (activeCount as number | null) ?? 0;
+
+    if (count >= threshold) {
+      billingStatus = 'paid_required';
+      visibilityStatus = 'draft';
+    }
+  }
+
   await supabase
     .from('retailers')
     .update({
       approval_status: 'approved',
+      visibility_status: visibilityStatus,
       updated_at: new Date().toISOString(),
     })
     .eq('id', retailerId);
+
+  if (primaryVenue) {
+    await supabase
+      .from('retailer_locations')
+      .update({ billing_status: billingStatus })
+      .eq('id', primaryVenue.id);
+  }
 
   await logAdminAction({
     adminId: userId,
     actionType: 'retailer_approved',
     targetTable: 'retailers',
     targetId: retailerId,
-    reason,
+    reason: reason ?? (billingStatus === 'free_growth_region'
+      ? 'Approved — growth region, listed for free'
+      : 'Approved — region above threshold, subscription required'),
   });
 
   await notifyRetailerApprovalStatus(retailerId, 'approved');

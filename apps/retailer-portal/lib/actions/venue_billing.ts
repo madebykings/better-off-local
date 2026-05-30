@@ -20,9 +20,23 @@ export type VenueBillingResult = { error: string } | null;
  * On success: increments extra_venues_quantity in DB and revalidates /locations.
  * On failure: returns { error } so the client can surface it inline.
  */
-export async function purchaseVenueSlot(): Promise<VenueBillingResult> {
+export async function purchaseVenueSlot(locationId: string): Promise<VenueBillingResult> {
   const { retailerId } = await requireRetailerUser();
   const service = createServiceClient();
+
+  // Verify the venue belongs to this retailer and is in paid_required state.
+  const { data: venue } = await service
+    .from('retailer_locations')
+    .select('billing_status')
+    .eq('id', locationId)
+    .eq('retailer_id', retailerId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!venue) return { error: 'Venue not found.' };
+  if (venue.billing_status !== 'paid_required') {
+    return { error: 'This venue does not require a payment at this time.' };
+  }
 
   const { data: sub } = await service
     .from('retailer_subscriptions')
@@ -99,7 +113,7 @@ export async function purchaseVenueSlot(): Promise<VenueBillingResult> {
     stripeItemId = sub.extra_venue_stripe_item_id;
   }
 
-  // Persist the new quantity and item ID.
+  // Persist the new quantity, item ID, and venue billing status.
   const { error: dbError } = await service
     .from('retailer_subscriptions')
     .update({
@@ -110,9 +124,17 @@ export async function purchaseVenueSlot(): Promise<VenueBillingResult> {
     .eq('status', 'active');
 
   if (dbError) {
-    console.error('[purchaseVenueSlot] DB update error:', dbError.message);
-    // Stripe charge went through — log but don't block the user.
-    // Support will need to reconcile if this fails.
+    console.error('[purchaseVenueSlot] subscription DB error:', dbError.message);
+  }
+
+  // Mark the specific venue as paid.
+  const { error: venueError } = await service
+    .from('retailer_locations')
+    .update({ billing_status: 'paid', grace_period_ends_at: null })
+    .eq('id', locationId);
+
+  if (venueError) {
+    console.error('[purchaseVenueSlot] venue billing_status error:', venueError.message);
   }
 
   revalidatePath('/locations');

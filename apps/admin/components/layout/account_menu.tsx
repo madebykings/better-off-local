@@ -8,6 +8,9 @@ interface AccountMenuProps {
   name: string | null;
 }
 
+// Named alias so AdminShellClient can import without naming clash.
+export { AccountMenu as AdminAccountMenu };
+
 export function AccountMenu({ email, name }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);

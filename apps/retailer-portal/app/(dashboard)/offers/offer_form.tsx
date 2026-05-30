@@ -417,7 +417,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
         </Field>
 
         {/* Optional: dates */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Start date" hint="Optional — leave blank to start immediately">
             <input
               type="date"

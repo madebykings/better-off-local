@@ -11,7 +11,12 @@ import {
   rejectRetailer,
   requestRetailerChanges,
 } from '@/lib/actions/moderation';
-import { setVenueAllowanceOverride, deactivateRetailerVenue } from '@/lib/actions/admin';
+import {
+  setVenueAllowanceOverride,
+  deactivateRetailerVenue,
+  setVenueRegion,
+  setVenueBillingStatus,
+} from '@/lib/actions/admin';
 
 export const metadata: Metadata = { title: 'Retailer review – Admin' };
 
@@ -93,6 +98,7 @@ export default async function RetailerDetailPage({ params }: Props) {
     { data: auditRows },
     { data: venues },
     { data: subData },
+    { data: activeRegions },
   ] = await Promise.all([
     supabase
       .from('retailers')
@@ -127,7 +133,7 @@ export default async function RetailerDetailPage({ params }: Props) {
       .order('created_at', { ascending: false }),
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, town, postcode, is_primary, is_active')
+      .select('id, name, address_line_1, town, postcode, is_primary, is_active, region_id, billing_status, grace_period_ends_at')
       .eq('retailer_id', retailerId)
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true }),
@@ -137,6 +143,11 @@ export default async function RetailerDetailPage({ params }: Props) {
       .eq('retailer_id', retailerId)
       .eq('status', 'active')
       .maybeSingle(),
+    supabase
+      .from('regions')
+      .select('id, name, member_threshold, is_active')
+      .eq('is_active', true)
+      .order('name'),
   ]);
 
   if (!retailer) notFound();
@@ -285,7 +296,16 @@ export default async function RetailerDetailPage({ params }: Props) {
           const computed   = 1 + extraQty;
           const override   = subData?.venue_allowance_override ?? null;
           const allowance  = override ?? computed;
-          const activeVenues = (venues ?? []).filter((v) => v.is_active);
+          const activeVenues = (venues ?? []).filter((v: any) => v.is_active);
+          const regions = activeRegions ?? [];
+
+          const BILLING_BADGES: Record<string, string> = {
+            free_growth_region: 'bg-blue-50 text-blue-700 border-blue-200',
+            paid_required:      'bg-amber-50 text-amber-700 border-amber-200',
+            paid:               'bg-green-50 text-green-700 border-green-200',
+            admin_waived:       'bg-purple-50 text-purple-700 border-purple-200',
+            inactive:           'bg-gray-50 text-gray-500 border-gray-200',
+          };
 
           return (
             <div className="space-y-4">
@@ -304,50 +324,116 @@ export default async function RetailerDetailPage({ params }: Props) {
               {activeVenues.length === 0 ? (
                 <p className="text-sm text-gray-400">No active venues.</p>
               ) : (
-                <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white overflow-hidden">
-                  {activeVenues.map((v) => (
-                    <div key={v.id} className="flex items-center justify-between px-4 py-3 gap-4">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-gray-800 truncate">
-                            {v.name ?? v.address_line_1 ?? 'Unnamed'}
-                          </p>
-                          {v.is_primary && (
-                            <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
-                              Primary
-                            </span>
+                <div className="space-y-3">
+                  {activeVenues.map((v: any) => {
+                    const billingCls = BILLING_BADGES[v.billing_status as string] ?? BILLING_BADGES.inactive;
+                    const regionName = regions.find((r: any) => r.id === v.region_id)?.name ?? null;
+
+                    return (
+                      <div key={v.id} className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-3 gap-4">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-medium text-gray-800 truncate">
+                                {v.name ?? v.address_line_1 ?? 'Unnamed'}
+                              </p>
+                              {v.is_primary && (
+                                <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
+                                  Primary
+                                </span>
+                              )}
+                              <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${billingCls}`}>
+                                {(v.billing_status as string).replace(/_/g, ' ')}
+                              </span>
+                            </div>
+                            {v.name && (
+                              <p className="text-xs text-gray-400 truncate mt-0.5">
+                                {[v.address_line_1, v.town, v.postcode].filter(Boolean).join(', ')}
+                              </p>
+                            )}
+                            {regionName && (
+                              <p className="text-xs text-gray-400 mt-0.5">Region: {regionName}</p>
+                            )}
+                            {v.grace_period_ends_at && (
+                              <p className="text-xs text-amber-600 mt-0.5">
+                                Grace ends: {new Date(v.grace_period_ends_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </p>
+                            )}
+                          </div>
+                          {activeVenues.length > 1 && !v.is_primary && (
+                            <form action={deactivateRetailerVenue}>
+                              <input type="hidden" name="location_id" value={v.id} />
+                              <input type="hidden" name="retailer_id" value={retailerId} />
+                              <button
+                                type="submit"
+                                onClick={(e) => {
+                                  if (!confirm('Deactivate this venue?')) e.preventDefault();
+                                }}
+                                className="text-xs text-red-500 hover:text-red-700 font-medium shrink-0"
+                              >
+                                Deactivate
+                              </button>
+                            </form>
                           )}
                         </div>
-                        {v.name && (
-                          <p className="text-xs text-gray-400 truncate">
-                            {[v.address_line_1, v.town, v.postcode].filter(Boolean).join(', ')}
-                          </p>
-                        )}
+
+                        {/* Region + billing status controls */}
+                        <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex flex-wrap gap-3">
+                          {/* Set region */}
+                          <form action={setVenueRegion} className="flex items-center gap-2">
+                            <input type="hidden" name="location_id" value={v.id} />
+                            <select
+                              name="region_id"
+                              defaultValue={v.region_id ?? ''}
+                              className="text-xs rounded border border-gray-200 px-2 py-1 bg-white
+                                         focus:outline-none focus:ring-1 focus:ring-green-700"
+                            >
+                              <option value="">No region</option>
+                              {regions.map((r: any) => (
+                                <option key={r.id} value={r.id}>{r.name}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="submit"
+                              className="text-xs font-medium text-gray-600 border border-gray-200 rounded px-2 py-1 hover:bg-white transition-colors"
+                            >
+                              Set region
+                            </button>
+                          </form>
+
+                          {/* Set billing status */}
+                          <form action={setVenueBillingStatus} className="flex items-center gap-2">
+                            <input type="hidden" name="location_id" value={v.id} />
+                            <input type="hidden" name="retailer_id" value={retailerId} />
+                            <select
+                              name="billing_status"
+                              defaultValue={v.billing_status}
+                              className="text-xs rounded border border-gray-200 px-2 py-1 bg-white
+                                         focus:outline-none focus:ring-1 focus:ring-green-700"
+                            >
+                              <option value="free_growth_region">free growth region</option>
+                              <option value="paid_required">paid required</option>
+                              <option value="paid">paid</option>
+                              <option value="admin_waived">admin waived</option>
+                            </select>
+                            <button
+                              type="submit"
+                              className="text-xs font-medium text-gray-600 border border-gray-200 rounded px-2 py-1 hover:bg-white transition-colors"
+                            >
+                              Set status
+                            </button>
+                          </form>
+                        </div>
                       </div>
-                      {activeVenues.length > 1 && !v.is_primary && (
-                        <form action={deactivateRetailerVenue}>
-                          <input type="hidden" name="location_id" value={v.id} />
-                          <input type="hidden" name="retailer_id" value={retailerId} />
-                          <button
-                            type="submit"
-                            onClick={(e) => {
-                              if (!confirm('Deactivate this venue?')) e.preventDefault();
-                            }}
-                            className="text-xs text-red-500 hover:text-red-700 font-medium"
-                          >
-                            Deactivate
-                          </button>
-                        </form>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
               {/* Allowance override */}
               <div className="rounded-lg border border-gray-200 bg-white px-4 py-4">
                 <p className="text-sm font-medium text-gray-700 mb-3">Override venue allowance</p>
-                <form action={setVenueAllowanceOverride} className="flex items-center gap-3">
+                <form action={setVenueAllowanceOverride} className="flex items-center gap-3 flex-wrap">
                   <input type="hidden" name="retailer_id" value={retailerId} />
                   <input
                     type="number"
@@ -368,10 +454,7 @@ export default async function RetailerDetailPage({ params }: Props) {
                     <form action={setVenueAllowanceOverride}>
                       <input type="hidden" name="retailer_id" value={retailerId} />
                       <input type="hidden" name="override" value="" />
-                      <button
-                        type="submit"
-                        className="text-sm text-gray-400 hover:text-gray-600"
-                      >
+                      <button type="submit" className="text-sm text-gray-400 hover:text-gray-600">
                         Clear
                       </button>
                     </form>

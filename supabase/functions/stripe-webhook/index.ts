@@ -460,12 +460,20 @@ serve(async (req) => {
             logSupabaseError('invoice.paid retailer: subscription update failed', subErr, { retailerId, subscriptionId: sub.id });
             return new Response('DB error: retailer subscription update', { status: 500 });
           }
-          // Non-critical: visibility and audit.
+          // Non-critical: visibility, primary venue billing status, and audit.
           const { data: retailer } = await supabase.from('retailers').select('approval_status').eq('id', retailerId).single();
           if (retailer?.approval_status === 'approved') {
             const { error: visErr } = await supabase.from('retailers').update({ visibility_status: 'live' }).eq('id', retailerId);
             if (visErr) logSupabaseError('invoice.paid retailer: visibility update failed (non-critical)', visErr, { retailerId });
           }
+          // Mark primary venue as paid so retailer_is_live() uses the subscription path.
+          const { error: venueErr } = await supabase
+            .from('retailer_locations')
+            .update({ billing_status: 'paid', grace_period_ends_at: null })
+            .eq('retailer_id', retailerId)
+            .eq('is_primary', true)
+            .in('billing_status', ['paid_required', 'free_growth_region']);
+          if (venueErr) logSupabaseError('invoice.paid retailer: primary venue billing_status update failed (non-critical)', venueErr, { retailerId });
           const { error: auditErr } = await supabase.from('admin_actions').insert({
             admin_profile_id: null, action_type: 'retailer_subscription_activated',
             target_table: 'retailers', target_id: retailerId,

@@ -5,6 +5,7 @@ import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
 import { VenueForm } from '../location_form';
 import type { VenueFields } from '@/lib/actions/location';
+import type { RegionOption } from '../location_form';
 
 export const metadata: Metadata = { title: 'Edit Location – Retailer Portal' };
 
@@ -17,18 +18,27 @@ export default async function LocationDetailPage({ params }: Props) {
   const { retailerId } = await requireRetailerUser();
   const supabase = createServiceClient();
 
-  const { data: loc } = await supabase
-    .from('retailer_locations')
-    .select('id, name, address_line_1, address_line_2, town, county, postcode, is_primary, is_active')
-    .eq('id', locationId)
-    .eq('retailer_id', retailerId)
-    .eq('is_active', true)
-    .maybeSingle();
+  const [{ data: loc }, { data: regionRows }] = await Promise.all([
+    supabase
+      .from('retailer_locations')
+      .select('id, name, address_line_1, address_line_2, town, county, postcode, is_primary, is_active, region_id')
+      .eq('id', locationId)
+      .eq('retailer_id', retailerId)
+      .eq('is_active', true)
+      .maybeSingle(),
+    supabase
+      .from('regions')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name'),
+  ]);
+  const regions: RegionOption[] = (regionRows ?? []).map((r) => ({ id: r.id, name: r.name }));
 
   if (!loc) notFound();
 
   const initialData: VenueFields = {
     name:         loc.name ?? '',
+    regionId:     (loc as any).region_id ?? '',
     addressLine1: loc.address_line_1 ?? '',
     addressLine2: loc.address_line_2 ?? '',
     town:         loc.town ?? '',
@@ -56,7 +66,7 @@ export default async function LocationDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <VenueForm locationId={locationId} initialData={initialData} />
+      <VenueForm locationId={locationId} initialData={initialData} regions={regions} />
     </div>
   );
 }

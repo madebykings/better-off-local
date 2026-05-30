@@ -23,7 +23,7 @@ export default async function LocationsPage() {
   const [{ data: locations }, { data: sub }] = await Promise.all([
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, town, postcode, is_primary, is_active')
+      .select('id, name, address_line_1, town, postcode, is_primary, is_active, billing_status, region_id')
       .eq('retailer_id', retailerId)
       .eq('is_active', true)
       .order('is_primary', { ascending: false })
@@ -35,6 +35,14 @@ export default async function LocationsPage() {
       .eq('status', 'active')
       .maybeSingle(),
   ]);
+
+  const BILLING_BADGES: Record<string, string> = {
+    free_growth_region: 'bg-blue-50 text-blue-700 border-blue-200',
+    paid_required:      'bg-amber-50 text-amber-700 border-amber-200',
+    paid:               'bg-green-50 text-green-700 border-green-200',
+    admin_waived:       'bg-purple-50 text-purple-700 border-purple-200',
+    inactive:           'bg-gray-50 text-gray-500 border-gray-200',
+  };
 
   const extraQty   = sub?.extra_venues_quantity ?? 0;
   const allowance  = sub?.venue_allowance_override ?? (1 + extraQty);
@@ -101,13 +109,18 @@ export default async function LocationsPage() {
               className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3"
             >
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-medium text-gray-800 truncate">
                     {loc.name ?? formatAddress(loc) ?? 'Unnamed venue'}
                   </p>
                   {loc.is_primary && (
                     <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
                       Primary
+                    </span>
+                  )}
+                  {(loc as any).billing_status && (
+                    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${BILLING_BADGES[(loc as any).billing_status] ?? ''}`}>
+                      {((loc as any).billing_status as string).replace(/_/g, ' ')}
                     </span>
                   )}
                 </div>

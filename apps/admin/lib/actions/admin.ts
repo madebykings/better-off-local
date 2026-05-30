@@ -165,6 +165,108 @@ export async function cancelMembership(formData: FormData): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Regions
+// ---------------------------------------------------------------------------
+
+export async function updateRegion(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  const regionId = formData.get('region_id') as string;
+  const threshold = parseInt(formData.get('member_threshold') as string, 10);
+  const isActive = formData.get('is_active') === 'true';
+
+  if (isNaN(threshold) || threshold < 1) return;
+
+  const supabase = createServiceClient();
+  await supabase
+    .from('regions')
+    .update({ member_threshold: threshold, is_active: isActive, updated_at: new Date().toISOString() })
+    .eq('id', regionId);
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type: 'region_updated',
+    target_table: 'regions',
+    target_id: regionId,
+    reason: null,
+    metadata_json: { member_threshold: threshold, is_active: isActive },
+  });
+
+  revalidatePath('/regions');
+}
+
+// ---------------------------------------------------------------------------
+// Venue region + billing status (admin override)
+// ---------------------------------------------------------------------------
+
+export async function setVenueRegion(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  const locationId = formData.get('location_id') as string;
+  const regionId = (formData.get('region_id') as string | null) || null;
+
+  const supabase = createServiceClient();
+  await supabase
+    .from('retailer_locations')
+    .update({ region_id: regionId })
+    .eq('id', locationId);
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type: 'venue_region_set',
+    target_table: 'retailer_locations',
+    target_id: locationId,
+    reason: null,
+    metadata_json: { region_id: regionId },
+  });
+
+  revalidatePath(`/retailers`);
+}
+
+export async function setVenueBillingStatus(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  const locationId  = formData.get('location_id') as string;
+  const retailerId  = formData.get('retailer_id') as string;
+  const newStatus   = formData.get('billing_status') as string;
+
+  const allowed = ['free_growth_region', 'paid_required', 'paid', 'admin_waived'];
+  if (!allowed.includes(newStatus)) return;
+
+  const supabase = createServiceClient();
+
+  await supabase
+    .from('retailer_locations')
+    .update({ billing_status: newStatus, grace_period_ends_at: null })
+    .eq('id', locationId);
+
+  // If primary venue is waived and retailer is approved, ensure they are live.
+  if (newStatus === 'admin_waived') {
+    const { data: loc } = await supabase
+      .from('retailer_locations')
+      .select('is_primary')
+      .eq('id', locationId)
+      .maybeSingle();
+
+    if (loc?.is_primary) {
+      await supabase
+        .from('retailers')
+        .update({ visibility_status: 'live' })
+        .eq('id', retailerId)
+        .eq('approval_status', 'approved');
+    }
+  }
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type: 'venue_billing_status_set',
+    target_table: 'retailer_locations',
+    target_id: locationId,
+    reason: null,
+    metadata_json: { billing_status: newStatus, retailer_id: retailerId },
+  });
+
+  revalidatePath(`/retailers/${retailerId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Venue allowance (admin override)
 // ---------------------------------------------------------------------------
 

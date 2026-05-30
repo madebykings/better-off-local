@@ -1,15 +1,17 @@
-import { AdminSidebar } from './admin_sidebar';
-import { AdminHeader } from './admin_header';
+import { getAdminContext } from '@/lib/auth/get_admin_context';
 import { ReviewCountBadge } from './review_count_badge';
+import { AdminShellClient } from './admin_shell_client';
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export async function AdminShell({ children }: { children: React.ReactNode }) {
+  const ctx = await getAdminContext();
+
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100">
-      <AdminSidebar reviewBadge={<ReviewCountBadge />} />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <AdminHeader />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
-    </div>
+    <AdminShellClient
+      email={ctx?.email ?? ''}
+      name={ctx?.fullName ?? null}
+      reviewBadge={<ReviewCountBadge />}
+    >
+      {children}
+    </AdminShellClient>
   );
 }
