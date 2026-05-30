@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/providers/session_provider.dart';
 import '../../features/profile/providers/profile_providers.dart';
 
+import '../../features/referral/presentation/referral_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/sign_in_screen.dart';
 import '../../features/auth/presentation/sign_up_screen.dart';
@@ -189,6 +190,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'savings',
                 builder: (context, state) => const SavingsScreen(),
+              ),
+              GoRoute(
+                path: 'referral',
+                builder: (context, state) => const ReferralScreen(),
               ),
             ],
           ),

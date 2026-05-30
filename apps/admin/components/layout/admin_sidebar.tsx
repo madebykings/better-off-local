@@ -15,6 +15,7 @@ const navItems = [
   { href: '/categories',    label: 'Categories',    icon: '📂' },
   { href: '/subscriptions', label: 'Subscriptions', icon: '💳' },
   { href: '/featured',      label: 'Featured',      icon: '⭐' },
+  { href: '/referrals',     label: 'Referrals',     icon: '🎁' },
   { href: '/audit',         label: 'Audit',         icon: '📋' },
   { href: '/settings',      label: 'Settings',      icon: '⚙️' },
 ];

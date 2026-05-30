@@ -54,6 +54,9 @@ dependencies:
   # Relative time formatting ("2 minutes ago")
   timeago: ^3.6.1
 
+  # Native share sheet (referral)
+  share_plus: ^10.0.0
+
   # Utilities
   equatable: ^2.0.5
 

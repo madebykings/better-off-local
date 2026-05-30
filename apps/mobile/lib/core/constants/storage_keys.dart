@@ -4,4 +4,8 @@ abstract class StorageKeys {
   static const String lastKnownLongitude = 'last_known_lng';
   static const String notificationsEnabled = 'notifications_enabled';
   static const String preferredCategories = 'preferred_categories';
+
+  /// Referral code captured from a deep link before sign-up.
+  /// Written at app open when ?ref= is in the link, cleared after attribution.
+  static const String pendingReferralCode = 'pending_referral_code';
 }

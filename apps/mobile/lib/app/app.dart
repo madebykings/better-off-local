@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../core/constants/storage_keys.dart';
 import 'router/app_router.dart';
 import 'router/route_names.dart';
 import 'theme/app_theme.dart';
@@ -17,6 +19,7 @@ class App extends ConsumerStatefulWidget {
 
 class _AppState extends ConsumerState<App> {
   final _appLinks = AppLinks();
+  final _secureStorage = const FlutterSecureStorage();
   StreamSubscription<Uri>? _linkSub;
 
   @override
@@ -81,7 +84,18 @@ class _AppState extends ConsumerState<App> {
         // Stripe cancel_url — user abandoned checkout; return to plan selection.
         router.go(RouteNames.paywall);
 
-      // Add future deep links here (e.g. offer detail, retailer profile).
+      default:
+        // Referral join link: /join?ref=CODE
+        if (path == '/join') {
+          final code = uri.queryParameters['ref'];
+          if (code != null && code.isNotEmpty) {
+            await _secureStorage.write(
+              key: StorageKeys.pendingReferralCode,
+              value: code.trim().toUpperCase(),
+            );
+            debugPrint('[deep_link] referral code captured: $code');
+          }
+        }
     }
   }
 

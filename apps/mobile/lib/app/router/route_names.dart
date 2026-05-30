@@ -37,6 +37,6 @@ abstract class RouteNames {
   static const redemptionConfirmation = '/redemptions/confirmation';
   static const redemptionFailed = '/redemptions/failed';
 
-  // Online checkout scan (full-screen camera, no shell/bottom nav)
-  static const onlineScan = '/online-checkout/scan';
+  // Referral programme
+  static const referral = '/account/referral';
 }

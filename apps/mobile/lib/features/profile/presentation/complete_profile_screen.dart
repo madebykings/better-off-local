@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show HttpMethod;
 
 import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_spacing.dart';
+import '../../../core/constants/storage_keys.dart';
+import '../../../core/providers/supabase_provider.dart';
 import '../../../core/widgets/primary_button.dart';
 import 'profile_controller.dart';
 
@@ -25,6 +29,25 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _tryAttributeReferral(WidgetRef ref) async {
+    const storage = FlutterSecureStorage();
+    try {
+      final code = await storage.read(key: StorageKeys.pendingReferralCode);
+      if (code == null || code.isEmpty) return;
+
+      final client = ref.read(supabaseClientProvider);
+      await client.functions.invoke(
+        'attribute-referral',
+        method: HttpMethod.post,
+        body: {'code': code},
+      );
+      await storage.delete(key: StorageKeys.pendingReferralCode);
+      debugPrint('[referral] attribution attempted for code: $code');
+    } catch (e) {
+      debugPrint('[referral] attribution error (non-fatal): $e');
+    }
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     await ref
@@ -44,6 +67,8 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         );
       }
       if (next is ProfileUpdateSuccess) {
+        // Attribute pending referral if one was captured from a deep link.
+        _tryAttributeReferral(ref);
         // Router redirect will detect profile is now complete and navigate to home.
         context.go(RouteNames.home);
       }

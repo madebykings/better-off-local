@@ -55,6 +55,8 @@ interface StripeCheckoutSession {
 interface StripeInvoice {
   subscription: string | null;
   customer: string | null;
+  billing_reason: string | null;
+  amount_paid: number;
 }
 
 interface StripeEvent {
@@ -249,6 +251,171 @@ function logSupabaseError(
     hint: err.hint ?? null,
     ...context,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Referral reward helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Triggered on the first paid invoice for a new consumer subscription.
+ *
+ * Flow:
+ * 1. Look up invitee's referral_invitations row.
+ * 2. Resolve referrer → profile → stripe_customer_id.
+ * 3. Fraud checks: referrer membership active, rate limit (5/30 days).
+ * 4. Insert referral_rewards (pending — confirmed after grace period).
+ * 5. Apply Stripe customer balance credit to referrer.
+ *
+ * Idempotent: keyed on referral_invitation_id uniqueness.
+ * Non-critical: errors are logged but do not fail the webhook response.
+ *
+ * Reward: monthly plan price (or annual ÷ 12 for annual subscribers).
+ * Rate limit: 5 confirmed rewards per referrer per 30-day window.
+ */
+async function handleReferralReward(
+  supabase: ReturnType<typeof import('https://esm.sh/@supabase/supabase-js@2').createClient>,
+  inviteeUserId: string,
+  stripeCustomerId: string,
+  amountPaidCents: number,
+): Promise<void> {
+  try {
+    // 1. Find invitation for this invitee
+    const { data: invitation } = await supabase
+      .from('referral_invitations')
+      .select('id, referral_code_id, referral_codes(profile_id)')
+      .eq('invitee_profile_id', inviteeUserId)
+      .maybeSingle();
+
+    if (!invitation) {
+      console.log('[referral] no invitation found for invitee', { inviteeUserId });
+      return;
+    }
+
+    // Reward already exists for this invitation
+    const { data: existing } = await supabase
+      .from('referral_rewards')
+      .select('id')
+      .eq('referral_invitation_id', invitation.id)
+      .maybeSingle();
+
+    if (existing) {
+      console.log('[referral] reward already exists for invitation', { invitationId: invitation.id });
+      return;
+    }
+
+    const referrerProfileId = (invitation.referral_codes as { profile_id: string } | null)?.profile_id;
+    if (!referrerProfileId) {
+      console.warn('[referral] could not resolve referrer profile', { invitationId: invitation.id });
+      return;
+    }
+
+    // 2. Referrer membership must be active
+    const { data: membership } = await supabase
+      .from('consumer_memberships')
+      .select('stripe_customer_id')
+      .eq('profile_id', referrerProfileId)
+      .in('status', ['active', 'trialing'])
+      .maybeSingle();
+
+    if (!membership?.stripe_customer_id) {
+      console.log('[referral] referrer has no active membership — skipping reward', { referrerProfileId });
+      return;
+    }
+
+    // 3. Rate limit: max 5 confirmed rewards in 30 days
+    const windowStart = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const { count: recentCount } = await supabase
+      .from('referral_rewards')
+      .select('id', { count: 'exact', head: true })
+      .eq('referrer_profile_id', referrerProfileId)
+      .in('status', ['confirmed', 'applied', 'pending'])
+      .gte('created_at', windowStart);
+
+    const RATE_LIMIT = 5;
+    const isRateLimited = (recentCount ?? 0) >= RATE_LIMIT;
+    const rewardStatus = isRateLimited ? 'review' : 'pending';
+
+    // Reward amount: monthly equivalent (annual ÷ 12, or actual amount)
+    const rewardAmountPence = Math.round(amountPaidCents / (amountPaidCents > 2000 ? 12 : 1));
+    const cappedReward = Math.min(rewardAmountPence, 600); // cap at 600p (£6) = approx 1 month
+
+    // 4. Insert reward row
+    const { data: reward, error: insertErr } = await supabase
+      .from('referral_rewards')
+      .insert({
+        referral_invitation_id: invitation.id,
+        referrer_profile_id: referrerProfileId,
+        reward_amount_pence: cappedReward,
+        status: rewardStatus,
+      })
+      .select('id')
+      .single();
+
+    if (insertErr) {
+      console.error('[referral] failed to insert reward', { error: insertErr.message });
+      return;
+    }
+
+    if (isRateLimited) {
+      console.log('[referral] reward queued for review (rate limit)', { referrerProfileId, rewardId: reward.id });
+      return;
+    }
+
+    // 5. Apply Stripe customer balance credit
+    const secretKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!secretKey) {
+      console.error('[referral] STRIPE_SECRET_KEY not set — cannot apply credit');
+      return;
+    }
+
+    const creditAmount = -cappedReward; // negative = credit to customer
+    const body = new URLSearchParams({
+      amount: String(creditAmount),
+      currency: 'gbp',
+      description: `Referral reward — friend joined Better Off Local`,
+    });
+
+    const stripeRes = await fetch(
+      `https://api.stripe.com/v1/customers/${membership.stripe_customer_id}/balance_transactions`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+      },
+    );
+
+    if (!stripeRes.ok) {
+      const errData = await stripeRes.json();
+      console.error('[referral] Stripe credit failed', { error: errData, referrerProfileId });
+      return;
+    }
+
+    const txn = await stripeRes.json();
+
+    // Update reward row with Stripe txn ID and mark applied
+    await supabase
+      .from('referral_rewards')
+      .update({
+        stripe_balance_txn_id: txn.id,
+        status: 'applied',
+        applied_at: new Date().toISOString(),
+      })
+      .eq('id', reward.id);
+
+    console.log('[referral] reward applied', {
+      referrerProfileId,
+      rewardId: reward.id,
+      stripeTxnId: txn.id,
+      amountPence: cappedReward,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[referral] unexpected error in handleReferralReward', { error: msg });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -541,6 +708,14 @@ serve(async (req) => {
           plan,
           status,
         });
+
+        // ── Referral reward trigger ────────────────────────────────────────
+        // Only fires on the first paid invoice for a new subscription.
+        // billing_reason = 'subscription_create' means this is the first charge.
+        if (invoice.billing_reason === 'subscription_create') {
+          await handleReferralReward(supabase, userId, sub.customer, invoice.amount_paid);
+        }
+
         break;
       }
 

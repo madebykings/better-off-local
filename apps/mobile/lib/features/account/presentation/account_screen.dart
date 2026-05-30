@@ -103,6 +103,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 label: 'My savings',
                 onTap: () => context.push(RouteNames.savings),
               ),
+              const _Divider(),
+              _NavTile(
+                icon: Icons.card_giftcard_outlined,
+                label: 'Refer a friend',
+                onTap: () => context.push(RouteNames.referral),
+              ),
             ],
           ),
 
