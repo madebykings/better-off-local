@@ -7,7 +7,9 @@ class OffersRemoteDataSource {
   static const _listSelect =
       'id, retailer_id, title, short_summary, value_text, offer_type, '
       'start_at, end_at, status, is_featured, image_url, '
-      'retailers(name, logo_url)';
+      'retailers(name, logo_url), '
+      'offer_rules(max_redemptions_per_user, max_redemptions_per_day, '
+      'cooldown_hours, max_redemptions_total, new_customers_only)';
 
   static const _detailSelect =
       '*, retailers(id, name, slug, logo_url, cover_image_url, '

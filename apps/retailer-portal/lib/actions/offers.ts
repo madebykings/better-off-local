@@ -21,6 +21,7 @@ export type OfferFields = {
   startDate: string;
   endDate: string;
   totalCap: string;
+  newCustomersOnly: boolean;
   venueScope: 'all' | 'specific';
   selectedLocationIds: string[];
 };
@@ -92,6 +93,7 @@ function buildRuleRow(offerId: string, fields: OfferFields) {
     max_redemptions_total: fields.totalCap.trim()
       ? parseInt(fields.totalCap, 10)
       : null,
+    new_customers_only: fields.newCustomersOnly ?? false,
     ...cols,
   };
 }

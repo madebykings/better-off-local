@@ -29,7 +29,6 @@ import '../../features/redemptions/presentation/redemption_confirmation_screen.d
 import '../../features/redemptions/presentation/redemption_failed_screen.dart';
 import '../../features/redemptions/presentation/redemption_history_screen.dart';
 import '../../features/redemptions/presentation/redemption_qr_screen.dart';
-import '../../features/online_redemption/presentation/online_scan_screen.dart';
 import '../../features/retailers/presentation/retailer_detail_screen.dart';
 import '../../features/shell/presentation/app_shell.dart';
 import 'route_names.dart';
@@ -143,12 +142,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.subscriptionSuccess,
         builder: (context, state) => const SubscriptionSuccessScreen(),
-      ),
-
-      // ── Online checkout scan — full-screen, no bottom nav ─────────────
-      GoRoute(
-        path: RouteNames.onlineScan,
-        builder: (context, state) => const OnlineScanScreen(),
       ),
 
       // ── Authenticated shell ────────────────────────────────────────────

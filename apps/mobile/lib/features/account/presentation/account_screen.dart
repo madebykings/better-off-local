@@ -91,10 +91,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 onTap: () => context.push(RouteNames.favourites),
               ),
               const _Divider(),
+              const _Divider(),
               _NavTile(
                 icon: Icons.receipt_long_outlined,
                 label: 'Redemption history',
                 onTap: () => context.push(RouteNames.redemptionHistory),
+              ),
+              const _Divider(),
+              _NavTile(
+                icon: Icons.savings_outlined,
+                label: 'My savings',
+                onTap: () => context.push(RouteNames.savings),
               ),
             ],
           ),

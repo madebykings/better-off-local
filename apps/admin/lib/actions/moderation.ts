@@ -26,19 +26,88 @@ async function logAdminAction(params: {
 }
 
 /**
- * Placeholder notification hook.
+ * Sends a transactional email to the retailer owner on approval status changes.
  *
- * TODO: Replace with real email/notification dispatch (e.g. Resend, Postmark).
- * Called after every approval status transition so the integration point is
- * established even before the email provider is wired up.
+ * Uses Resend (https://resend.com). Requires the RESEND_API_KEY and
+ * RESEND_FROM_EMAIL environment variables. Silently skips if unconfigured so
+ * the admin action itself never fails due to a missing email provider.
+ *
+ * Required env vars:
+ *   RESEND_API_KEY    — Resend API key (re_...)
+ *   RESEND_FROM_EMAIL — Verified sender address (e.g. hello@betterofflocal.com)
  */
 async function notifyRetailerApprovalStatus(
   retailerId: string,
   action: 'approved' | 'rejected' | 'changes_requested',
   note?: string,
 ) {
-  // TODO: look up retailer owner email, dispatch transactional email
-  console.log('[notifyRetailerApprovalStatus] stub', { retailerId, action, note });
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL;
+
+  if (!apiKey || !fromEmail) {
+    console.log('[notifyRetailerApprovalStatus] RESEND_API_KEY or RESEND_FROM_EMAIL not set — skipping email', { retailerId, action });
+    return;
+  }
+
+  const supabase = createServiceClient();
+
+  // Fetch the retailer name + primary owner email.
+  const { data: ownerRow } = await supabase
+    .from('retailer_users')
+    .select('profiles(full_name, email), retailers(name)')
+    .eq('retailer_id', retailerId)
+    .eq('access_role', 'owner')
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+
+  const row = ownerRow as any;
+  const toEmail = (row?.profiles?.email ?? row?.profiles?.[0]?.email) as string | null | undefined;
+  const ownerName = (row?.profiles?.full_name ?? row?.profiles?.[0]?.full_name ?? 'there') as string;
+  const retailerName = (row?.retailers?.name ?? row?.retailers?.[0]?.name ?? 'your business') as string;
+
+  if (!toEmail) {
+    console.warn('[notifyRetailerApprovalStatus] no owner email found for retailer', { retailerId });
+    return;
+  }
+
+  const subjects: Record<typeof action, string> = {
+    approved:           `Your Better Off Local listing has been approved`,
+    rejected:           `Update on your Better Off Local application`,
+    changes_requested:  `Action required: changes needed for your listing`,
+  };
+
+  const bodies: Record<typeof action, string> = {
+    approved: `Hi ${ownerName},\n\nGreat news — your Better Off Local listing for ${retailerName} has been approved.\n\nYou can now complete your setup and activate your subscription to go live on the platform.\n\nSign in to your retailer portal to continue:\nhttps://portal.betterofflocal.com\n\nWelcome to Better Off Local!\n\nThe Better Off Local team`,
+    rejected: `Hi ${ownerName},\n\nThank you for applying to join Better Off Local.\n\nAfter reviewing your application for ${retailerName}, we're unable to approve it at this time.${note ? `\n\nFeedback: ${note}` : ''}\n\nIf you have questions, please reply to this email.\n\nThe Better Off Local team`,
+    changes_requested: `Hi ${ownerName},\n\nThank you for submitting your Better Off Local listing for ${retailerName}.\n\nWe've reviewed your application and need a few changes before we can approve it.${note ? `\n\nFeedback: ${note}` : ''}\n\nPlease sign in to your retailer portal to make the updates and resubmit:\nhttps://portal.betterofflocal.com\n\nThe Better Off Local team`,
+  };
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [toEmail],
+        subject: subjects[action],
+        text: bodies[action],
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error('[notifyRetailerApprovalStatus] Resend error', { status: res.status, body, retailerId, action });
+    } else {
+      console.log('[notifyRetailerApprovalStatus] email sent', { retailerId, action, toEmail });
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[notifyRetailerApprovalStatus] fetch error', { error: msg, retailerId, action });
+  }
 }
 
 // ─── Retailer actions ─────────────────────────────────────────────────────────

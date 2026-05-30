@@ -32,7 +32,7 @@ export default async function OfferDetailPage({ params }: Props) {
       .maybeSingle(),
     supabase
       .from('offer_rules')
-      .select('max_redemptions_per_user, max_redemptions_per_day, cooldown_hours, max_redemptions_total')
+      .select('max_redemptions_per_user, max_redemptions_per_day, cooldown_hours, max_redemptions_total, new_customers_only')
       .eq('offer_id', offerId)
       .maybeSingle(),
     supabase
@@ -72,6 +72,7 @@ export default async function OfferDetailPage({ params }: Props) {
     startDate: toDateString(offer.start_at),
     endDate: toDateString(offer.end_at),
     totalCap: rules?.max_redemptions_total != null ? String(rules.max_redemptions_total) : '',
+    newCustomersOnly: rules?.new_customers_only ?? false,
     venueScope,
     selectedLocationIds,
   };

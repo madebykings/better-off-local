@@ -588,6 +588,71 @@ serve(async (req) => {
         break;
       }
 
+      // ── customer.subscription.updated ───────────────────────────────────────
+      // Keeps plan_interval, status, and current_period_end in sync when a
+      // subscription is modified (e.g. plan switch, trial conversion, renewal).
+      case 'customer.subscription.updated': {
+        const sub = event.data.object as StripeSubscription;
+        console.log('[webhook] customer.subscription.updated', {
+          subscriptionId: sub.id,
+          status: sub.status,
+          metadataType: sub.metadata?.type ?? null,
+        });
+
+        // ── Retailer ──────────────────────────────────────────────────────────
+        if (sub.metadata?.type === 'retailer_subscription') {
+          const retailerId = sub.metadata?.retailer_id;
+          if (!retailerId) break;
+          const { periodStart: rPeriodStart, periodEnd: rPeriodEnd } =
+            resolvePeriodDates(sub, 'customer.subscription.updated retailer');
+          const { error: subErr } = await supabase
+            .from('retailer_subscriptions')
+            .update({
+              status: sub.status === 'active' ? 'active' : sub.status,
+              current_period_start: rPeriodStart,
+              current_period_end: rPeriodEnd,
+              cancel_at_period_end: sub.cancel_at_period_end,
+            })
+            .eq('retailer_id', retailerId)
+            .eq('stripe_subscription_id', sub.id);
+          if (subErr) {
+            logSupabaseError('customer.subscription.updated retailer: update failed', subErr, { retailerId, subscriptionId: sub.id });
+            return new Response('DB error: retailer subscription updated', { status: 500 });
+          }
+          console.log('[webhook] customer.subscription.updated retailer: synced', { retailerId, subscriptionId: sub.id });
+          break;
+        }
+
+        // ── Consumer ──────────────────────────────────────────────────────────
+        const userId = sub.metadata?.supabase_user_id ?? null;
+        if (!userId) {
+          console.warn('[webhook] customer.subscription.updated consumer: no supabase_user_id — skipping', {
+            subscriptionId: sub.id,
+          });
+          break;
+        }
+
+        let updPayload: Record<string, unknown>;
+        try {
+          updPayload = buildMembershipPayload(sub, sub.customer, 'customer.subscription.updated');
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error('[webhook] customer.subscription.updated consumer: date build failed', { error: msg, subscriptionId: sub.id });
+          return new Response(`Missing subscription period dates: ${msg}`, { status: 500 });
+        }
+
+        const { error: updErr } = await supabase
+          .from('consumer_memberships')
+          .upsert(updPayload, { onConflict: 'stripe_subscription_id' });
+
+        if (updErr) {
+          logSupabaseError('customer.subscription.updated consumer: upsert failed', updErr, { subscriptionId: sub.id });
+          return new Response('DB error: consumer membership updated', { status: 500 });
+        }
+        console.log('[webhook] customer.subscription.updated consumer: synced', { subscriptionId: sub.id });
+        break;
+      }
+
       // ── customer.subscription.deleted ───────────────────────────────────────
       case 'customer.subscription.deleted': {
         const sub = event.data.object as StripeSubscription;

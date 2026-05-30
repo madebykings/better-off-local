@@ -104,6 +104,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
     ...EMPTY_OFFER,
     venueScope: 'all',
     selectedLocationIds: [],
+    newCustomersOnly: false,
     ...initialData,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof OfferFields, string>>>({});
@@ -454,6 +455,36 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
             className={inputCls(!!errors.totalCap)}
             disabled={!canEdit || isPending}
           />
+        </Field>
+
+        {/* New customers only */}
+        <Field label="Audience">
+          <label className={[
+            'flex items-start gap-3 rounded-lg border p-3 cursor-pointer select-none',
+            fields.newCustomersOnly
+              ? 'border-green-700 bg-green-50'
+              : 'border-gray-200 bg-white hover:border-gray-300',
+            !canEdit ? 'opacity-60 cursor-not-allowed' : '',
+          ].join(' ')}>
+            <input
+              type="checkbox"
+              checked={fields.newCustomersOnly}
+              disabled={!canEdit || isPending}
+              onChange={(e) => {
+                if (!canEdit || isPending) return;
+                setFields((prev) => ({ ...prev, newCustomersOnly: e.target.checked }));
+              }}
+              className="mt-0.5 accent-green-700"
+            />
+            <span>
+              <span className={`block text-sm font-medium ${fields.newCustomersOnly ? 'text-green-800' : 'text-gray-800'}`}>
+                New customers only
+              </span>
+              <span className="block text-xs text-gray-400 mt-0.5">
+                This offer can only be redeemed by members who have never previously used an offer at your business.
+              </span>
+            </span>
+          </label>
         </Field>
 
         {canEdit && (
