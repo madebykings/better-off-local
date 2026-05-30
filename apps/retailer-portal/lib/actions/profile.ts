@@ -7,6 +7,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 export interface ProfileFields {
   name: string;
   tagline: string;
+  website: string;
   description: string;
   businessType: string;
   phone: string;
@@ -27,6 +28,14 @@ function validate(fields: ProfileFields): Partial<Record<keyof ProfileFields, st
   }
   if (!fields.businessType) {
     errors.businessType = 'Please select a business type.';
+  }
+  if (fields.website.trim()) {
+    const raw = fields.website.trim();
+    try {
+      new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+    } catch {
+      errors.website = 'Please enter a valid website URL (e.g. https://yoursite.com).';
+    }
   }
   return errors;
 }
@@ -60,6 +69,7 @@ export async function updateRetailerProfile(
     .update({
       name: fields.name.trim(),
       tagline: fields.tagline.trim() || null,
+      website_url: fields.website.trim() || null,
       description: fields.description.trim(),
       business_type: fields.businessType || null,
       phone: fields.phone.trim() || null,

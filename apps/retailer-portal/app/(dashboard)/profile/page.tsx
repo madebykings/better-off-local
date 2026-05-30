@@ -12,13 +12,14 @@ export default async function ProfilePage() {
 
   const { data: retailer } = await supabase
     .from('retailers')
-    .select('name, tagline, description, business_type, phone, logo_url, cover_image_url')
+    .select('name, tagline, website_url, description, business_type, phone, logo_url, cover_image_url')
     .eq('id', retailerId)
     .single();
 
   const initialData: ProfileFields = {
     name: retailer?.name ?? '',
     tagline: retailer?.tagline ?? '',
+    website: retailer?.website_url ?? '',
     description: retailer?.description ?? '',
     businessType: retailer?.business_type ?? '',
     phone: retailer?.phone ?? '',

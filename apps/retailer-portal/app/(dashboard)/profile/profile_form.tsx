@@ -137,7 +137,7 @@ export function ProfileForm({
           <ImageUploadZone
             slot="logo"
             label="Logo"
-            aspectHint="Recommended: square · max 5 MB · shown on listing cards"
+            aspectHint="Recommended: 400 × 400 px minimum, square · max 5 MB · shown on listing cards and dashboard avatar"
             maxBytes={LOGO_MAX_BYTES}
             currentUrl={currentLogoUrl}
             onUploaded={(url) => setCurrentLogoUrl(url)}
@@ -180,7 +180,7 @@ export function ProfileForm({
           <Field
             id="tagline"
             label="Tagline"
-            hint="Optional — one punchy line that tells members what makes you special."
+            hint="Optional — appears on listing cards in the app. One punchy line that tells members what makes you special."
           >
             <input
               id="tagline"
@@ -190,6 +190,24 @@ export function ProfileForm({
               maxLength={80}
               placeholder="e.g. Handmade food, made with love"
               className={inputCls(false)}
+              disabled={isPending}
+            />
+          </Field>
+
+          <Field
+            id="website"
+            label="Website"
+            hint="Optional — shown as a link on your listing."
+            error={errors.website}
+          >
+            <input
+              id="website"
+              type="url"
+              value={fields.website}
+              onChange={setField('website')}
+              placeholder="e.g. https://yoursite.com"
+              autoComplete="url"
+              className={inputCls(!!errors.website)}
               disabled={isPending}
             />
           </Field>
