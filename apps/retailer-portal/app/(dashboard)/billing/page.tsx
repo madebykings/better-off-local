@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
 import { CheckoutButton } from '@/components/dashboard/checkout_button';
+import { ManageSubscriptionButton } from '@/components/dashboard/manage_subscription_button';
 
 export const metadata: Metadata = { title: 'Billing – Retailer Portal' };
 
@@ -138,6 +139,8 @@ export default async function BillingPage() {
               Your subscription will not renew. Your listing will be hidden after the period ends.
             </div>
           )}
+
+          <ManageSubscriptionButton />
         </div>
       )}
     </div>

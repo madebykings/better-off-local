@@ -8,4 +8,8 @@ abstract interface class MembershipRepository {
   /// Calls the create-checkout-session edge function and returns
   /// the Stripe Checkout Session URL. The app opens this in a browser.
   Future<String> createCheckoutSession({required String plan});
+
+  /// Calls the create-portal-session edge function and returns the
+  /// Stripe Billing Portal URL so the user can manage or cancel their plan.
+  Future<String> createPortalSession();
 }

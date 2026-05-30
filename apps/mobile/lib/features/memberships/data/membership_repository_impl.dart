@@ -17,4 +17,7 @@ class MembershipRepositoryImpl implements MembershipRepository {
   @override
   Future<String> createCheckoutSession({required String plan}) =>
       _dataSource.createCheckoutSession(plan: plan);
+
+  @override
+  Future<String> createPortalSession() => _dataSource.createPortalSession();
 }

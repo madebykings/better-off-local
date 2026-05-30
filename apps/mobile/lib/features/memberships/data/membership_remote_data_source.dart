@@ -37,4 +37,24 @@ class MembershipRemoteDataSource {
     if (url == null) throw Exception('No checkout URL returned');
     return url;
   }
+
+  /// Calls the create-portal-session edge function.
+  /// Returns the Stripe Billing Portal URL.
+  Future<String> createPortalSession() async {
+    final response = await _client.functions.invoke('create-portal-session');
+
+    if (response.status == 404) {
+      throw Exception('No billing account found. Please subscribe first.');
+    }
+    if (response.status != 200) {
+      final message =
+          (response.data as Map<String, dynamic>?)?['error'] as String? ??
+              'Failed to open billing portal';
+      throw Exception(message);
+    }
+
+    final url = (response.data as Map<String, dynamic>)['url'] as String?;
+    if (url == null) throw Exception('No portal URL returned');
+    return url;
+  }
 }

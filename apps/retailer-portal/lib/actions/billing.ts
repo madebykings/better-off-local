@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 
 export type CheckoutState = { error: string | null };
 
@@ -69,4 +70,57 @@ export async function startCheckout(
   // Success — redirect to Stripe. This throws NEXT_REDIRECT internally
   // and is never caught by the try/catch above.
   redirect(data.url as string);
+}
+
+// ── Stripe Customer Portal ────────────────────────────────────────────────────
+
+/**
+ * Creates a Stripe Billing Portal session for the authenticated retailer and
+ * redirects to it. The portal lets them update payment details, view invoices,
+ * and cancel their subscription. Stripe returns them to /billing afterward.
+ */
+export async function openBillingPortal(): Promise<void> {
+  const { retailerId } = await requireRetailerUser();
+  const service = createServiceClient();
+
+  const { data: sub } = await service
+    .from('retailer_subscriptions')
+    .select('stripe_customer_id')
+    .eq('retailer_id', retailerId)
+    .not('stripe_customer_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const customerId = sub?.stripe_customer_id as string | null;
+  if (!customerId) {
+    // Redirect back with a query param so the page can surface the error.
+    redirect('/billing?error=no_customer');
+  }
+
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (!stripeKey) {
+    console.error('[openBillingPortal] STRIPE_SECRET_KEY not set');
+    redirect('/billing?error=misconfigured');
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://portal.betterofflocal.co.uk';
+  const returnUrl = `${appUrl}/billing`;
+
+  const res = await fetch('https://api.stripe.com/v1/billing_portal/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${stripeKey}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ customer: customerId, return_url: returnUrl }).toString(),
+  });
+
+  const json = await res.json() as { url?: string; error?: { message?: string } };
+  if (!res.ok || !json.url) {
+    console.error('[openBillingPortal] Stripe error:', json.error?.message);
+    redirect('/billing?error=stripe_error');
+  }
+
+  redirect(json.url);
 }

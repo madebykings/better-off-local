@@ -33,7 +33,21 @@ export default async function LocationsPage() {
           Your address is shown on your listing and used to place you on the map.
         </p>
       </div>
+
       <LocationForm initialData={initialData} />
+
+      <div className="mt-6 max-w-xl rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+        <strong className="text-gray-700">Single location included.</strong>{' '}
+        Your plan includes one primary trading address. If you operate from multiple
+        venues and need them listed separately, please{' '}
+        <a
+          href="mailto:hello@betterofflocal.com"
+          className="text-green-700 underline hover:no-underline"
+        >
+          contact us
+        </a>{' '}
+        to discuss a multi-venue arrangement.
+      </div>
     </div>
   );
 }

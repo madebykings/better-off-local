@@ -139,33 +139,28 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     );
   }
 
-  // Replaced in Batch B with a real Stripe Customer Portal session call.
-  // For now shows the key self-service option: view the membership pass.
   Future<void> _managePlan() async {
+    // Show a loading indicator while we fetch the portal URL.
     if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Manage plan'),
-        content: const Text(
-          'To cancel or change your plan, visit the Stripe billing portal.\n\n'
-          'Tap "Billing portal" to open it in your browser.',
+    final scaffold = ScaffoldMessenger.of(context);
+
+    try {
+      final url = await ref
+          .read(membershipRepositoryProvider)
+          .createPortalSession();
+      if (!mounted) return;
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _launchUrl('https://billing.stripe.com/p/login/test_00g');
-            },
-            child: const Text('Billing portal'),
-          ),
-        ],
-      ),
-    );
+      );
+    }
   }
 
   Future<void> _editName({required String currentName}) async {
@@ -233,12 +228,6 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
     }
   }
 
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
 }
 
 // ---------------------------------------------------------------------------
