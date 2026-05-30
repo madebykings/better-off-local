@@ -35,66 +35,7 @@ insert into regions (name, slug, postcode_prefixes, member_threshold, is_active)
   ('Edinburgh', 'edinburgh',
    ARRAY['EH1','EH2','EH3','EH4','EH5','EH6','EH7','EH8','EH9','EH10','EH11','EH12','EH13','EH14','EH15','EH16','EH17'], 250, false);
 
--- ── Member count functions ────────────────────────────────────────────────────
-
--- Active members (active + trialing) — used for threshold decisions.
-create or replace function region_active_member_count(p_region_id uuid)
-returns integer
-language sql security definer stable set search_path = public, pg_temp as $$
-  select count(*)::integer
-  from profiles p
-  join consumer_memberships cm on cm.profile_id = p.id
-  where p.region_id = p_region_id
-    and cm.status in ('active', 'trialing')
-    and cm.current_period_end > now();
-$$;
-
--- Paying members (active only, no trials) — reporting and dashboard display.
-create or replace function region_paying_member_count(p_region_id uuid)
-returns integer
-language sql security definer stable set search_path = public, pg_temp as $$
-  select count(*)::integer
-  from profiles p
-  join consumer_memberships cm on cm.profile_id = p.id
-  where p.region_id = p_region_id
-    and cm.status = 'active'
-    and cm.current_period_end > now();
-$$;
-
-grant execute on function region_active_member_count(uuid) to authenticated, service_role;
-grant execute on function region_paying_member_count(uuid) to authenticated, service_role;
-
--- ── Public progress view (internal for now; grant anon access when public progress page ships) ─
-
-create or replace view region_public_stats as
-  select
-    r.id,
-    r.name,
-    r.slug,
-    r.country,
-    r.member_threshold,
-    r.is_active,
-    region_active_member_count(r.id)  as active_member_count,
-    region_paying_member_count(r.id)  as paying_member_count,
-    (
-      select count(*)::integer
-        from retailers ret
-        join retailer_locations rl
-          on rl.retailer_id = ret.id and rl.is_primary = true
-       where rl.region_id = r.id
-         and ret.approval_status = 'approved'
-         and ret.visibility_status = 'live'
-         and ret.is_active = true
-    ) as active_retailer_count,
-    (
-      select count(*)::integer
-        from offers o
-        join retailers ret on ret.id = o.retailer_id
-        join retailer_locations rl
-          on rl.retailer_id = ret.id and rl.is_primary = true
-       where rl.region_id = r.id
-         and o.status = 'live'
-    ) as live_offer_count
-  from regions r;
-
-grant select on region_public_stats to service_role, authenticated;
+-- NOTE: region_active_member_count, region_paying_member_count, and
+-- region_public_stats are defined in 057_venue_region_billing.sql because they
+-- reference profiles.region_id (added in 056) and retailer_locations.region_id
+-- (added in 057). Defining them here would fail with "column does not exist".

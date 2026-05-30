@@ -19,18 +19,8 @@
 --   • Referrer membership must be active at point of award
 --   • Grace period: 7 days before reward is confirmed
 
--- ── Profile link ──────────────────────────────────────────────────────────────
-
-alter table profiles
-  add column referred_by_code_id uuid references referral_codes(id) on delete set null;
-
--- (referral_codes does not exist yet — forward reference resolved below)
--- We add the FK after creating the table; use a deferred approach via separate alter.
-
-alter table profiles
-  drop column if exists referred_by_code_id;
-
 -- ── referral_codes ────────────────────────────────────────────────────────────
+-- profiles.referred_by_code_id is added AFTER this table is created (see below).
 
 create table referral_codes (
   id          uuid        primary key default gen_random_uuid(),
