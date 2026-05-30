@@ -2,6 +2,10 @@
 
 import { useState } from 'react';
 import { updateRetailerProfile, type ProfileFields } from '@/lib/actions/profile';
+import { ImageUploadZone } from '@/components/onboarding/image_upload_zone';
+
+const LOGO_MAX_BYTES  = 5  * 1024 * 1024;  // 5 MB
+const COVER_MAX_BYTES = 10 * 1024 * 1024;  // 10 MB
 
 const BUSINESS_TYPES = [
   'Food & Drink',
@@ -55,12 +59,25 @@ function Field({
   );
 }
 
-export function ProfileForm({ initialData }: { initialData: ProfileFields }) {
+export function ProfileForm({
+  initialData,
+  logoUrl,
+  coverUrl,
+}: {
+  initialData: ProfileFields;
+  logoUrl: string | null;
+  coverUrl: string | null;
+}) {
   const [fields, setFields] = useState<ProfileFields>(initialData);
   const [errors, setErrors] = useState<Partial<Record<keyof ProfileFields, string>>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isPending, setIsPending] = useState(false);
+
+  // Image URLs are managed by ImageUploadZone — saved immediately on upload.
+  // We track them in state only to allow the live preview to stay in sync.
+  const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(logoUrl);
+  const [currentCoverUrl, setCurrentCoverUrl] = useState<string | null>(coverUrl);
 
   function setField(key: keyof ProfileFields) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -95,122 +112,164 @@ export function ProfileForm({ initialData }: { initialData: ProfileFields }) {
   const descCount = fields.description.length;
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="max-w-xl space-y-6">
-      {serverError && (
-        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {serverError}
-        </div>
-      )}
-      {saved && (
-        <div role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-          Profile saved.
-        </div>
-      )}
+    <div className="max-w-xl space-y-8">
 
-      <Field id="name" label="Business name" required error={errors.name}>
-        <input
-          id="name"
-          type="text"
-          value={fields.name}
-          onChange={setField('name')}
-          placeholder="e.g. Stirling Street Deli"
-          autoComplete="organization"
-          className={inputCls(!!errors.name)}
-          disabled={isPending}
-        />
-      </Field>
+      {/* ── Images ───────────────────────────────────────────────────────── */}
+      <section>
+        <h2 className="mb-4 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+          Images
+        </h2>
+        <p className="mb-4 text-xs text-gray-400">
+          Images upload immediately. JPG, PNG, or WebP only.
+        </p>
 
-      <Field
-        id="tagline"
-        label="Tagline"
-        hint="Optional — one punchy line that tells members what makes you special."
-      >
-        <input
-          id="tagline"
-          type="text"
-          value={fields.tagline}
-          onChange={setField('tagline')}
-          maxLength={80}
-          placeholder="e.g. Handmade food, made with love"
-          className={inputCls(false)}
-          disabled={isPending}
-        />
-      </Field>
-
-      <Field
-        id="description"
-        label="Short description"
-        required
-        hint="Shown on your listing card and detail page."
-        error={errors.description}
-      >
-        <div className="relative">
-          <textarea
-            id="description"
-            value={fields.description}
-            onChange={setField('description')}
-            maxLength={DESCRIPTION_MAX}
-            rows={3}
-            placeholder="Tell members what makes your business worth visiting…"
-            className={[inputCls(!!errors.description), 'resize-none leading-relaxed pb-6'].join(' ')}
-            disabled={isPending}
+        <div className="space-y-5">
+          <ImageUploadZone
+            slot="cover"
+            label="Cover image"
+            aspectHint="Recommended: 1600 × 600 px · max 10 MB · shown at top of your listing"
+            maxBytes={COVER_MAX_BYTES}
+            currentUrl={currentCoverUrl}
+            onUploaded={(url) => setCurrentCoverUrl(url)}
+            onRemoved={() => setCurrentCoverUrl(null)}
           />
-          <span
-            className={[
-              'pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums transition-colors',
-              descCount > 130 ? 'text-amber-500' : 'text-gray-300',
-            ].join(' ')}
-          >
-            {descCount}/{DESCRIPTION_MAX}
-          </span>
+
+          <ImageUploadZone
+            slot="logo"
+            label="Logo"
+            aspectHint="Recommended: square · max 5 MB · shown on listing cards"
+            maxBytes={LOGO_MAX_BYTES}
+            currentUrl={currentLogoUrl}
+            onUploaded={(url) => setCurrentLogoUrl(url)}
+            onRemoved={() => setCurrentLogoUrl(null)}
+          />
         </div>
-      </Field>
+      </section>
 
-      <Field id="businessType" label="Business type" required error={errors.businessType}>
-        <select
-          id="businessType"
-          value={fields.businessType}
-          onChange={setField('businessType')}
-          className={inputCls(!!errors.businessType) + ' cursor-pointer'}
-          disabled={isPending}
-        >
-          <option value="">Select a type…</option>
-          {BUSINESS_TYPES.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-      </Field>
+      {/* ── Text fields ──────────────────────────────────────────────────── */}
+      <section>
+        <h2 className="mb-4 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+          Listing details
+        </h2>
 
-      <Field
-        id="phone"
-        label="Phone number"
-        hint="Optional — shown on your listing so members can call directly."
-      >
-        <input
-          id="phone"
-          type="tel"
-          value={fields.phone}
-          onChange={setField('phone')}
-          placeholder="e.g. 01259 123456"
-          autoComplete="tel"
-          className={inputCls(false)}
-          disabled={isPending}
-        />
-      </Field>
+        <form onSubmit={handleSubmit} noValidate className="space-y-6">
+          {serverError && (
+            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {serverError}
+            </div>
+          )}
+          {saved && (
+            <div role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              Profile saved.
+            </div>
+          )}
 
-      <div className="flex items-center gap-4 border-t border-gray-100 pt-6">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="rounded-lg bg-green-800 px-6 py-2.5 text-sm font-semibold text-white
-                     transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isPending ? 'Saving…' : 'Save changes'}
-        </button>
-        {saved && (
-          <span className="text-sm text-green-700">Saved ✓</span>
-        )}
-      </div>
-    </form>
+          <Field id="name" label="Business name" required error={errors.name}>
+            <input
+              id="name"
+              type="text"
+              value={fields.name}
+              onChange={setField('name')}
+              placeholder="e.g. Stirling Street Deli"
+              autoComplete="organization"
+              className={inputCls(!!errors.name)}
+              disabled={isPending}
+            />
+          </Field>
+
+          <Field
+            id="tagline"
+            label="Tagline"
+            hint="Optional — one punchy line that tells members what makes you special."
+          >
+            <input
+              id="tagline"
+              type="text"
+              value={fields.tagline}
+              onChange={setField('tagline')}
+              maxLength={80}
+              placeholder="e.g. Handmade food, made with love"
+              className={inputCls(false)}
+              disabled={isPending}
+            />
+          </Field>
+
+          <Field
+            id="description"
+            label="Short description"
+            required
+            hint="Shown on your listing card and detail page."
+            error={errors.description}
+          >
+            <div className="relative">
+              <textarea
+                id="description"
+                value={fields.description}
+                onChange={setField('description')}
+                maxLength={DESCRIPTION_MAX}
+                rows={3}
+                placeholder="Tell members what makes your business worth visiting…"
+                className={[inputCls(!!errors.description), 'resize-none leading-relaxed pb-6'].join(' ')}
+                disabled={isPending}
+              />
+              <span
+                className={[
+                  'pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums transition-colors',
+                  descCount > 130 ? 'text-amber-500' : 'text-gray-300',
+                ].join(' ')}
+              >
+                {descCount}/{DESCRIPTION_MAX}
+              </span>
+            </div>
+          </Field>
+
+          <Field id="businessType" label="Business type" required error={errors.businessType}>
+            <select
+              id="businessType"
+              value={fields.businessType}
+              onChange={setField('businessType')}
+              className={inputCls(!!errors.businessType) + ' cursor-pointer'}
+              disabled={isPending}
+            >
+              <option value="">Select a type…</option>
+              {BUSINESS_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field
+            id="phone"
+            label="Phone number"
+            hint="Optional — shown on your listing so members can call directly."
+          >
+            <input
+              id="phone"
+              type="tel"
+              value={fields.phone}
+              onChange={setField('phone')}
+              placeholder="e.g. 01259 123456"
+              autoComplete="tel"
+              className={inputCls(false)}
+              disabled={isPending}
+            />
+          </Field>
+
+          <div className="flex items-center gap-4 border-t border-gray-100 pt-6">
+            <button
+              type="submit"
+              disabled={isPending}
+              className="rounded-lg bg-green-800 px-6 py-2.5 text-sm font-semibold text-white
+                         transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isPending ? 'Saving…' : 'Save changes'}
+            </button>
+            {saved && (
+              <span className="text-sm text-green-700">Saved ✓</span>
+            )}
+          </div>
+        </form>
+      </section>
+    </div>
   );
 }
