@@ -165,12 +165,26 @@ serve(async (req) => {
       return json({ error: 'Membership not active' }, 403);
     }
 
+    // Fetch first name for the offer-chooser UI (non-critical — omit on error).
+    let consumerName: string | null = null;
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', passToken.profile_id)
+        .maybeSingle();
+      if (profile?.full_name) {
+        consumerName = (profile.full_name as string).split(' ')[0] ?? null;
+      }
+    } catch { /* non-critical */ }
+
     return json({
       token_type: 'membership_pass',
       valid: true,
       purpose: passToken.purpose,
       plan_interval: membership.plan_interval,
       member_since: membership.started_at ?? null,
+      consumer_name: consumerName,
     });
   }
 

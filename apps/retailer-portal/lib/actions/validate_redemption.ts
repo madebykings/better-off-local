@@ -19,7 +19,7 @@ export type ScanResult =
       rejection_reason: string;
       next_available_at: string | null;
     }
-  | { token_type: 'membership_pass'; valid: true; plan_interval: string; member_since: string | null }
+  | { token_type: 'membership_pass'; valid: true; plan_interval: string; member_since: string | null; consumer_name: string | null }
   | { token_type: 'membership_pass'; valid: false; rejection_reason?: string }
   | { token_type: 'unknown'; valid: false; rejection_reason: string };
 
@@ -128,6 +128,7 @@ export async function validateRedemption(
         valid: true,
         plan_interval: (body.plan_interval as string | null) ?? 'monthly',
         member_since: (body.member_since as string | null) ?? null,
+        consumer_name: (body.consumer_name as string | null) ?? null,
       };
     }
     return { token_type: 'membership_pass', valid: false };
