@@ -1,53 +1,149 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
-import { LocationForm } from './location_form';
-import type { LocationFields } from '@/lib/actions/location';
+import { deactivateVenue } from '@/lib/actions/location';
 
 export const metadata: Metadata = { title: 'Locations – Retailer Portal' };
+
+function formatAddress(loc: {
+  address_line_1: string | null;
+  town: string | null;
+  postcode: string | null;
+}) {
+  return [loc.address_line_1, loc.town, loc.postcode]
+    .filter(Boolean)
+    .join(', ');
+}
 
 export default async function LocationsPage() {
   const { retailerId } = await requireRetailerUser();
   const supabase = createServiceClient();
 
-  const { data: location } = await supabase
-    .from('retailer_locations')
-    .select('address_line_1, address_line_2, town, county, postcode')
-    .eq('retailer_id', retailerId)
-    .eq('is_primary', true)
-    .maybeSingle();
+  const [{ data: locations }, { data: sub }] = await Promise.all([
+    supabase
+      .from('retailer_locations')
+      .select('id, name, address_line_1, town, postcode, is_primary, is_active')
+      .eq('retailer_id', retailerId)
+      .eq('is_active', true)
+      .order('is_primary', { ascending: false })
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('retailer_subscriptions')
+      .select('extra_venues_quantity, venue_allowance_override')
+      .eq('retailer_id', retailerId)
+      .eq('status', 'active')
+      .maybeSingle(),
+  ]);
 
-  const initialData: LocationFields = {
-    addressLine1: location?.address_line_1 ?? '',
-    addressLine2: location?.address_line_2 ?? '',
-    town: location?.town ?? '',
-    county: location?.county ?? '',
-    postcode: location?.postcode ?? '',
-  };
+  const extraQty   = sub?.extra_venues_quantity ?? 0;
+  const allowance  = sub?.venue_allowance_override ?? (1 + extraQty);
+  const activeCount = locations?.length ?? 0;
+  const atCap      = activeCount >= allowance;
+  const canDeactivate = activeCount > 1;
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Location</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Your address is shown on your listing and used to place you on the map.
-        </p>
-      </div>
-
-      <LocationForm initialData={initialData} />
-
-      <div className="mt-6 max-w-xl rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-        <strong className="text-gray-700">Single location included.</strong>{' '}
-        Your plan includes one primary trading address. If you operate from multiple
-        venues and need them listed separately, please{' '}
-        <a
-          href="mailto:hello@betterofflocal.com"
-          className="text-green-700 underline hover:no-underline"
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Locations</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Your trading addresses shown on the map and your listing.
+          </p>
+        </div>
+        <Link
+          href="/locations/new"
+          className={[
+            'text-sm px-4 py-2 rounded-lg transition-colors',
+            atCap
+              ? 'bg-gray-100 text-gray-500 cursor-default'
+              : 'bg-green-800 text-white hover:bg-green-700',
+          ].join(' ')}
         >
-          contact us
-        </a>{' '}
-        to discuss a multi-venue arrangement.
+          Add location
+        </Link>
       </div>
+
+      {/* Allowance bar */}
+      <div className="mb-6 rounded-lg border border-gray-200 bg-white px-4 py-3 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-gray-700">
+            {activeCount} of {allowance} venue{allowance !== 1 ? 's' : ''} used
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Base plan includes 1 venue
+            {extraQty > 0 ? ` · ${extraQty} extra venue${extraQty !== 1 ? 's' : ''} purchased` : ''}
+            {sub?.venue_allowance_override != null ? ' · allowance set by admin' : ''}
+          </p>
+        </div>
+        {atCap && (
+          <Link
+            href="/locations/new"
+            className="shrink-0 text-xs font-semibold text-green-700 hover:text-green-800 border border-green-200 rounded-lg px-3 py-1.5 transition-colors"
+          >
+            Add venue slot — £10/yr
+          </Link>
+        )}
+      </div>
+
+      {/* Venue list */}
+      {!locations || locations.length === 0 ? (
+        <div className="text-center py-16 text-gray-400 border border-gray-200 rounded-lg">
+          <p className="text-4xl mb-3">📍</p>
+          <p className="font-medium text-gray-600">No locations yet</p>
+          <p className="text-sm mt-1">Add your first trading address.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {locations.map((loc) => (
+            <div
+              key={loc.id}
+              className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 bg-white px-4 py-3"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-gray-800 truncate">
+                    {loc.name ?? formatAddress(loc) ?? 'Unnamed venue'}
+                  </p>
+                  {loc.is_primary && (
+                    <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
+                      Primary
+                    </span>
+                  )}
+                </div>
+                {loc.name && (
+                  <p className="text-xs text-gray-400 mt-0.5 truncate">{formatAddress(loc)}</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href={`/locations/${loc.id}`}
+                  className="text-sm text-green-700 hover:text-green-800 font-medium"
+                >
+                  Edit
+                </Link>
+                {canDeactivate && !loc.is_primary && (
+                  <form action={deactivateVenue}>
+                    <input type="hidden" name="location_id" value={loc.id} />
+                    <button
+                      type="submit"
+                      onClick={(e) => {
+                        if (!confirm('Deactivate this venue? Offers assigned only to this venue will apply to all venues.')) {
+                          e.preventDefault();
+                        }
+                      }}
+                      className="text-sm text-gray-400 hover:text-red-600 transition-colors"
+                    >
+                      Deactivate
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

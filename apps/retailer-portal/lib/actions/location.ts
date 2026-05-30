@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
@@ -19,6 +20,16 @@ export interface LocationFields {
 export interface LocationActionResult {
   error?: string;
   fieldErrors?: Partial<Record<keyof LocationFields, string>>;
+}
+
+// Extended fields for named multi-venue management.
+export interface VenueFields extends LocationFields {
+  name: string;
+}
+
+export interface VenueActionResult {
+  error?: string;
+  fieldErrors?: Partial<Record<keyof VenueFields, string>>;
 }
 
 // ---------------------------------------------------------------------------
@@ -259,4 +270,207 @@ export async function updateRetailerLocation(
   }
 
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Multi-venue CRUD
+// ---------------------------------------------------------------------------
+
+function validateVenue(fields: VenueFields): Partial<Record<keyof VenueFields, string>> {
+  const errors: Partial<Record<keyof VenueFields, string>> = {};
+  if (!fields.name.trim()) {
+    errors.name = 'Venue name is required (e.g. "High Street Branch").';
+  }
+  const locationErrors = validateLocation(fields);
+  return { ...errors, ...locationErrors };
+}
+
+async function getRetailerCtxForVenue(): Promise<{ retailerId: string } | null> {
+  const supabase = await createClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) redirect('/sign-in');
+  const service = createServiceClient();
+  const { data } = await service
+    .from('retailer_users')
+    .select('retailer_id')
+    .eq('profile_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle();
+  if (!data) return null;
+  return { retailerId: data.retailer_id };
+}
+
+/**
+ * Creates a new venue for the authenticated retailer.
+ * Server-side entitlement check: active venue count must be below allowance.
+ * Returns { locationId } on success.
+ */
+export async function createVenue(
+  fields: VenueFields,
+): Promise<{ locationId: string } | VenueActionResult> {
+  const fieldErrors = validateVenue(fields);
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+
+  const ctx = await getRetailerCtxForVenue();
+  if (!ctx) return { error: 'No retailer account found.' };
+
+  const service = createServiceClient();
+
+  // Entitlement check.
+  const { data: sub } = await service
+    .from('retailer_subscriptions')
+    .select('extra_venues_quantity, venue_allowance_override')
+    .eq('retailer_id', ctx.retailerId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  const allowance = sub?.venue_allowance_override ?? (1 + (sub?.extra_venues_quantity ?? 0));
+
+  const { count: activeCount } = await service
+    .from('retailer_locations')
+    .select('id', { count: 'exact', head: true })
+    .eq('retailer_id', ctx.retailerId)
+    .eq('is_active', true);
+
+  if ((activeCount ?? 0) >= allowance) {
+    return { error: 'You have reached your venue allowance. Purchase an additional venue slot first.' };
+  }
+
+  // First venue becomes primary automatically.
+  const isPrimary = (activeCount ?? 0) === 0;
+
+  const postcode = normalisePostcode(fields.postcode);
+  const { data: location, error } = await service
+    .from('retailer_locations')
+    .insert({
+      retailer_id: ctx.retailerId,
+      name: fields.name.trim(),
+      address_line_1: fields.addressLine1.trim(),
+      address_line_2: fields.addressLine2.trim() || null,
+      town: fields.town.trim(),
+      county: fields.county.trim() || null,
+      postcode,
+      country: 'United Kingdom',
+      is_primary: isPrimary,
+      is_active: true,
+    })
+    .select('id')
+    .single();
+
+  if (error || !location) {
+    console.error('[createVenue] insert error:', error?.message);
+    return { error: 'Failed to create venue. Please try again.' };
+  }
+
+  revalidatePath('/locations');
+  return { locationId: location.id };
+}
+
+/**
+ * Updates an existing venue. Verifies retailer ownership.
+ */
+export async function updateVenue(
+  locationId: string,
+  fields: VenueFields,
+): Promise<VenueActionResult | null> {
+  const fieldErrors = validateVenue(fields);
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+
+  const ctx = await getRetailerCtxForVenue();
+  if (!ctx) return { error: 'No retailer account found.' };
+
+  const service = createServiceClient();
+
+  const { data: existing } = await service
+    .from('retailer_locations')
+    .select('id')
+    .eq('id', locationId)
+    .eq('retailer_id', ctx.retailerId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!existing) return { error: 'Venue not found.' };
+
+  const postcode = normalisePostcode(fields.postcode);
+  const { error } = await service
+    .from('retailer_locations')
+    .update({
+      name: fields.name.trim(),
+      address_line_1: fields.addressLine1.trim(),
+      address_line_2: fields.addressLine2.trim() || null,
+      town: fields.town.trim(),
+      county: fields.county.trim() || null,
+      postcode,
+      country: 'United Kingdom',
+    })
+    .eq('id', locationId);
+
+  if (error) {
+    console.error('[updateVenue] error:', error.message);
+    return { error: 'Failed to save venue. Please try again.' };
+  }
+
+  revalidatePath('/locations');
+  revalidatePath(`/locations/${locationId}`);
+  return null;
+}
+
+/**
+ * Soft-deletes a venue (is_active = false). Verifies ownership.
+ * Cannot deactivate the only remaining venue.
+ * If the deactivated venue was primary, auto-promotes the oldest remaining
+ * active venue as the new primary.
+ */
+export async function deactivateVenue(formData: FormData): Promise<void> {
+  const locationId = formData.get('location_id') as string;
+  const ctx = await getRetailerCtxForVenue();
+  if (!ctx) return;
+
+  const service = createServiceClient();
+
+  const { data: loc } = await service
+    .from('retailer_locations')
+    .select('is_primary')
+    .eq('id', locationId)
+    .eq('retailer_id', ctx.retailerId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!loc) return;
+
+  // Prevent deactivating the only remaining active venue.
+  const { count } = await service
+    .from('retailer_locations')
+    .select('id', { count: 'exact', head: true })
+    .eq('retailer_id', ctx.retailerId)
+    .eq('is_active', true);
+
+  if ((count ?? 0) <= 1) return;
+
+  await service
+    .from('retailer_locations')
+    .update({ is_active: false, is_primary: false })
+    .eq('id', locationId);
+
+  // Auto-promote oldest active venue if we just deactivated the primary.
+  if (loc.is_primary) {
+    const { data: next } = await service
+      .from('retailer_locations')
+      .select('id')
+      .eq('retailer_id', ctx.retailerId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (next) {
+      await service
+        .from('retailer_locations')
+        .update({ is_primary: true })
+        .eq('id', next.id);
+    }
+  }
+
+  revalidatePath('/locations');
+  redirect('/locations');
 }

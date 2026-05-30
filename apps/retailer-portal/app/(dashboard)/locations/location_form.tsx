@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { updateRetailerLocation, type LocationFields } from '@/lib/actions/location';
+import { updateVenue, type VenueFields } from '@/lib/actions/location';
 
 function inputCls(hasError: boolean) {
   return [
@@ -23,6 +23,7 @@ function Field({
   error,
   optional,
   autoComplete,
+  type = 'text',
 }: {
   label: string;
   id: string;
@@ -32,6 +33,7 @@ function Field({
   error?: string;
   optional?: boolean;
   autoComplete?: string;
+  type?: string;
 }) {
   return (
     <div>
@@ -41,7 +43,7 @@ function Field({
       </label>
       <input
         id={id}
-        type="text"
+        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -53,14 +55,20 @@ function Field({
   );
 }
 
-export function LocationForm({ initialData }: { initialData: LocationFields }) {
-  const [fields, setFields] = useState<LocationFields>(initialData);
-  const [errors, setErrors] = useState<Partial<Record<keyof LocationFields, string>>>({});
+export function VenueForm({
+  locationId,
+  initialData,
+}: {
+  locationId: string;
+  initialData: VenueFields;
+}) {
+  const [fields, setFields] = useState<VenueFields>(initialData);
+  const [errors, setErrors] = useState<Partial<Record<keyof VenueFields, string>>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
-  function set(key: keyof LocationFields) {
+  function set(key: keyof VenueFields) {
     return (value: string) => {
       setFields((prev) => ({ ...prev, [key]: value }));
       if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
@@ -75,7 +83,7 @@ export function LocationForm({ initialData }: { initialData: LocationFields }) {
     setIsPending(true);
 
     try {
-      const result = await updateRetailerLocation(fields);
+      const result = await updateVenue(locationId, fields);
       if (result?.fieldErrors) {
         setErrors(result.fieldErrors);
         return;
@@ -99,9 +107,19 @@ export function LocationForm({ initialData }: { initialData: LocationFields }) {
       )}
       {saved && (
         <div role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-          Location saved.
+          Venue saved.
         </div>
       )}
+
+      <Field
+        label="Venue name"
+        id="venue-name"
+        value={fields.name}
+        onChange={set('name')}
+        placeholder='e.g. "High Street Branch" or "Main Store"'
+        error={errors.name}
+        autoComplete="organization"
+      />
 
       <Field
         label="Address line 1"
@@ -169,9 +187,7 @@ export function LocationForm({ initialData }: { initialData: LocationFields }) {
         >
           {isPending ? 'Saving…' : 'Save changes'}
         </button>
-        {saved && (
-          <span className="text-sm text-green-700">Saved ✓</span>
-        )}
+        {saved && <span className="text-sm text-green-700">Saved ✓</span>}
       </div>
     </form>
   );

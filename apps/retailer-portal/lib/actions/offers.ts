@@ -21,7 +21,8 @@ export type OfferFields = {
   startDate: string;
   endDate: string;
   totalCap: string;
-  locationId: string;  // uuid or '' — empty means offer applies to all locations
+  venueScope: 'all' | 'specific';
+  selectedLocationIds: string[];
 };
 
 export type OfferActionResult = {
@@ -111,7 +112,8 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
     .from('offers')
     .insert({
       retailer_id: ctx.retailerId,
-      retailer_location_id: fields.locationId || null,
+      retailer_location_id: null,
+      venue_scope: fields.venueScope,
       title: fields.headline.trim(),
       value_text: fields.benefitText.trim(),
       description: fields.description.trim(),
@@ -129,9 +131,16 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
     return { error: 'Failed to create offer. Please try again.' };
   }
 
-  await service
-    .from('offer_rules')
-    .insert(buildRuleRow(offer.id, fields));
+  await service.from('offer_rules').insert(buildRuleRow(offer.id, fields));
+
+  if (fields.venueScope === 'specific' && fields.selectedLocationIds.length > 0) {
+    await service.from('offer_locations').insert(
+      fields.selectedLocationIds.map((locId) => ({
+        offer_id: offer.id,
+        retailer_location_id: locId,
+      })),
+    );
+  }
 
   revalidatePath('/offers');
   return { offerId: offer.id };
@@ -166,7 +175,8 @@ export async function updateOffer(
   const { error } = await service
     .from('offers')
     .update({
-      retailer_location_id: fields.locationId || null,
+      retailer_location_id: null,
+      venue_scope: fields.venueScope,
       title: fields.headline.trim(),
       value_text: fields.benefitText.trim(),
       description: fields.description.trim(),
@@ -188,6 +198,17 @@ export async function updateOffer(
       { ...buildRuleRow(offerId, fields), updated_at: new Date().toISOString() },
       { onConflict: 'offer_id' },
     );
+
+  // Replace offer_locations: delete all then reinsert if specific scope.
+  await service.from('offer_locations').delete().eq('offer_id', offerId);
+  if (fields.venueScope === 'specific' && fields.selectedLocationIds.length > 0) {
+    await service.from('offer_locations').insert(
+      fields.selectedLocationIds.map((locId) => ({
+        offer_id: offerId,
+        retailer_location_id: locId,
+      })),
+    );
+  }
 
   revalidatePath(`/offers/${offerId}`);
   revalidatePath('/offers');

@@ -102,7 +102,8 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
 
   const [fields, setFields] = useState<OfferFields>({
     ...EMPTY_OFFER,
-    locationId: '',
+    venueScope: 'all',
+    selectedLocationIds: [],
     ...initialData,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof OfferFields, string>>>({});
@@ -263,25 +264,82 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
           </div>
         </Field>
 
-        {/* Location (only shown when retailer has multiple locations) */}
+        {/* Venue scope (only shown when retailer has 2+ locations) */}
         {locations && locations.length > 1 && (
-          <Field
-            label="Location"
-            hint="Which of your locations this offer applies to. Leave as 'All locations' if it applies everywhere."
-          >
-            <select
-              value={fields.locationId}
-              onChange={set('locationId')}
-              className={inputCls(false) + ' cursor-pointer'}
-              disabled={!canEdit || isPending}
-            >
-              <option value="">All locations</option>
-              {locations.map((loc) => (
-                <option key={loc.id} value={loc.id}>
-                  {loc.name ?? loc.address_line_1 ?? loc.id}
-                </option>
+          <Field label="Venue applicability">
+            <div className="space-y-2 mt-1">
+              {(['all', 'specific'] as const).map((scope) => (
+                <label
+                  key={scope}
+                  className={[
+                    'flex items-start gap-3 rounded-lg border p-3 cursor-pointer',
+                    fields.venueScope === scope
+                      ? 'border-green-700 bg-green-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300',
+                    !canEdit ? 'opacity-60 cursor-not-allowed' : '',
+                  ].join(' ')}
+                >
+                  <input
+                    type="radio"
+                    name="venueScope"
+                    value={scope}
+                    checked={fields.venueScope === scope}
+                    onChange={() => {
+                      if (!canEdit || isPending) return;
+                      setFields((prev) => ({
+                        ...prev,
+                        venueScope: scope,
+                        selectedLocationIds: scope === 'all' ? [] : prev.selectedLocationIds,
+                      }));
+                    }}
+                    disabled={!canEdit || isPending}
+                    className="mt-0.5 accent-green-700"
+                  />
+                  <span>
+                    <span className={`block text-sm font-medium ${fields.venueScope === scope ? 'text-green-800' : 'text-gray-800'}`}>
+                      {scope === 'all' ? 'All locations' : 'Specific locations'}
+                    </span>
+                    <span className="block text-xs text-gray-400 mt-0.5">
+                      {scope === 'all'
+                        ? 'Offer applies to every venue'
+                        : 'Choose which venues this offer applies to'}
+                    </span>
+                  </span>
+                </label>
               ))}
-            </select>
+            </div>
+
+            {fields.venueScope === 'specific' && (
+              <div className="mt-3 space-y-2 pl-1">
+                {locations.map((loc) => {
+                  const checked = fields.selectedLocationIds.includes(loc.id);
+                  return (
+                    <label key={loc.id} className="flex items-center gap-3 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={!canEdit || isPending}
+                        onChange={(e) => {
+                          setFields((prev) => ({
+                            ...prev,
+                            selectedLocationIds: e.target.checked
+                              ? [...prev.selectedLocationIds, loc.id]
+                              : prev.selectedLocationIds.filter((id) => id !== loc.id),
+                          }));
+                        }}
+                        className="accent-green-700"
+                      />
+                      <span className="text-gray-800">
+                        {loc.name ?? loc.address_line_1 ?? loc.id}
+                      </span>
+                    </label>
+                  );
+                })}
+                {fields.selectedLocationIds.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">Select at least one location.</p>
+                )}
+              </div>
+            )}
           </Field>
         )}
 

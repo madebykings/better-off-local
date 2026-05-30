@@ -23,10 +23,10 @@ export default async function OfferDetailPage({ params }: Props) {
   const { retailerId } = await requireRetailerUser();
   const supabase = createServiceClient();
 
-  const [offerResult, rulesResult, locationsResult] = await Promise.all([
+  const [offerResult, rulesResult, locationsResult, offerLocationsResult] = await Promise.all([
     supabase
       .from('offers')
-      .select('id, title, value_text, description, offer_type, start_at, end_at, status, retailer_location_id')
+      .select('id, title, value_text, description, offer_type, start_at, end_at, status, venue_scope')
       .eq('id', offerId)
       .eq('retailer_id', retailerId)
       .maybeSingle(),
@@ -41,6 +41,10 @@ export default async function OfferDetailPage({ params }: Props) {
       .eq('retailer_id', retailerId)
       .eq('is_active', true)
       .order('is_primary', { ascending: false }),
+    supabase
+      .from('offer_locations')
+      .select('retailer_location_id')
+      .eq('offer_id', offerId),
   ]);
 
   if (!offerResult.data) notFound();
@@ -54,6 +58,11 @@ export default async function OfferDetailPage({ params }: Props) {
     cooldown_hours: rules?.cooldown_hours ?? null,
   };
 
+  const venueScope = (offer.venue_scope === 'specific' ? 'specific' : 'all') as OfferFields['venueScope'];
+  const selectedLocationIds = (offerLocationsResult.data ?? []).map(
+    (ol) => ol.retailer_location_id as string,
+  );
+
   const initialData: OfferFields = {
     headline: offer.title,
     benefitText: offer.value_text ?? '',
@@ -63,7 +72,8 @@ export default async function OfferDetailPage({ params }: Props) {
     startDate: toDateString(offer.start_at),
     endDate: toDateString(offer.end_at),
     totalCap: rules?.max_redemptions_total != null ? String(rules.max_redemptions_total) : '',
-    locationId: offer.retailer_location_id ?? '',
+    venueScope,
+    selectedLocationIds,
   };
 
   return (

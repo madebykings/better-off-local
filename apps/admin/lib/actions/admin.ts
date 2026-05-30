@@ -165,6 +165,103 @@ export async function cancelMembership(formData: FormData): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Venue allowance (admin override)
+// ---------------------------------------------------------------------------
+
+/**
+ * Sets or clears the admin venue allowance override for a retailer.
+ * override = '' clears the override (reverts to computed value).
+ */
+export async function setVenueAllowanceOverride(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  const retailerId = formData.get('retailer_id') as string;
+  const raw        = (formData.get('override') as string | null)?.trim() ?? '';
+
+  const override = raw === '' ? null : parseInt(raw, 10);
+  if (override !== null && (isNaN(override) || override < 1)) return;
+
+  const supabase = createServiceClient();
+
+  await supabase
+    .from('retailer_subscriptions')
+    .update({ venue_allowance_override: override })
+    .eq('retailer_id', retailerId);
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type: 'venue_allowance_override_set',
+    target_table: 'retailers',
+    target_id: retailerId,
+    reason: override === null ? 'Override cleared' : `Allowance set to ${override}`,
+    metadata_json: { venue_allowance_override: override },
+  });
+
+  revalidatePath(`/retailers/${retailerId}`);
+}
+
+/**
+ * Soft-deletes a retailer venue. Auto-promotes oldest remaining active venue
+ * as primary if the deactivated venue was primary.
+ * Cannot deactivate the only remaining active venue.
+ */
+export async function deactivateRetailerVenue(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  const locationId = formData.get('location_id') as string;
+  const retailerId = formData.get('retailer_id') as string;
+
+  const supabase = createServiceClient();
+
+  const { data: loc } = await supabase
+    .from('retailer_locations')
+    .select('is_primary')
+    .eq('id', locationId)
+    .eq('retailer_id', retailerId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  if (!loc) return;
+
+  const { count } = await supabase
+    .from('retailer_locations')
+    .select('id', { count: 'exact', head: true })
+    .eq('retailer_id', retailerId)
+    .eq('is_active', true);
+
+  if ((count ?? 0) <= 1) return;
+
+  await supabase
+    .from('retailer_locations')
+    .update({ is_active: false, is_primary: false })
+    .eq('id', locationId);
+
+  if (loc.is_primary) {
+    const { data: next } = await supabase
+      .from('retailer_locations')
+      .select('id')
+      .eq('retailer_id', retailerId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (next) {
+      await supabase.from('retailer_locations').update({ is_primary: true }).eq('id', next.id);
+    }
+  }
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type: 'venue_deactivated',
+    target_table: 'retailer_locations',
+    target_id: locationId,
+    reason: 'Deactivated by admin',
+    metadata_json: { retailer_id: retailerId },
+  });
+
+  revalidatePath(`/retailers/${retailerId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Featured offers
 // ---------------------------------------------------------------------------
 

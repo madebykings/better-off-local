@@ -11,6 +11,7 @@ import {
   rejectRetailer,
   requestRetailerChanges,
 } from '@/lib/actions/moderation';
+import { setVenueAllowanceOverride, deactivateRetailerVenue } from '@/lib/actions/admin';
 
 export const metadata: Metadata = { title: 'Retailer review – Admin' };
 
@@ -90,6 +91,8 @@ export default async function RetailerDetailPage({ params }: Props) {
     { data: links },
     { data: offer },
     { data: auditRows },
+    { data: venues },
+    { data: subData },
   ] = await Promise.all([
     supabase
       .from('retailers')
@@ -122,6 +125,18 @@ export default async function RetailerDetailPage({ params }: Props) {
       .eq('target_table', 'retailers')
       .eq('target_id', retailerId)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('retailer_locations')
+      .select('id, name, address_line_1, town, postcode, is_primary, is_active')
+      .eq('retailer_id', retailerId)
+      .order('is_primary', { ascending: false })
+      .order('created_at', { ascending: true }),
+    supabase
+      .from('retailer_subscriptions')
+      .select('extra_venues_quantity, venue_allowance_override')
+      .eq('retailer_id', retailerId)
+      .eq('status', 'active')
+      .maybeSingle(),
   ]);
 
   if (!retailer) notFound();
@@ -254,13 +269,121 @@ export default async function RetailerDetailPage({ params }: Props) {
             action_type: a.action_type,
             reason:      a.reason ?? null,
             created_at:  a.created_at,
-            // Supabase returns profiles as an array for joined selects.
             profiles: Array.isArray(a.profiles)
               ? (a.profiles[0] ?? null)
               : (a.profiles ?? null),
           }))}
         />
         </aside>
+      </div>
+
+      {/* ── Venues ──────────────────────────────────────────────────────── */}
+      <div className="mt-8 max-w-2xl">
+        <h2 className="text-base font-semibold text-gray-900 mb-4">Venues</h2>
+        {(() => {
+          const extraQty   = subData?.extra_venues_quantity ?? 0;
+          const computed   = 1 + extraQty;
+          const override   = subData?.venue_allowance_override ?? null;
+          const allowance  = override ?? computed;
+          const activeVenues = (venues ?? []).filter((v) => v.is_active);
+
+          return (
+            <div className="space-y-4">
+              {/* Allowance summary */}
+              <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm space-y-1">
+                <p className="font-medium text-gray-700">
+                  {activeVenues.length} of {allowance} venue{allowance !== 1 ? 's' : ''} used
+                </p>
+                <p className="text-xs text-gray-400">
+                  Base: 1 · Extra purchased: {extraQty}
+                  {override !== null ? ` · Override: ${override}` : ''}
+                </p>
+              </div>
+
+              {/* Venue list */}
+              {activeVenues.length === 0 ? (
+                <p className="text-sm text-gray-400">No active venues.</p>
+              ) : (
+                <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white overflow-hidden">
+                  {activeVenues.map((v) => (
+                    <div key={v.id} className="flex items-center justify-between px-4 py-3 gap-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-800 truncate">
+                            {v.name ?? v.address_line_1 ?? 'Unnamed'}
+                          </p>
+                          {v.is_primary && (
+                            <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
+                              Primary
+                            </span>
+                          )}
+                        </div>
+                        {v.name && (
+                          <p className="text-xs text-gray-400 truncate">
+                            {[v.address_line_1, v.town, v.postcode].filter(Boolean).join(', ')}
+                          </p>
+                        )}
+                      </div>
+                      {activeVenues.length > 1 && !v.is_primary && (
+                        <form action={deactivateRetailerVenue}>
+                          <input type="hidden" name="location_id" value={v.id} />
+                          <input type="hidden" name="retailer_id" value={retailerId} />
+                          <button
+                            type="submit"
+                            onClick={(e) => {
+                              if (!confirm('Deactivate this venue?')) e.preventDefault();
+                            }}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium"
+                          >
+                            Deactivate
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Allowance override */}
+              <div className="rounded-lg border border-gray-200 bg-white px-4 py-4">
+                <p className="text-sm font-medium text-gray-700 mb-3">Override venue allowance</p>
+                <form action={setVenueAllowanceOverride} className="flex items-center gap-3">
+                  <input type="hidden" name="retailer_id" value={retailerId} />
+                  <input
+                    type="number"
+                    name="override"
+                    min={1}
+                    defaultValue={override ?? ''}
+                    placeholder={`Computed: ${computed}`}
+                    className="w-28 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900
+                               focus:outline-none focus:ring-2 focus:ring-green-700/20 focus:border-green-700"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors"
+                  >
+                    Set override
+                  </button>
+                  {override !== null && (
+                    <form action={setVenueAllowanceOverride}>
+                      <input type="hidden" name="retailer_id" value={retailerId} />
+                      <input type="hidden" name="override" value="" />
+                      <button
+                        type="submit"
+                        className="text-sm text-gray-400 hover:text-gray-600"
+                      >
+                        Clear
+                      </button>
+                    </form>
+                  )}
+                </form>
+                <p className="mt-2 text-xs text-gray-400">
+                  Leave blank or clear to revert to the computed value (1 + purchased extras).
+                </p>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
