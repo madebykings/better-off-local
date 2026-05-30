@@ -25,16 +25,22 @@ export default function BillingSuccessPage() {
         </p>
         <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Link
-            href="/dashboard"
+            href="/offers/new"
             className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700"
+          >
+            Create an offer
+          </Link>
+          <Link
+            href="/dashboard"
+            className="text-sm font-medium text-gray-600 hover:text-gray-900"
           >
             Go to dashboard
           </Link>
           <Link
             href="/billing"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900"
+            className="text-sm font-medium text-gray-400 hover:text-gray-600"
           >
-            View billing details
+            View billing
           </Link>
         </div>
       </div>

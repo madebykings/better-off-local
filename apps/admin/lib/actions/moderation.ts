@@ -161,6 +161,7 @@ export async function approveRetailer(retailerId: string, reason?: string) {
     .update({
       approval_status: 'approved',
       visibility_status: visibilityStatus,
+      review_notes: null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', retailerId);
@@ -246,6 +247,7 @@ export async function requestRetailerChanges(retailerId: string, note: string) {
     .update({
       approval_status: 'changes_requested',
       visibility_status: 'hidden',
+      review_notes: note.trim(),
       updated_at: new Date().toISOString(),
     })
     .eq('id', retailerId);

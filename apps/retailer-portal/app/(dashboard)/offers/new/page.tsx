@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
-import { OfferForm } from '../offer_form';
+import { NewOfferClient } from './new_offer_client';
 
 export const metadata: Metadata = { title: 'New Offer – Retailer Portal' };
 
@@ -30,10 +30,7 @@ export default async function NewOfferPage() {
           New offers are saved as drafts. Submit for approval when ready.
         </p>
       </div>
-      <OfferForm
-        mode="create"
-        locations={locations ?? []}
-      />
+      <NewOfferClient locations={locations ?? []} />
     </div>
   );
 }

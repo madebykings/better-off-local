@@ -38,7 +38,7 @@ export default async function DashboardPage() {
     await Promise.all([
       supabase
         .from('retailers')
-        .select('approval_status, visibility_status')
+        .select('approval_status, visibility_status, review_notes')
         .eq('id', retailerId)
         .single(),
       supabase
@@ -77,6 +77,15 @@ export default async function DashboardPage() {
   const retailer = retailerResult.data;
   const subscription = subscriptionResult.data;
 
+  // Fetch primary venue billing status for growth-region handling
+  const { data: primaryVenue } = await supabase
+    .from('retailer_locations')
+    .select('billing_status')
+    .eq('retailer_id', retailerId)
+    .eq('is_primary', true)
+    .eq('is_active', true)
+    .maybeSingle();
+
   const liveOffers = liveOffersResult.count ?? 0;
   const totalRedemptions = redemptionsResult.count ?? 0;
   const totalViews = viewsResult.count ?? 0;
@@ -107,6 +116,9 @@ export default async function DashboardPage() {
             subscriptionStatus={(subscription?.status ?? null) as 'inactive' | 'active' | 'past_due' | 'cancelled' | 'expired' | null}
             visibilityStatus={retailer.visibility_status}
             periodEnd={subscription?.current_period_end ?? null}
+            billingStatus={(primaryVenue?.billing_status ?? null) as string | null}
+            reviewNotes={(retailer as any).review_notes ?? null}
+            liveOfferCount={liveOffers}
           />
         </div>
       )}
