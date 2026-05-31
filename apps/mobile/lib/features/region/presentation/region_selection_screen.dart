@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:flutter/foundation.dart';
+
 import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/providers/session_provider.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../domain/region.dart';
 import '../providers/region_providers.dart';
 
@@ -39,8 +42,10 @@ class _RegionSelectionScreenState extends ConsumerState<RegionSelectionScreen> {
             profileId: session.user.id,
             regionId: _selectedId!,
           );
-      // Invalidate profile so router redirect re-evaluates
-      ref.invalidate(sessionProvider);
+      // Invalidate profile directly so the router re-evaluates hasRegion.
+      // Invalidating sessionProvider would also work (profileProvider depends
+      // on it) but is unnecessarily broad and triggers a full session reload.
+      ref.invalidate(profileProvider);
       if (mounted) {
         if (widget.isOnboarding) {
           context.go(RouteNames.home);
@@ -48,10 +53,18 @@ class _RegionSelectionScreenState extends ConsumerState<RegionSelectionScreen> {
           context.pop();
         }
       }
-    } catch (_) {
+    } catch (e, st) {
+      // Surface the real error in debug builds so DB/RLS failures are visible.
+      if (kDebugMode) {
+        debugPrint('RegionSelectionScreen._save error: $e');
+        debugPrint('$st');
+      }
       if (mounted) {
+        final message = kDebugMode
+            ? 'Region save failed: $e'
+            : 'Could not save region. Please try again.';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not save region. Please try again.')),
+          SnackBar(content: Text(message)),
         );
       }
     } finally {

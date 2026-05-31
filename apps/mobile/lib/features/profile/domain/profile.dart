@@ -49,6 +49,7 @@ class Profile extends Equatable {
     String? fullName,
     String? phone,
     String? avatarUrl,
+    String? regionId,
   }) {
     return Profile(
       id: id,
@@ -58,6 +59,7 @@ class Profile extends Equatable {
       email: email,
       phone: phone ?? this.phone,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      regionId: regionId ?? this.regionId,
     );
   }
 
