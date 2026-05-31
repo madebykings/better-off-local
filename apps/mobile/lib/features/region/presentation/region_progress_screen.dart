@@ -9,8 +9,6 @@ import '../../../core/widgets/loading_indicator.dart';
 import '../domain/region.dart';
 import '../providers/region_providers.dart';
 
-/// Shows the progress of the member's region toward its member threshold,
-/// with retailer + offer stats and a referral share CTA.
 class RegionProgressScreen extends ConsumerWidget {
   const RegionProgressScreen({super.key});
 
@@ -24,7 +22,7 @@ class RegionProgressScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: AppColors.cream,
         elevation: 0,
-        title: const Text('Region progress'),
+        title: const Text('Your local community'),
       ),
       body: _RegionProgressBody(userId: userId),
     );
@@ -41,7 +39,6 @@ class _RegionProgressBody extends ConsumerWidget {
       return const Center(child: Text('Sign in required'));
     }
 
-    // Fetch the member's region_id from profiles
     final regionIdAsync = ref.watch(_memberRegionIdProvider(userId!));
 
     return regionIdAsync.when(
@@ -81,7 +78,8 @@ class _RegionStatsView extends ConsumerWidget {
 
     return statsAsync.when(
       loading: () => const LoadingIndicator(),
-      error: (_, __) => const Center(child: Text('Could not load region stats.')),
+      error: (_, __) =>
+          const Center(child: Text('Could not load region stats.')),
       data: (region) {
         if (region == null) {
           return const Center(child: Text('Region not found.'));
@@ -107,7 +105,7 @@ class _StatsBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hero card
+          // ── Hero card ────────────────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(22),
@@ -132,11 +130,20 @@ class _StatsBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Community growth',
+                  'Local buying power',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'The more local people who join, the better the offers become.',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    height: 1.4,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -154,7 +161,7 @@ class _StatsBody extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Target: ${region.memberThreshold}',
+                      'Goal: ${region.memberThreshold}',
                       style: const TextStyle(
                         color: Colors.white60,
                         fontSize: 12,
@@ -176,12 +183,12 @@ class _StatsBody extends StatelessWidget {
 
                 if (region.hasReachedThreshold)
                   const Text(
-                    'Threshold reached! Businesses are now joining.',
+                    'The community is growing — more local deals incoming.',
                     style: TextStyle(color: Colors.white, fontSize: 12),
                   )
                 else
                   Text(
-                    '$remaining more members to unlock retailer billing',
+                    '$remaining more members until stronger local deals begin unlocking.',
                     style:
                         const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
@@ -200,7 +207,7 @@ class _StatsBody extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // Stats row
+          // ── Stats row ────────────────────────────────────────────────────
           Row(
             children: [
               _StatCard(
@@ -223,9 +230,32 @@ class _StatsBody extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-          // Invite CTA
+          // ── Emotional tagline ─────────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Together we\'re building buying power for ${region.name}.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+                height: 1.4,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Invite CTA ───────────────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -248,8 +278,8 @@ class _StatsBody extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   remaining > 0
-                      ? 'Invite $remaining more friends to unlock local discounts for everyone in ${region.name}.'
-                      : 'Keep spreading the word — every member strengthens the local economy.',
+                      ? 'Every new member helps attract more businesses and stronger offers across ${region.name}.'
+                      : 'Keep spreading the word — every member strengthens our local buying power.',
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -257,24 +287,21 @@ class _StatsBody extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => _shareRegion(region),
-                        icon: const Icon(Icons.share_outlined, size: 17),
-                        label: const Text('Share & invite'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _shareRegion(region),
+                    icon: const Icon(Icons.share_outlined, size: 17),
+                    label: const Text('Invite Friends'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -282,7 +309,7 @@ class _StatsBody extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // What reaching threshold means
+          // ── Why community size matters ────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -295,22 +322,27 @@ class _StatsBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'What happens at ${region.memberThreshold} members?',
+                  'The bigger the community, the better the deals.',
                   style: AppTextStyles.titleMedium.copyWith(fontSize: 14),
                 ),
                 const SizedBox(height: 8),
-                _BulletPoint(
-                  'Retailers in ${region.name} activate their paid subscriptions',
+                const _BulletPoint(
+                  'More local businesses join the platform',
                 ),
                 const _BulletPoint(
-                  'More businesses join, bringing more local offers',
+                  'Exclusive member offers increase',
                 ),
                 const _BulletPoint(
-                  'Your membership becomes more valuable with each new retailer',
+                  'Retailers compete harder for local customers',
+                ),
+                const _BulletPoint(
+                  'Your membership becomes more valuable over time',
                 ),
               ],
             ),
           ),
+
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -318,8 +350,10 @@ class _StatsBody extends StatelessWidget {
 
   void _shareRegion(Region region) {
     Share.share(
-      'Join Better Off Local in ${region.name} — ${region.activeMemberCount}/${region.memberThreshold} members and counting! '
-      'Help unlock local discounts for everyone.\nhttps://betterofflocal.com/join',
+      'I\'m part of Better Off Local in ${region.name} — '
+      '${region.activeMemberCount} members and growing! '
+      'The more of us there are, the stronger our local discounts become.\n'
+      'Join us: https://betterofflocal.com/join',
       subject: 'Join Better Off Local in ${region.name}',
     );
   }
@@ -379,11 +413,16 @@ class _BulletPoint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: 5),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('• ', style: TextStyle(color: AppColors.primary)),
+          const Padding(
+            padding: EdgeInsets.only(top: 1),
+            child: Icon(Icons.trending_up,
+                size: 13, color: AppColors.primary),
+          ),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               text,
