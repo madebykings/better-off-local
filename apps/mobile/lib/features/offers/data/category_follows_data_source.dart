@@ -13,10 +13,14 @@ class CategoryFollowsDataSource {
   }
 
   Future<void> follow(String profileId, String categoryId) async {
-    await _client.from('category_follows').upsert({
-      'profile_id': profileId,
-      'category_id': categoryId,
-    }, onConflict: 'profile_id,category_id');
+    // ignoreDuplicates=true → ON CONFLICT DO NOTHING, requires only INSERT.
+    // DO UPDATE would require UPDATE grant; category_follows has no mutable
+    // columns so a conflict is always a no-op anyway.
+    await _client.from('category_follows').upsert(
+      {'profile_id': profileId, 'category_id': categoryId},
+      onConflict: 'profile_id,category_id',
+      ignoreDuplicates: true,
+    );
   }
 
   Future<void> unfollow(String profileId, String categoryId) async {
