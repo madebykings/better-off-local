@@ -23,6 +23,7 @@ import {
 } from '@/lib/actions/admin';
 import { AdminOpeningHoursEditor } from '@/components/venue/opening_hours_editor';
 import { parseOpeningHours } from '@/lib/utils/opening_hours';
+import { AdminVenueImageSlot } from '@/components/venue/venue_image_upload';
 
 export const metadata: Metadata = { title: 'Retailer review – Admin' };
 
@@ -139,7 +140,7 @@ export default async function RetailerDetailPage({ params }: Props) {
       .order('created_at', { ascending: false }),
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, address_line_2, town, county, postcode, latitude, longitude, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at, opening_hours_json')
+      .select('id, name, address_line_1, address_line_2, town, county, postcode, latitude, longitude, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at, opening_hours_json, logo_url, cover_image_url')
       .eq('retailer_id', retailerId)
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true }),
@@ -476,6 +477,30 @@ export default async function RetailerDetailPage({ params }: Props) {
                               locationId={v.id}
                               initialData={parseOpeningHours(v.opening_hours_json)}
                               saveAction={updateAdminVenueOpeningHours}
+                            />
+                          </div>
+                        </details>
+
+                        {/* Collapsible venue images panel */}
+                        <details className="border-t border-gray-100 group">
+                          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 select-none">
+                            <span className="transition-transform group-open:rotate-90">▶</span>
+                            Edit venue images
+                          </summary>
+                          <div className="px-4 py-4 bg-white space-y-5">
+                            <AdminVenueImageSlot
+                              locationId={v.id}
+                              slot="logo"
+                              label="Venue logo"
+                              hint="JPG, PNG, or WebP · max 5 MB · displayed at 400×400"
+                              currentUrl={(v.logo_url as string | null) ?? null}
+                            />
+                            <AdminVenueImageSlot
+                              locationId={v.id}
+                              slot="cover"
+                              label="Cover image"
+                              hint="JPG, PNG, or WebP · max 10 MB · displayed at 1600×600"
+                              currentUrl={(v.cover_image_url as string | null) ?? null}
                             />
                           </div>
                         </details>

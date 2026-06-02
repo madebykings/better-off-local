@@ -18,13 +18,15 @@
     "zod": "^3.23.0",
     "@better-off-local/ui": "*",
     "@better-off-local/types": "*",
-    "@better-off-local/config": "*"
+    "@better-off-local/config": "*",
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/sharp": "^0.31.1",
     "tailwindcss": "^3.4.0",
     "autoprefixer": "^10.4.0",
     "postcss": "^8.4.0",
