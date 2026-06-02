@@ -165,7 +165,7 @@ class _FavouriteRetailersTab extends ConsumerWidget {
                 child: BusinessCard(
                   retailer: r,
                   compact: false,
-                  badge: 'Member favourite',
+                  badge: '❤️ Member Favourite',
                   onTap: () => context.push(
                     RouteNames.retailerDetail
                         .replaceAll(':retailerId', r.id),

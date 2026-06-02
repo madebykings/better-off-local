@@ -16,12 +16,13 @@ import '../../domain/offer_availability.dart';
 //
 // Card layout:
 //   ┌──────────────────────┐
-//   │  [Open Now]   [♡]    │  cover image area
-//   │                      │
+//   │  [● Open Now]  [♡]   │  status badge top-left (optional)
+//   │                      │  cover image area
 //   │  [Save 20%]          │  savings badge bottom-left
 //   ├──────────────────────┤
-//   │  Offer title         │  content area
-//   │  Redemption rule     │
+//   │  Offer title         │  fixed-height body
+//   │       ↕ spacer       │
+//   │  ∞ Redemption rule   │  always anchored to bottom
 //   └──────────────────────┘
 // ---------------------------------------------------------------------------
 
@@ -33,6 +34,7 @@ class OfferCard extends ConsumerWidget {
     this.onTap,
     this.compact = false,
     this.isOpenNow = false,
+    this.isClosingSoon = false,
   });
 
   final Offer offer;
@@ -40,8 +42,16 @@ class OfferCard extends ConsumerWidget {
   final VoidCallback? onTap;
   final bool compact;
 
-  /// Shows an "Open now" badge top-left when true.
+  /// Shows a green "Open now" status badge top-left.
   final bool isOpenNow;
+
+  /// Shows an orange "Closing soon" status badge top-left.
+  /// Takes precedence over isOpenNow if both are true.
+  final bool isClosingSoon;
+
+  // Body height is fixed so Spacer() can anchor the redemption rule to bottom.
+  static const double _compactBodyHeight = 72.0;
+  static const double _fullBodyHeight = 90.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -50,9 +60,11 @@ class OfferCard extends ConsumerWidget {
     final isAvailable = compact ? true : (availability?.isAvailable ?? true);
     final opacity = compact ? 1.0 : (availability?.cardOpacity ?? 1.0);
 
-    final double imageHeight = compact ? 110.0 : 185.0;
+    final double imageHeight = compact ? 120.0 : 200.0;
+    final double bodyHeight =
+        compact ? _compactBodyHeight : _fullBodyHeight;
     final EdgeInsets bodyPadding = compact
-        ? const EdgeInsets.fromLTRB(10, 9, 10, 10)
+        ? const EdgeInsets.fromLTRB(10, 9, 10, 9)
         : const EdgeInsets.fromLTRB(12, 12, 12, 12);
 
     Widget card = Card(
@@ -74,6 +86,7 @@ class OfferCard extends ConsumerWidget {
               isFavourited: isFavourited,
               isAvailable: isAvailable,
               isOpenNow: isOpenNow,
+              isClosingSoon: isClosingSoon,
               availabilityBadgeLabel:
                   isAvailable ? null : availability?.state.badgeLabel,
               onFavouriteTap: () =>
@@ -81,11 +94,13 @@ class OfferCard extends ConsumerWidget {
               imageHeight: imageHeight,
               compact: compact,
             ),
-            Padding(
-              padding: bodyPadding,
-              child: _OfferCardBody(
-                offer: offer,
-                compact: compact,
+            // Fixed-height body so Spacer() can pin the redemption row to the
+            // bottom regardless of how many lines the title takes.
+            SizedBox(
+              height: bodyHeight,
+              child: Padding(
+                padding: bodyPadding,
+                child: _OfferCardBody(offer: offer, compact: compact),
               ),
             ),
           ],
@@ -103,7 +118,7 @@ class OfferCard extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Image stack: cover + open-now badge + savings badge + heart + availability
+// Image stack: cover + status badge + savings badge + heart + availability
 // ---------------------------------------------------------------------------
 
 class _OfferImageStack extends StatelessWidget {
@@ -112,6 +127,7 @@ class _OfferImageStack extends StatelessWidget {
     required this.isFavourited,
     required this.isAvailable,
     required this.isOpenNow,
+    required this.isClosingSoon,
     required this.availabilityBadgeLabel,
     required this.onFavouriteTap,
     required this.imageHeight,
@@ -122,6 +138,7 @@ class _OfferImageStack extends StatelessWidget {
   final bool isFavourited;
   final bool isAvailable;
   final bool isOpenNow;
+  final bool isClosingSoon;
   final String? availabilityBadgeLabel;
   final VoidCallback onFavouriteTap;
   final double imageHeight;
@@ -129,8 +146,9 @@ class _OfferImageStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double heartSize = compact ? 26 : 32;
-    final double heartIconSize = compact ? 13 : 16;
+    final double heartSize = compact ? 28 : 34;
+    final double heartIconSize = compact ? 14 : 16;
+    final bool showStatus = isOpenNow || isClosingSoon;
 
     return Stack(
       children: [
@@ -147,12 +165,15 @@ class _OfferImageStack extends StatelessWidget {
               : _CoverPlaceholder(),
         ),
 
-        // Open now badge — top-left
-        if (isOpenNow)
+        // Status badge — top-left (Open now / Closing soon)
+        if (showStatus)
           Positioned(
             top: 8,
             left: 8,
-            child: _OpenNowBadge(compact: compact),
+            child: _OfferStatusBadge(
+              isClosingSoon: isClosingSoon,
+              compact: compact,
+            ),
           ),
 
         // Favourite heart — top-right
@@ -184,7 +205,7 @@ class _OfferImageStack extends StatelessWidget {
           ),
         ),
 
-        // Savings badge — bottom-left of image
+        // Savings badge — bottom-left
         if (offer.valueText != null)
           Positioned(
             bottom: 8,
@@ -196,7 +217,7 @@ class _OfferImageStack extends StatelessWidget {
             ),
           ),
 
-        // Availability overlay strip — shown when offer is unavailable
+        // Availability overlay strip
         if (!isAvailable && availabilityBadgeLabel != null)
           Positioned(
             left: 0,
@@ -223,20 +244,30 @@ class _OfferImageStack extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// "Open now" badge — white pill with green status dot
+// Offer status badge — white pill with coloured dot
+// Green dot = Open now.  Orange dot = Closing soon.
 // ---------------------------------------------------------------------------
 
-class _OpenNowBadge extends StatelessWidget {
-  const _OpenNowBadge({required this.compact});
+class _OfferStatusBadge extends StatelessWidget {
+  const _OfferStatusBadge({
+    required this.isClosingSoon,
+    required this.compact,
+  });
 
+  final bool isClosingSoon;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final Color dotColor = isClosingSoon
+        ? const Color(0xFFF97316)
+        : const Color(0xFF22C55E);
+    final String label = isClosingSoon ? 'Closing soon' : 'Open now';
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 7 : 9,
-        vertical: compact ? 3 : 5,
+        vertical: compact ? 4 : 5,
       ),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -255,14 +286,14 @@ class _OpenNowBadge extends StatelessWidget {
           Container(
             width: compact ? 6 : 7,
             height: compact ? 6 : 7,
-            decoration: const BoxDecoration(
-              color: Color(0xFF22C55E),
+            decoration: BoxDecoration(
+              color: dotColor,
               shape: BoxShape.circle,
             ),
           ),
           const SizedBox(width: 4),
           Text(
-            'Open now',
+            label,
             style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: compact ? 10 : 11,
@@ -276,7 +307,7 @@ class _OpenNowBadge extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Savings badge — dark pill with value text (e.g., "Save 20%", "BOGOF")
+// Savings badge — coloured pill bottom-left (e.g. "10% off", "Free cake")
 // ---------------------------------------------------------------------------
 
 class _SavingsBadge extends StatelessWidget {
@@ -295,7 +326,7 @@ class _SavingsBadge extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: compact ? 7 : 10,
-        vertical: compact ? 3 : 5,
+        vertical: compact ? 4 : 5,
       ),
       decoration: BoxDecoration(
         color: color,
@@ -315,7 +346,7 @@ class _SavingsBadge extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Card body: offer title + redemption rule
+// Card body — fixed height; title top, redemption rule anchored to bottom.
 // ---------------------------------------------------------------------------
 
 class _OfferCardBody extends StatelessWidget {
@@ -328,7 +359,6 @@ class _OfferCardBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           offer.title,
@@ -339,7 +369,7 @@ class _OfferCardBody extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(height: 4),
+        const Spacer(),
         _RedemptionRow(offer: offer, compact: compact),
       ],
     );
@@ -347,7 +377,7 @@ class _OfferCardBody extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Redemption limit row
+// Redemption rule row — icon + label from offer domain object.
 // ---------------------------------------------------------------------------
 
 class _RedemptionRow extends StatelessWidget {
@@ -363,7 +393,7 @@ class _RedemptionRow extends StatelessWidget {
       children: [
         Icon(
           offer.redemptionLimitIcon,
-          size: fontSize + 1,
+          size: fontSize + 2,
           color: AppColors.textSecondary,
         ),
         const SizedBox(width: 4),
@@ -393,7 +423,11 @@ class _CoverPlaceholder extends StatelessWidget {
     return Container(
       color: AppColors.background,
       child: const Center(
-        child: Icon(Icons.storefront_outlined, size: 36, color: AppColors.border),
+        child: Icon(
+          Icons.storefront_outlined,
+          size: 36,
+          color: AppColors.border,
+        ),
       ),
     );
   }

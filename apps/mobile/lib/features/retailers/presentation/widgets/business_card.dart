@@ -17,10 +17,13 @@ import '../../domain/retailer.dart';
 //   │  [Badge]    [♡]      │  cover image area (rounded top corners)
 //   │  [N offers]          │
 //   ├──────────────────────┤
-//   │  ● Name              │  content area — logo overlaps image boundary
-//   │    Tagline           │
-//   │    📍 distance       │
+//   │  ●  Name             │  white content area — logo fully inside
+//   │     Tagline          │
+//   │     📍 0.3 mi away   │
 //   └──────────────────────┘
+//
+// Supported badge strings (pass with emoji):
+//   '🔥 Trending'  '⭐ Featured'  '❤️ Member Favourite'  '✨ New'
 // ---------------------------------------------------------------------------
 
 class BusinessCard extends ConsumerWidget {
@@ -34,23 +37,20 @@ class BusinessCard extends ConsumerWidget {
 
   final Retailer retailer;
 
-  /// Optional status badge label shown top-left of the image.
-  /// Examples: "Trending", "Featured", "Member favourite", "Open Now", "New".
+  /// Status badge shown top-left of the image.
+  /// Include the emoji in the string: '🔥 Trending', '⭐ Featured', etc.
   final String? badge;
 
   final VoidCallback? onTap;
   final bool compact;
-
-  static const double _logoSize = 42.0;
-  static const double _logoOverlap = 20.0;
-  static const double _logoLeftMargin = 12.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isFavourited =
         ref.watch(favouriteRetailerIdsProvider).contains(retailer.id);
 
-    final double imageHeight = compact ? 115.0 : 160.0;
+    final double imageHeight = compact ? 120.0 : 165.0;
+    final double logoSize = compact ? 48.0 : 52.0;
 
     final Widget card = GestureDetector(
       onTap: onTap,
@@ -86,7 +86,7 @@ class BusinessCard extends ConsumerWidget {
                     Positioned(
                       top: 8,
                       left: 8,
-                      child: _StatusBadge(label: badge!),
+                      child: _BadgePill(label: badge!),
                     ),
                   Positioned(
                     top: 8,
@@ -101,35 +101,25 @@ class BusinessCard extends ConsumerWidget {
                     Positioned(
                       bottom: 8,
                       left: 8,
-                      child:
-                          _OfferCountPill(count: retailer.activeOfferCount),
+                      child: _OfferCountPill(count: retailer.activeOfferCount),
                     ),
                 ],
               ),
             ),
 
-            // ── Content area — logo overlaps image boundary ─────────────
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    _logoLeftMargin + _logoSize + 8,
-                    6,
-                    12,
-                    12,
+            // ── Content area — logo fully inside white area ─────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _CircularLogo(retailer: retailer, size: logoSize),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _BusinessInfo(retailer: retailer, compact: compact),
                   ),
-                  child: _BusinessInfo(retailer: retailer, compact: compact),
-                ),
-                Positioned(
-                  top: -_logoOverlap,
-                  left: _logoLeftMargin,
-                  child: _CircularLogo(
-                    retailer: retailer,
-                    size: _logoSize,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -201,11 +191,11 @@ class _CoverPlaceholder extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Status badge (Trending / Featured / Member favourite / etc.)
+// Status badge pill (🔥 Trending / ⭐ Featured / ❤️ Member Favourite / ✨ New)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.label});
+class _BadgePill extends StatelessWidget {
+  const _BadgePill({required this.label});
 
   final String label;
 
@@ -221,7 +211,7 @@ class _StatusBadge extends StatelessWidget {
         label,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.1,
         ),
@@ -245,8 +235,8 @@ class _HeartButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 30,
-        height: 30,
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.92),
           shape: BoxShape.circle,
@@ -260,7 +250,7 @@ class _HeartButton extends StatelessWidget {
         ),
         child: Icon(
           isFavourited ? Icons.favorite : Icons.favorite_border,
-          size: 14,
+          size: 15,
           color: isFavourited ? AppColors.error : AppColors.textSecondary,
         ),
       ),
@@ -282,7 +272,7 @@ class _OfferCountPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.65),
+        color: Colors.black.withValues(alpha: 0.60),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -316,14 +306,10 @@ class _CircularLogo extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.primaryLight,
-        border: Border.all(color: Colors.white, width: 2.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color: AppColors.border,
+          width: 1.5,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: retailer.logoUrl != null
@@ -355,7 +341,7 @@ class _LogoInitials extends StatelessWidget {
         initials,
         style: TextStyle(
           color: Colors.white,
-          fontSize: size * 0.33,
+          fontSize: size * 0.32,
           fontWeight: FontWeight.w700,
           letterSpacing: -0.5,
         ),
@@ -376,9 +362,9 @@ class _BusinessInfo extends StatelessWidget {
 
   String _formatDistance(double km) {
     final mi = km * 0.621371;
-    if (mi < 0.05) return '${(km * 1000).round()}m';
-    if (mi < 10) return '${mi.toStringAsFixed(1)} mi';
-    return '${mi.round()} mi';
+    if (mi < 0.05) return '${(km * 1000).round()}m away';
+    if (mi < 10) return '${mi.toStringAsFixed(1)} mi away';
+    return '${mi.round()} mi away';
   }
 
   @override

@@ -37,7 +37,7 @@ class FeaturedRetailersSection extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 218,
+          height: 225,
           child: retailersAsync.when(
             loading: () =>
                 const Center(child: CircularProgressIndicator()),
@@ -61,7 +61,7 @@ class FeaturedRetailersSection extends ConsumerWidget {
                   padding: const EdgeInsets.only(right: 12),
                   child: BusinessCard(
                     retailer: shown[i],
-                    badge: 'Trending',
+                    badge: '🔥 Trending',
                     onTap: () => context.push(
                       RouteNames.retailerDetail
                           .replaceAll(':retailerId', shown[i].id),
