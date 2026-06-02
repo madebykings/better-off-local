@@ -137,13 +137,9 @@ class _FavouriteRetailersTab extends ConsumerWidget {
           return const Center(child: CircularProgressIndicator());
         }
         final rows = snapshot.data ?? [];
-        final retailers = rows
-            .map((r) {
-              final rMap = r['retailers'] as Map<String, dynamic>?;
-              return rMap != null ? Retailer.fromMap(rMap) : null;
-            })
-            .whereType<Retailer>()
-            .toList();
+        // Rows come from consumer_discovery_retailers (flat view format),
+        // so Retailer.fromMap parses them directly — no nested 'retailers' key.
+        final retailers = rows.map(Retailer.fromMap).toList();
 
         if (retailers.isEmpty) {
           return const _EmptyState(
@@ -184,7 +180,9 @@ class _FavouriteRetailersTab extends ConsumerWidget {
     final favs = await ref.read(favouritesProvider.future);
     if (favs.isEmpty) return [];
     final profileId = favs.first.profileId;
-    return ds.fetchFavouriteRetailers(profileId);
+    // Use discovery view so Retailer objects include primaryLocationId,
+    // enabling venue-attributed saves if the user re-toggles a favourite.
+    return ds.fetchFavouriteRetailersDiscovery(profileId);
   }
 }
 

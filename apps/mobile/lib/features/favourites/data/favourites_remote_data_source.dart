@@ -29,6 +29,10 @@ class FavouritesRemoteDataSource {
   }
 
   /// Fetches favourite retailers with joined retailer data.
+  /// Returns nested `retailers` objects from the base table — no
+  /// primary_location_id. Use [fetchFavouriteRetailersDiscovery] when a
+  /// full Retailer model (including primaryLocationId for venue attribution)
+  /// is required.
   Future<List<Map<String, dynamic>>> fetchFavouriteRetailers(
       String profileId) async {
     return await _client
@@ -40,6 +44,30 @@ class FavouritesRemoteDataSource {
         .eq('profile_id', profileId)
         .not('retailer_id', 'is', null)
         .order('created_at', ascending: false);
+  }
+
+  /// Two-step fetch that returns full Retailer rows from
+  /// consumer_discovery_retailers. Use this on screens that render
+  /// BusinessCard so that primaryLocationId is populated and subsequent
+  /// favourite toggles are venue-attributed.
+  Future<List<Map<String, dynamic>>> fetchFavouriteRetailersDiscovery(
+      String profileId) async {
+    final favRows = await _client
+        .from('favourites')
+        .select('retailer_id')
+        .eq('profile_id', profileId)
+        .not('retailer_id', 'is', null)
+        .order('created_at', ascending: false);
+
+    final ids = (favRows as List)
+        .map((r) => r['retailer_id'] as String)
+        .toList();
+    if (ids.isEmpty) return [];
+
+    return await _client
+        .from('consumer_discovery_retailers')
+        .select('*')
+        .inFilter('id', ids);
   }
 
   Future<void> addOfferFavourite(

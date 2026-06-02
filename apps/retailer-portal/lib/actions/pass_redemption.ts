@@ -73,6 +73,18 @@ export async function getOffersForPass(rawToken: string): Promise<PassOffersResu
   const retailerId = await getRetailerId(user.id);
   if (!retailerId) return { ok: false, error: 'No retailer account found.' };
 
+  // Resolve the scanner's primary venue so the offer pass can be
+  // attributed to the correct location.
+  const { data: primaryVenue } = await service
+    .from('retailer_locations')
+    .select('id')
+    .eq('retailer_id', retailerId)
+    .eq('is_primary', true)
+    .eq('is_active', true)
+    .maybeSingle();
+  // primaryVenue may be null for retailers with no active locations; the
+  // RPC accepts null gracefully (no venue attribution rather than hard fail).
+
   const tokenHash = await hashToken(rawToken.trim());
 
   const { data: passToken } = await service
@@ -176,7 +188,7 @@ export async function redeemViaPass(
     p_offer_id:              offerId,
     p_retailer_profile_id:   user.id,
     p_redemption_attempt_id: attemptId,
-    p_retailer_location_id:  null,
+    p_retailer_location_id:  (primaryVenue?.id as string | undefined) ?? null,
   });
 
   if (rpcError) {
