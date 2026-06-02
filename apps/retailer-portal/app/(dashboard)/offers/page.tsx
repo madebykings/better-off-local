@@ -127,6 +127,7 @@ export default async function OffersPage() {
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Saves</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Redeemed</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Created</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -137,8 +138,13 @@ export default async function OffersPage() {
                 };
                 return (
                   <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-800 max-w-[240px] truncate">
-                      {o.title}
+                    <td className="px-4 py-3 font-medium max-w-[220px] truncate">
+                      <Link
+                        href={`/offers/${o.id}`}
+                        className="text-gray-800 hover:text-green-700 hover:underline"
+                      >
+                        {o.title}
+                      </Link>
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -158,6 +164,14 @@ export default async function OffersPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                       {formatDate(o.created_at)}
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <Link
+                        href={`/offers/${o.id}`}
+                        className="text-xs font-medium text-green-700 hover:text-green-900 hover:underline"
+                      >
+                        Edit
+                      </Link>
                     </td>
                   </tr>
                 );

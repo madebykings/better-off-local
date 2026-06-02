@@ -9,25 +9,44 @@ export default async function FeaturedPage() {
   await requireAdmin();
   const supabase = createServiceClient();
 
+  // Fetch venues without embedded joins — PostgREST FK auto-detection is unreliable
+  // for retailer_locations → retailers and retailer_locations → regions.
   const [featuredResult, availableResult] = await Promise.all([
     supabase
       .from('retailer_locations')
-      .select('id, retailer_id, name, is_active, logo_url, cover_image_url, retailers(name), regions(name)')
+      .select('id, retailer_id, region_id, name, is_active, logo_url, cover_image_url')
       .eq('is_featured', true)
       .order('name'),
     supabase
       .from('retailer_locations')
-      .select('id, retailer_id, name, is_active, logo_url, cover_image_url, retailers(name), regions(name)')
+      .select('id, retailer_id, region_id, name, is_active, logo_url, cover_image_url')
       .eq('is_featured', false)
       .eq('is_active', true)
       .order('name')
       .limit(100),
   ]);
 
-  const featured  = (featuredResult.data  ?? []) as any[];
-  const available = (availableResult.data ?? []) as any[];
+  const featured  = featuredResult.data  ?? [];
+  const available = availableResult.data ?? [];
 
-  function VenueRow({ v, currentFeatured }: { v: any; currentFeatured: boolean }) {
+  // Collect unique retailer and region IDs from both lists
+  const allVenues = [...featured, ...available];
+  const retailerIds = [...new Set(allVenues.map((v) => v.retailer_id).filter(Boolean))];
+  const regionIds   = [...new Set(allVenues.map((v) => v.region_id).filter(Boolean))];
+
+  const [retailersResult, regionsResult] = await Promise.all([
+    retailerIds.length > 0
+      ? supabase.from('retailers').select('id, name').in('id', retailerIds)
+      : Promise.resolve({ data: [] }),
+    regionIds.length > 0
+      ? supabase.from('regions').select('id, name').in('id', regionIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const retailerMap = new Map((retailersResult.data ?? []).map((r) => [r.id, r.name]));
+  const regionMap   = new Map((regionsResult.data   ?? []).map((r) => [r.id, r.name]));
+
+  function VenueRow({ v, currentFeatured }: { v: (typeof allVenues)[number]; currentFeatured: boolean }) {
     return (
       <tr className="hover:bg-gray-50">
         <td className="px-4 py-3">
@@ -46,8 +65,8 @@ export default async function FeaturedPage() {
             <span className="font-medium text-gray-800">{v.name ?? '—'}</span>
           </div>
         </td>
-        <td className="px-4 py-3 text-gray-600">{v.retailers?.name ?? '—'}</td>
-        <td className="px-4 py-3 text-gray-500 text-xs">{v.regions?.name ?? '—'}</td>
+        <td className="px-4 py-3 text-gray-600">{retailerMap.get(v.retailer_id) ?? '—'}</td>
+        <td className="px-4 py-3 text-gray-500 text-xs">{regionMap.get(v.region_id) ?? '—'}</td>
         <td className="px-4 py-3">
           {v.is_active ? (
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-green-100 text-green-800 border-green-200">
@@ -115,7 +134,7 @@ export default async function FeaturedPage() {
             <table className="w-full text-sm">
               {tableHead}
               <tbody className="divide-y divide-gray-100">
-                {featured.map((v: any) => (
+                {featured.map((v) => (
                   <VenueRow key={v.id} v={v} currentFeatured={true} />
                 ))}
               </tbody>
@@ -138,7 +157,7 @@ export default async function FeaturedPage() {
             <table className="w-full text-sm">
               {tableHead}
               <tbody className="divide-y divide-gray-100">
-                {available.map((v: any) => (
+                {available.map((v) => (
                   <VenueRow key={v.id} v={v} currentFeatured={false} />
                 ))}
               </tbody>

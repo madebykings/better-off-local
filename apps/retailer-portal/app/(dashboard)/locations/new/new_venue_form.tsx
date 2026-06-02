@@ -11,6 +11,8 @@ type RegionWithStats = {
   active_member_count: number;
 };
 
+const DESC_MAX = 500;
+
 const EMPTY: VenueFields = {
   name:             '',
   regionId:         '',
@@ -211,6 +213,61 @@ export function NewVenueForm({
         <Field
           label="Postcode" id="postcode" value={fields.postcode} onChange={set('postcode')}
           placeholder="FK10 1AA" error={errors.postcode} autoComplete="postal-code" required
+        />
+      </div>
+
+      {/* ── Venue listing content ───────────────────────────────────────── */}
+      <div className="border-t border-gray-100 pt-5 space-y-4">
+        <div>
+          <p className="text-sm font-medium text-gray-700">
+            Venue listing content{' '}
+            <span className="ml-1 text-xs font-normal text-gray-400">optional</span>
+          </p>
+          <p className="mt-1 text-xs text-gray-400">
+            You can also add a logo, cover image, and opening hours after saving from the venue edit page.
+          </p>
+        </div>
+
+        <Field
+          label="Short description" id="venue-short-desc" value={fields.shortDescription}
+          onChange={set('shortDescription')} placeholder="A cosy café in the heart of Alloa…"
+          optional
+        />
+
+        <div>
+          <label htmlFor="venue-description" className="mb-1.5 block text-sm font-medium text-gray-700">
+            Full description{' '}
+            <span className="ml-1.5 text-xs font-normal text-gray-400">optional</span>
+          </label>
+          <div className="relative">
+            <textarea
+              id="venue-description"
+              value={fields.description}
+              onChange={(e) => set('description')(e.target.value)}
+              rows={4}
+              maxLength={DESC_MAX}
+              placeholder="Tell members what makes this venue worth visiting…"
+              className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-green-700/30 focus:border-green-700 pb-6"
+            />
+            <span className={[
+              'pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums',
+              fields.description.length > 450 ? 'text-amber-500' : 'text-gray-300',
+            ].join(' ')}>
+              {fields.description.length}/{DESC_MAX}
+            </span>
+          </div>
+        </div>
+
+        <Field
+          label="Venue phone" id="venue-phone" value={fields.phone}
+          onChange={set('phone')} placeholder="e.g. 01259 123456"
+          optional autoComplete="tel"
+        />
+
+        <Field
+          label="Venue website" id="venue-website" value={fields.websiteUrl}
+          onChange={set('websiteUrl')} placeholder="https://yoursite.com"
+          optional autoComplete="url"
         />
       </div>
 
