@@ -17,10 +17,21 @@ class FeaturedRetailersSection extends ConsumerWidget {
   ///
   /// Priority: Featured > Member Favourite > Trending > New.
   /// Thresholds are intentionally low for a hyper-local launch.
+  /// Returns the single most prominent badge for a retailer card.
+  ///
+  /// Priority: Featured > Member Favourite > Trending > New.
+  ///
+  /// Thresholds are calibrated for a hyper-local MVP launch:
+  ///   - Trending: 5+ redemptions in the last 30 days (retailer-level;
+  ///     venue-level impossible because many redemption rows have no location
+  ///     tag. Equivalent to venue-level for single-venue retailers.)
+  ///   - Member Favourite: 3+ saves (retailer-level; favourites table has no
+  ///     location_id column so venue-level counts are not available.)
+  ///   - New: venue or retailer created within the last 30 days.
   static String? _badgeFor(Retailer r) {
     if (r.isFeatured) return '⭐ Featured';
     if (r.favouriteCount >= 3) return '❤️ Member Favourite';
-    if (r.totalRedemptionCount >= 5) return '🔥 Trending';
+    if (r.recentRedemptionCount >= 5) return '🔥 Trending';
     if (r.createdAt != null) {
       final ageDays = DateTime.now().difference(r.createdAt!).inDays;
       if (ageDays <= 30) return '✨ New';

@@ -378,6 +378,40 @@ export async function deactivateRetailerVenue(formData: FormData): Promise<void>
 }
 
 // ---------------------------------------------------------------------------
+// Featured venues (venue-level featured badge for BusinessCard)
+// ---------------------------------------------------------------------------
+
+/**
+ * Toggles the is_featured flag on a retailer_location row.
+ * This drives the ⭐ Featured badge on BusinessCards in the mobile app.
+ * Featured status is venue-level: a retailer can have one featured venue
+ * without featuring every venue they own.
+ */
+export async function toggleVenueFeatured(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  const locationId = formData.get('location_id') as string;
+  const retailerId = formData.get('retailer_id') as string;
+  const currentFeatured = formData.get('is_featured') === 'true';
+
+  const supabase = createServiceClient();
+  await supabase
+    .from('retailer_locations')
+    .update({ is_featured: !currentFeatured })
+    .eq('id', locationId);
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type: currentFeatured ? 'venue_unfeatured' : 'venue_featured',
+    target_table: 'retailer_locations',
+    target_id: locationId,
+    reason: null,
+    metadata_json: { retailer_id: retailerId },
+  });
+
+  revalidatePath(`/retailers/${retailerId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Featured offers
 // ---------------------------------------------------------------------------
 

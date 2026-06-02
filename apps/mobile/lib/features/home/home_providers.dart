@@ -63,7 +63,7 @@ final homeRetailersProvider = FutureProvider<List<Retailer>>((ref) async {
       openingHours: r.openingHours,
       isFeatured: r.isFeatured,
       createdAt: r.createdAt,
-      totalRedemptionCount: r.totalRedemptionCount,
+      recentRedemptionCount: r.recentRedemptionCount,
       favouriteCount: r.favouriteCount,
     );
   }).toList();
@@ -75,8 +75,11 @@ final homeRetailersProvider = FutureProvider<List<Retailer>>((ref) async {
         .toList();
   }
 
-  // Sort nearest-first; retailers without location data go last.
+  // Sort: open-now venues first, then by distance within each group.
   enriched.sort((a, b) {
+    final aOpen = a.openingHours?.isOpenNow ?? false;
+    final bOpen = b.openingHours?.isOpenNow ?? false;
+    if (aOpen != bOpen) return aOpen ? -1 : 1;
     final da = a.distanceKm ?? double.infinity;
     final db = b.distanceKm ?? double.infinity;
     return da.compareTo(db);

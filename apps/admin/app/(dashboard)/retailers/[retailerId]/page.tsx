@@ -16,6 +16,7 @@ import {
   deactivateRetailerVenue,
   setVenueRegion,
   setVenueBillingStatus,
+  toggleVenueFeatured,
   updateRetailerDetails,
 } from '@/lib/actions/admin';
 
@@ -134,7 +135,7 @@ export default async function RetailerDetailPage({ params }: Props) {
       .order('created_at', { ascending: false }),
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, town, postcode, is_primary, is_active, region_id, billing_status, grace_period_ends_at')
+      .select('id, name, address_line_1, town, postcode, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at')
       .eq('retailer_id', retailerId)
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true }),
@@ -384,8 +385,25 @@ export default async function RetailerDetailPage({ params }: Props) {
                           )}
                         </div>
 
-                        {/* Region + billing status controls */}
+                        {/* Region + billing status + featured controls */}
                         <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex flex-wrap gap-3">
+                          {/* Featured toggle */}
+                          <form action={toggleVenueFeatured} className="flex items-center gap-2">
+                            <input type="hidden" name="location_id" value={v.id} />
+                            <input type="hidden" name="retailer_id" value={retailerId} />
+                            <input type="hidden" name="is_featured" value={String(v.is_featured ?? false)} />
+                            <button
+                              type="submit"
+                              className={`text-xs font-medium rounded border px-2 py-1 transition-colors ${
+                                v.is_featured
+                                  ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                                  : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                              }`}
+                            >
+                              {v.is_featured ? '⭐ Featured' : 'Set featured'}
+                            </button>
+                          </form>
+
                           {/* Set region */}
                           <form action={setVenueRegion} className="flex items-center gap-2">
                             <input type="hidden" name="location_id" value={v.id} />

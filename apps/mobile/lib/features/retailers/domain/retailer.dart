@@ -154,7 +154,7 @@ class Retailer extends Equatable {
     this.openingHours,
     this.isFeatured = false,
     this.createdAt,
-    this.totalRedemptionCount = 0,
+    this.recentRedemptionCount = 0,
     this.favouriteCount = 0,
   });
 
@@ -186,8 +186,11 @@ class Retailer extends Equatable {
   /// When the retailer joined the platform — used for the ✨ New badge.
   final DateTime? createdAt;
 
-  /// Lifetime successful redemptions across all offers — used for 🔥 Trending.
-  final int totalRedemptionCount;
+  /// Successful redemptions at this retailer in the last 30 days — used for 🔥 Trending.
+  /// Counted at retailer level (not venue-level) because many redemption rows
+  /// have retailer_location_id = NULL. Equivalent to venue-level for
+  /// single-venue retailers.
+  final int recentRedemptionCount;
 
   /// Times saved as a favourite by consumers — used for ❤️ Member Favourite.
   final int favouriteCount;
@@ -245,8 +248,8 @@ class Retailer extends Equatable {
       createdAt: map['created_at'] != null
           ? DateTime.tryParse(map['created_at'].toString())
           : null,
-      totalRedemptionCount:
-          (map['total_redemption_count'] as num?)?.toInt() ?? 0,
+      recentRedemptionCount:
+          (map['recent_redemption_count'] as num?)?.toInt() ?? 0,
       favouriteCount: (map['favourite_count'] as num?)?.toInt() ?? 0,
     );
   }

@@ -56,7 +56,7 @@ class RetailersRepositoryImpl implements RetailerRepository {
             openingHours: r.openingHours,
             isFeatured: r.isFeatured,
             createdAt: r.createdAt,
-            totalRedemptionCount: r.totalRedemptionCount,
+            recentRedemptionCount: r.recentRedemptionCount,
             favouriteCount: r.favouriteCount,
           );
         })
