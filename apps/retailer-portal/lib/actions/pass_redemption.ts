@@ -183,6 +183,17 @@ export async function redeemViaPass(
   const service = createServiceClient();
   const tokenHash = await hashToken(rawToken.trim());
 
+  const retailerId = await getRetailerId(user.id);
+  const { data: primaryVenue } = retailerId
+    ? await service
+        .from('retailer_locations')
+        .select('id')
+        .eq('retailer_id', retailerId)
+        .eq('is_primary', true)
+        .eq('is_active', true)
+        .maybeSingle()
+    : { data: null };
+
   const { data: rpcRows, error: rpcError } = await service.rpc('redeem_offer_via_pass', {
     p_pass_token_hash:       tokenHash,
     p_offer_id:              offerId,
