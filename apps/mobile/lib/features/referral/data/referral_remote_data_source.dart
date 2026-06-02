@@ -6,8 +6,6 @@ class ReferralRemoteDataSource {
   const ReferralRemoteDataSource(this._client);
   final SupabaseClient _client;
 
-  /// Calls the generate-referral-code edge function.
-  /// Returns { code, referral_url }.
   Future<Map<String, String>> generateCode() async {
     final res = await _client.functions.invoke(
       'generate-referral-code',
@@ -20,7 +18,6 @@ class ReferralRemoteDataSource {
     };
   }
 
-  /// Reads the member's referral stats from the referral_stats view.
   Future<ReferralStats?> fetchStats(String profileId) async {
     final codeResult = await _client
         .from('referral_codes')
@@ -31,6 +28,7 @@ class ReferralRemoteDataSource {
     if (codeResult == null) return null;
 
     final code = codeResult['code'] as String;
+    final referralUrl = 'https://betterofflocal.com/join?ref=$code';
 
     final statsResult = await _client
         .from('referral_stats')
@@ -38,17 +36,15 @@ class ReferralRemoteDataSource {
         .eq('profile_id', profileId)
         .maybeSingle();
 
-    // Build referral URL (same logic as edge function)
-    final referralUrl = 'https://betterofflocal.com/join?ref=$code';
-
     if (statsResult == null) {
       return ReferralStats(
         code: code,
         referralUrl: referralUrl,
         invitedCount: 0,
         convertedCount: 0,
-        pendingRewards: 0,
+        pendingMonths: 0,
         confirmedRewards: 0,
+        freeMonthsEarned: 0,
         totalRewardPence: 0,
       );
     }
@@ -58,13 +54,13 @@ class ReferralRemoteDataSource {
       referralUrl: referralUrl,
       invitedCount: (statsResult['invited_count'] as num?)?.toInt() ?? 0,
       convertedCount: (statsResult['converted_count'] as num?)?.toInt() ?? 0,
-      pendingRewards: (statsResult['pending_rewards'] as num?)?.toInt() ?? 0,
+      pendingMonths: (statsResult['pending_months'] as num?)?.toInt() ?? 0,
       confirmedRewards: (statsResult['confirmed_rewards'] as num?)?.toInt() ?? 0,
+      freeMonthsEarned: (statsResult['total_reward_months'] as num?)?.toInt() ?? 0,
       totalRewardPence: (statsResult['total_reward_pence'] as num?)?.toInt() ?? 0,
     );
   }
 
-  /// Calls the attribute-referral edge function after sign-up.
   Future<String> attributeReferral({
     required String code,
     String? deviceFingerprint,

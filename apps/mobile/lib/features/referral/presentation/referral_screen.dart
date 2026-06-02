@@ -39,7 +39,7 @@ class ReferralScreen extends ConsumerWidget {
           if (stats == null) {
             return const Center(child: Text('Unable to load referral info.'));
           }
-          return _ReferralBody(stats: stats, profileId: profileId);
+          return _ReferralBody(stats: stats);
         },
       ),
     );
@@ -47,10 +47,9 @@ class ReferralScreen extends ConsumerWidget {
 }
 
 class _ReferralBody extends StatelessWidget {
-  const _ReferralBody({required this.stats, required this.profileId});
+  const _ReferralBody({required this.stats});
 
   final ReferralStats stats;
-  final String profileId;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +58,7 @@ class _ReferralBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hero card
+          // ── Hero card ─────────────────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
@@ -74,11 +73,10 @@ class _ReferralBody extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.card_giftcard_outlined,
-                    color: Colors.white70, size: 32),
+                const Icon(Icons.people_outline, color: Colors.white70, size: 32),
                 const SizedBox(height: 14),
                 const Text(
-                  'Earn a month free',
+                  'Give a month, get a month',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -87,7 +85,8 @@ class _ReferralBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'Invite friends to join Better Off Local. When they become a paying member, you earn a free month of membership.',
+                  'Invite a friend to join Better Off Local. '
+                  'When they become a paying member, you both earn one free month of membership.',
                   style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.45),
                 ),
                 const SizedBox(height: 20),
@@ -144,7 +143,6 @@ class _ReferralBody extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                // Share button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -167,29 +165,29 @@ class _ReferralBody extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Stats row
+          // ── Stats dashboard ────────────────────────────────────────────────
           Row(
             children: [
               _StatTile(
-                label: 'Invited',
-                value: '${stats.invitedCount}',
-              ),
-              const SizedBox(width: 12),
-              _StatTile(
-                label: 'Joined',
+                label: 'Referrals',
                 value: '${stats.convertedCount}',
               ),
               const SizedBox(width: 12),
               _StatTile(
-                label: 'Rewards',
-                value: stats.confirmedRewards > 0
-                    ? stats.totalRewardDisplay
-                    : '${stats.confirmedRewards}',
+                label: 'Free months',
+                value: '${stats.freeMonthsEarned}',
+              ),
+              const SizedBox(width: 12),
+              _StatTile(
+                label: 'Value saved',
+                value: stats.totalRewardPence > 0
+                    ? stats.membershipValueDisplay
+                    : '£0',
               ),
             ],
           ),
 
-          if (stats.pendingRewards > 0) ...[
+          if (stats.pendingMonths > 0) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -203,9 +201,11 @@ class _ReferralBody extends StatelessWidget {
                   const Icon(Icons.hourglass_top_outlined,
                       size: 16, color: Colors.amber),
                   const SizedBox(width: 8),
-                  Text(
-                    '${stats.pendingRewards} reward${stats.pendingRewards == 1 ? '' : 's'} pending — confirmed after 7 days',
-                    style: const TextStyle(fontSize: 12, color: Colors.amber),
+                  Expanded(
+                    child: Text(
+                      '${stats.pendingMonths} free month${stats.pendingMonths == 1 ? '' : 's'} pending — confirmed after 7 days',
+                      style: const TextStyle(fontSize: 12, color: Colors.amber),
+                    ),
                   ),
                 ],
               ),
@@ -214,7 +214,40 @@ class _ReferralBody extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // How it works
+          // ── Community metric ───────────────────────────────────────────────
+          if (stats.convertedCount > 0)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.storefront_outlined,
+                      color: AppColors.primary, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Your referrals have helped support local businesses and unlock more local offers.',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.primary,
+                        height: 1.4,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          const SizedBox(height: 24),
+
+          // ── How it works ───────────────────────────────────────────────────
           Text('How it works', style: AppTextStyles.titleMedium),
           const SizedBox(height: 12),
           const _HowItWorksStep(
@@ -225,24 +258,32 @@ class _ReferralBody extends StatelessWidget {
           const SizedBox(height: 10),
           const _HowItWorksStep(
             icon: Icons.person_add_outlined,
-            title: 'Friend joins',
-            body: 'They download the app and sign up using your link.',
+            title: 'Friend joins and subscribes',
+            body: 'They sign up and become a paying member.',
           ),
           const SizedBox(height: 10),
           const _HowItWorksStep(
-            icon: Icons.card_giftcard_outlined,
-            title: 'You earn a free month',
-            body: 'Once their first payment clears, we credit your next month free.',
+            icon: Icons.calendar_month_outlined,
+            title: 'You both earn a free month',
+            body: 'Once their first payment clears, you each get one free month of membership.',
+          ),
+          const SizedBox(height: 10),
+          const _HowItWorksStep(
+            icon: Icons.store_outlined,
+            title: 'Your community grows stronger',
+            body: 'More members means more businesses joining and better local offers for everyone.',
           ),
 
           const SizedBox(height: 20),
           Text(
-            'Rewards apply to your next billing cycle. One reward per friend. Up to 5 rewards per 30 days.',
+            "Free months are applied to your next billing cycle. Annual members receive a credit equivalent to one month's membership value. Maximum 12 free months per year.",
             style: AppTextStyles.bodyMedium.copyWith(
               fontSize: 11,
               color: AppColors.textDisabled,
             ),
           ),
+
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -250,7 +291,8 @@ class _ReferralBody extends StatelessWidget {
 
   void _share(ReferralStats stats) {
     Share.share(
-      'I\'ve been saving money at local businesses with Better Off Local — join with my link and support local too!\n${stats.referralUrl}',
+      'I\'ve been saving money with Better Off Local — supporting brilliant local businesses in my area. '
+      'Join with my link and you\'ll get your first month free too!\n${stats.referralUrl}',
       subject: 'Join Better Off Local',
     );
   }

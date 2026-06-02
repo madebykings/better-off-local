@@ -7,7 +7,7 @@ import '../../../../app/theme/app_text_styles.dart';
 import '../../../retailers/domain/retailer.dart';
 
 /// Bottom-sheet card shown when a map marker is tapped.
-/// Displays retailer summary, featured offer value, and a "View" CTA.
+/// Displays retailer summary, offer count, and a "View" CTA.
 class MapRetailerPreviewCard extends StatelessWidget {
   const MapRetailerPreviewCard({
     super.key,
@@ -141,8 +141,8 @@ class MapRetailerPreviewCard extends StatelessWidget {
                 ],
               ),
             ),
-            // ── Featured offer footer ─────────────────────────────────────
-            if (retailer.featuredOffer?.valueText != null)
+            // ── Offer count footer ────────────────────────────────────────
+            if (retailer.activeOfferCount > 0)
               Container(
                 width: double.infinity,
                 color: const Color(0xFFF0F7F4),
@@ -153,15 +153,13 @@ class MapRetailerPreviewCard extends StatelessWidget {
                     const Icon(Icons.local_offer_outlined,
                         size: 13, color: AppColors.primary),
                     const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        retailer.featuredOffer!.valueText!,
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      retailer.activeOfferCount == 1
+                          ? '1 offer available'
+                          : '${retailer.activeOfferCount} offers available',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],

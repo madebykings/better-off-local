@@ -81,6 +81,7 @@ final mapAllRetailersProvider = Provider<List<Retailer>>((ref) {
       distanceKm: distKm,
       categories: r.categories,
       featuredOffer: base.featured[r.id],
+      activeOfferCount: r.activeOfferCount,
     );
   }).toList();
 });

@@ -35,10 +35,16 @@ export default async function ReferralsPage({ searchParams }: Props) {
   const { status } = await searchParams;
   const supabase = createServiceClient();
 
+  const { data: config } = await supabase
+    .from('referral_config')
+    .select('reward_months, friend_reward_months, cap_per_year, grace_days')
+    .eq('id', 1)
+    .maybeSingle();
+
   let query = supabase
     .from('referral_rewards')
     .select(
-      'id, status, reward_amount_pence, applied_at, confirmed_at, voided_at, void_reason, stripe_balance_txn_id, created_at, ' +
+      'id, status, reward_months, reward_amount_pence, applied_at, confirmed_at, voided_at, void_reason, stripe_balance_txn_id, created_at, ' +
       'referral_invitations!inner(attributed_at, invitee:profiles!referral_invitations_invitee_profile_id_fkey(full_name, email), ' +
       'referral_codes!inner(code, referrer:profiles!referral_codes_profile_id_fkey(full_name, email)))',
     )
@@ -67,9 +73,26 @@ export default async function ReferralsPage({ searchParams }: Props) {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Referrals</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Member referral programme rewards. Rewards in <strong>Review</strong> exceeded the monthly rate limit and need manual approval.
+          Member referral programme rewards. Rewards in <strong>Review</strong> exceeded the annual rate limit and need manual approval.
         </p>
       </div>
+
+      {/* Config summary */}
+      {config && (
+        <div className="flex flex-wrap gap-3 mb-6">
+          {[
+            { label: 'Referrer reward', value: `${config.reward_months} month${config.reward_months !== 1 ? 's' : ''}` },
+            { label: 'Friend reward', value: `${config.friend_reward_months} month${config.friend_reward_months !== 1 ? 's' : ''}` },
+            { label: 'Cap per year', value: `${config.cap_per_year} months` },
+            { label: 'Grace period', value: `${config.grace_days} days` },
+          ].map(({ label, value }) => (
+            <div key={label} className="bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm">
+              <span className="text-gray-500">{label}:</span>{' '}
+              <span className="font-semibold text-gray-800">{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Status filter */}
       <div className="flex flex-wrap gap-1 bg-gray-100 rounded-lg p-1 w-fit mb-4">
@@ -136,7 +159,9 @@ export default async function ReferralsPage({ searchParams }: Props) {
                         </p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-gray-700">{fmtPence(r.reward_amount_pence)}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {r.reward_months ? `${r.reward_months} month${r.reward_months !== 1 ? 's' : ''}` : fmtPence(r.reward_amount_pence)}
+                    </td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2 justify-end">

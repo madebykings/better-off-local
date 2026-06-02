@@ -9,7 +9,7 @@ abstract class AppColors {
   // Neutrals
   static const Color surface = Color(0xFFFFFFFF);
   static const Color background = Color(0xFFF8F9FA);
-  static const Color cream = Color(0xFFF5F2EC);
+  static const Color cream = Color(0xFFF8F9FA);
   static const Color border = Color(0xFFE9ECEF);
 
   // Text

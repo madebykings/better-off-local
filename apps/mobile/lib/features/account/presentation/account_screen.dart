@@ -91,11 +91,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 onTap: () => context.push(RouteNames.favourites),
               ),
               const _Divider(),
-              const _Divider(),
               _NavTile(
-                icon: Icons.receipt_long_outlined,
-                label: 'Redemption history',
-                onTap: () => context.push(RouteNames.redemptionHistory),
+                icon: Icons.map_outlined,
+                label: 'My region',
+                onTap: () => context.push(RouteNames.regionProgress),
               ),
               const _Divider(),
               _NavTile(
@@ -105,15 +104,15 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               ),
               const _Divider(),
               _NavTile(
-                icon: Icons.card_giftcard_outlined,
-                label: 'Refer a friend',
-                onTap: () => context.push(RouteNames.referral),
+                icon: Icons.receipt_long_outlined,
+                label: 'Redemption history',
+                onTap: () => context.push(RouteNames.redemptionHistory),
               ),
               const _Divider(),
               _NavTile(
-                icon: Icons.map_outlined,
-                label: 'Region progress',
-                onTap: () => context.push(RouteNames.regionProgress),
+                icon: Icons.card_giftcard_outlined,
+                label: 'Refer a friend',
+                onTap: () => context.push(RouteNames.referral),
               ),
             ],
           ),
@@ -127,7 +126,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 label: 'Change region',
                 onTap: () => context.push(
                   RouteNames.regionSelection,
-                  extra: false, // isOnboarding = false
+                  extra: false,
                 ),
               ),
             ],

@@ -23,6 +23,7 @@ class Retailer extends Equatable {
     this.distanceKm,
     this.categories = const [],
     this.featuredOffer,
+    this.activeOfferCount = 0,
   });
 
   final String id;
@@ -44,6 +45,7 @@ class Retailer extends Equatable {
   final double? distanceKm;
   final List<String> categories;
   final OfferSummary? featuredOffer;
+  final int activeOfferCount;
 
   String? get displayAddress {
     final parts = [addressLine1, town, postcode]
@@ -90,6 +92,7 @@ class Retailer extends Equatable {
           ? double.tryParse(map['longitude'].toString())
           : null,
       categories: categories,
+      activeOfferCount: (map['active_offer_count'] as num?)?.toInt() ?? 0,
     );
   }
 

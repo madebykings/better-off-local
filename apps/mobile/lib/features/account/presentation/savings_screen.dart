@@ -16,9 +16,7 @@ final _savingsProvider = FutureProvider.autoDispose<_SavingsData>((ref) async {
 
   final rows = await client
       .from('redemptions')
-      .select(
-        'redeemed_at, offers(title, value_text), retailers(name)',
-      )
+      .select('redeemed_at, offers(title, value_text, estimated_saving_pence), retailers(name)')
       .eq('profile_id', userId)
       .eq('status', 'success')
       .order('redeemed_at', ascending: false)
@@ -30,6 +28,7 @@ final _savingsProvider = FutureProvider.autoDispose<_SavingsData>((ref) async {
     return _Redemption(
       offerTitle: offer?['title'] as String? ?? 'Offer',
       valueText: offer?['value_text'] as String?,
+      estimatedSavingPence: (offer?['estimated_saving_pence'] as num?)?.toInt(),
       retailerName: retailer?['name'] as String? ?? '',
       redeemedAt: DateTime.tryParse(r['redeemed_at'] as String? ?? '') ??
           DateTime.now(),
@@ -47,29 +46,44 @@ class _SavingsData {
   const _SavingsData({required this.redemptions});
   final List<_Redemption> redemptions;
 
-  int get total => redemptions.length;
+  int get totalCount => redemptions.length;
 
-  int get thisMonth {
+  int get thisMonthCount {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
     return redemptions.where((r) => r.redeemedAt.isAfter(monthStart)).length;
   }
 
-  /// Estimated savings from offers with parseable £X amounts.
-  int get estimatedSavingsPence {
+  int get totalSavingsPence {
     int total = 0;
     for (final r in redemptions) {
-      final p = _parsePence(r.valueText);
+      final p = r.savingPence;
       if (p != null) total += p;
     }
     return total;
   }
 
-  String get estimatedSavingsDisplay {
-    final p = estimatedSavingsPence;
-    if (p == 0) return '£—';
-    final pounds = p / 100;
-    return '£${pounds.toStringAsFixed(pounds.truncateToDouble() == pounds ? 0 : 2)}';
+  int get thisMonthSavingsPence {
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    int total = 0;
+    for (final r in redemptions) {
+      if (r.redeemedAt.isAfter(monthStart)) {
+        final p = r.savingPence;
+        if (p != null) total += p;
+      }
+    }
+    return total;
+  }
+
+  String get totalSavingsDisplay => _fmtPence(totalSavingsPence);
+  String get thisMonthSavingsDisplay => _fmtPence(thisMonthSavingsPence);
+
+  String get averageSavingDisplay {
+    final redeemed = redemptions.where((r) => r.savingPence != null).toList();
+    if (redeemed.isEmpty) return '—';
+    final avg = totalSavingsPence / redeemed.length;
+    return _fmtPence(avg.round());
   }
 
   String? get topRetailerName {
@@ -84,14 +98,10 @@ class _SavingsData {
     return counts.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
   }
 
-  static int? _parsePence(String? text) {
-    if (text == null) return null;
-    // Match "£X" or "£X.XX" patterns
-    final match = RegExp(r'£(\d+(?:\.\d{1,2})?)').firstMatch(text);
-    if (match == null) return null;
-    final pounds = double.tryParse(match.group(1)!);
-    if (pounds == null) return null;
-    return (pounds * 100).round();
+  static String _fmtPence(int pence) {
+    if (pence == 0) return '£0';
+    final pounds = pence / 100;
+    return '£${pounds.toStringAsFixed(pounds.truncateToDouble() == pounds ? 0 : 2)}';
   }
 }
 
@@ -101,11 +111,27 @@ class _Redemption {
     required this.retailerName,
     required this.redeemedAt,
     this.valueText,
+    this.estimatedSavingPence,
   });
   final String offerTitle;
   final String? valueText;
+  final int? estimatedSavingPence;
   final String retailerName;
   final DateTime redeemedAt;
+
+  int? get savingPence {
+    if (estimatedSavingPence != null) return estimatedSavingPence;
+    return _parsePence(valueText);
+  }
+
+  static int? _parsePence(String? text) {
+    if (text == null) return null;
+    final match = RegExp(r'£(\d+(?:\.\d{1,2})?)').firstMatch(text);
+    if (match == null) return null;
+    final pounds = double.tryParse(match.group(1)!);
+    if (pounds == null) return null;
+    return (pounds * 100).round();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -129,25 +155,24 @@ class SavingsScreen extends ConsumerWidget {
       body: savingsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => Center(
-          child: Text(
-            'Unable to load redemptions.',
-            style: AppTextStyles.bodyMedium,
-          ),
+          child: Text('Unable to load redemptions.', style: AppTextStyles.bodyMedium),
         ),
         data: (data) {
-          if (data.total == 0) {
+          if (data.totalCount == 0) {
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.savings_outlined,
-                      size: 56, color: AppColors.border),
+                  const Icon(Icons.savings_outlined, size: 56, color: AppColors.border),
                   const SizedBox(height: 16),
                   Text('No redemptions yet', style: AppTextStyles.titleMedium),
                   const SizedBox(height: 6),
                   Text(
-                    'Offers you redeem will appear here.',
-                    style: AppTextStyles.bodyMedium,
+                    'Start redeeming offers and your savings will appear here.',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
@@ -166,24 +191,78 @@ class _SavingsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasSavings = data.totalSavingsPence > 0;
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       children: [
-        // Stats grid
+        // ── Total savings hero ──────────────────────────────────────────────
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryLight],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Total savings',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                hasSavings ? data.totalSavingsDisplay : '£—',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 42,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -1,
+                ),
+              ),
+              if (!hasSavings) ...[
+                const SizedBox(height: 4),
+                const Text(
+                  'Estimated savings appear once retailers add pricing details.',
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // ── Stats grid ──────────────────────────────────────────────────────
         Row(
           children: [
             _StatCard(
-              value: '${data.total}',
-              label: 'All time',
-              sub: 'offers redeemed',
-              color: AppColors.primary,
+              value: data.thisMonthSavingsPence > 0
+                  ? data.thisMonthSavingsDisplay
+                  : '${data.thisMonthCount}',
+              label: 'This month',
+              sub: data.thisMonthSavingsPence > 0 ? 'saved' : 'offers redeemed',
+              color: const Color(0xFF3B82F6),
             ),
             const SizedBox(width: 12),
             _StatCard(
-              value: '${data.thisMonth}',
-              label: 'This month',
-              sub: 'offers redeemed',
-              color: const Color(0xFF3B82F6),
+              value: data.averageSavingDisplay,
+              label: 'Per redemption',
+              sub: 'average saving',
+              color: const Color(0xFF059669),
             ),
           ],
         ),
@@ -191,10 +270,10 @@ class _SavingsBody extends StatelessWidget {
         Row(
           children: [
             _StatCard(
-              value: data.estimatedSavingsDisplay,
-              label: 'Estimated saved',
-              sub: 'from fixed discounts',
-              color: const Color(0xFF059669),
+              value: '${data.totalCount}',
+              label: 'All time',
+              sub: 'offers redeemed',
+              color: AppColors.primary,
             ),
             const SizedBox(width: 12),
             if (data.topRetailerName != null)
@@ -209,7 +288,7 @@ class _SavingsBody extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
         Text('Redemption history', style: AppTextStyles.titleMedium),
         const SizedBox(height: 12),
 
@@ -226,9 +305,9 @@ class _SavingsBody extends StatelessWidget {
             separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (context, i) {
               final r = data.redemptions[i];
+              final saving = r.savingPence;
               return ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 6),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 leading: Container(
                   width: 40,
                   height: 40,
@@ -256,13 +335,22 @@ class _SavingsBody extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    if (r.valueText != null)
+                    if (saving != null)
                       Text(
-                        r.valueText!,
+                        'Saved ${_fmtPence(saving)}',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
+                        ),
+                      )
+                    else if (r.valueText != null)
+                      Text(
+                        r.valueText!,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     Text(
@@ -278,11 +366,25 @@ class _SavingsBody extends StatelessWidget {
             },
           ),
         ),
+
+        const SizedBox(height: 12),
+        Text(
+          'Savings figures are based on retailer-provided estimated values where available.',
+          style: AppTextStyles.bodyMedium.copyWith(
+            fontSize: 11,
+            color: AppColors.textDisabled,
+          ),
+        ),
       ],
     );
   }
 
-  String _fmtDate(DateTime dt) {
+  static String _fmtPence(int pence) {
+    final pounds = pence / 100;
+    return '£${pounds.toStringAsFixed(pounds.truncateToDouble() == pounds ? 0 : 2)}';
+  }
+
+  static String _fmtDate(DateTime dt) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final d = DateTime(dt.year, dt.month, dt.day);

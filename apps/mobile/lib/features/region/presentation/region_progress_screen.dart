@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/providers/supabase_provider.dart';
@@ -22,7 +24,7 @@ class RegionProgressScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: AppColors.cream,
         elevation: 0,
-        title: const Text('Your local community'),
+        title: const Text('My community'),
       ),
       body: _RegionProgressBody(userId: userId),
     );
@@ -78,8 +80,7 @@ class _RegionStatsView extends ConsumerWidget {
 
     return statsAsync.when(
       loading: () => const LoadingIndicator(),
-      error: (_, __) =>
-          const Center(child: Text('Could not load region stats.')),
+      error: (_, __) => const Center(child: Text('Could not load region stats.')),
       data: (region) {
         if (region == null) {
           return const Center(child: Text('Region not found.'));
@@ -105,7 +106,7 @@ class _StatsBody extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Hero card ────────────────────────────────────────────────────
+          // ── Hero card ─────────────────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(22),
@@ -130,7 +131,7 @@ class _StatsBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Local buying power',
+                  'Supporting local businesses',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -139,7 +140,7 @@ class _StatsBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  'The more local people who join, the better the offers become.',
+                  'Every member helps independent businesses thrive and unlocks better local offers for the whole community.',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
@@ -189,8 +190,7 @@ class _StatsBody extends StatelessWidget {
                 else
                   Text(
                     '$remaining more members until stronger local deals begin unlocking.',
-                    style:
-                        const TextStyle(color: Colors.white70, fontSize: 12),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 const SizedBox(height: 4),
                 Text(
@@ -207,7 +207,7 @@ class _StatsBody extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // ── Stats row ────────────────────────────────────────────────────
+          // ── Stats row ─────────────────────────────────────────────────────
           Row(
             children: [
               _StatCard(
@@ -232,30 +232,7 @@ class _StatsBody extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // ── Emotional tagline ─────────────────────────────────────────────
-          Container(
-            width: double.infinity,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.07),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              'Together we\'re building buying power for ${region.name}.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-                height: 1.4,
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Invite CTA ───────────────────────────────────────────────────
+          // ── Referral integration ──────────────────────────────────────────
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
@@ -268,7 +245,7 @@ class _StatsBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Help your community grow',
+                  'Invite friends, unlock more offers',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -278,8 +255,8 @@ class _StatsBody extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   remaining > 0
-                      ? 'Every new member helps attract more businesses and stronger offers across ${region.name}.'
-                      : 'Keep spreading the word — every member strengthens our local buying power.',
+                      ? 'Invite friends and help ${region.name} unlock stronger local deals sooner. You\'ll both earn a free month of membership.'
+                      : 'Keep inviting friends — every new member keeps money in the community and helps independent businesses thrive.',
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -287,23 +264,64 @@ class _StatsBody extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _shareRegion(region),
-                    icon: const Icon(Icons.share_outlined, size: 17),
-                    label: const Text('Invite Friends'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.push(RouteNames.referral),
+                        icon: const Icon(Icons.card_giftcard_outlined, size: 16),
+                        label: const Text('Refer a friend'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _shareRegion(region),
+                        icon: const Icon(Icons.share_outlined, size: 16),
+                        label: const Text('Share link'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Community tagline ─────────────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Together we\'re keeping money in ${region.name} and helping independent businesses thrive.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+                height: 1.4,
+              ),
             ),
           ),
 
@@ -322,22 +340,14 @@ class _StatsBody extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'The bigger the community, the better the deals.',
+                  'What your membership does',
                   style: AppTextStyles.titleMedium.copyWith(fontSize: 14),
                 ),
                 const SizedBox(height: 8),
-                const _BulletPoint(
-                  'More local businesses join the platform',
-                ),
-                const _BulletPoint(
-                  'Exclusive member offers increase',
-                ),
-                const _BulletPoint(
-                  'Retailers compete harder for local customers',
-                ),
-                const _BulletPoint(
-                  'Your membership becomes more valuable over time',
-                ),
+                const _BulletPoint('Keeps money circulating in your local economy'),
+                const _BulletPoint('Helps independent businesses attract more customers'),
+                const _BulletPoint('Encourages more businesses to join and offer exclusive deals'),
+                const _BulletPoint('Makes your membership more valuable as the community grows'),
               ],
             ),
           ),
@@ -350,9 +360,8 @@ class _StatsBody extends StatelessWidget {
 
   void _shareRegion(Region region) {
     Share.share(
-      'I\'m part of Better Off Local in ${region.name} — '
-      '${region.activeMemberCount} members and growing! '
-      'The more of us there are, the stronger our local discounts become.\n'
+      'I\'m part of Better Off Local in ${region.name} — supporting local businesses and saving money at the same time. '
+      '${region.activeMemberCount} members and growing!\n'
       'Join us: https://betterofflocal.com/join',
       subject: 'Join Better Off Local in ${region.name}',
     );
@@ -419,7 +428,7 @@ class _BulletPoint extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 1),
-            child: Icon(Icons.trending_up,
+            child: Icon(Icons.check_circle_outline,
                 size: 13, color: AppColors.primary),
           ),
           const SizedBox(width: 6),
