@@ -24,7 +24,7 @@ export default async function LocationDetailPage({ params }: Props) {
   const [{ data: loc }, { data: regionRows }] = await Promise.all([
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, address_line_2, town, county, postcode, is_primary, is_active, region_id, opening_hours_json, logo_url, cover_image_url, phone, website_url, short_description, description')
+      .select('id, name, address_line_1, address_line_2, town, county, postcode, is_primary, is_active, region_id, opening_hours_json, logo_url, cover_image_url, phone, website_url, short_description, description, review_status, review_notes, submitted_at')
       .eq('id', locationId)
       .eq('retailer_id', retailerId)
       .eq('is_active', true)
@@ -55,6 +55,9 @@ export default async function LocationDetailPage({ params }: Props) {
 
   const openingHours = parseOpeningHours((loc as any).opening_hours_json ?? null);
 
+  const reviewStatus = (loc as any).review_status ?? 'draft';
+  const reviewNotes  = (loc as any).review_notes  ?? null;
+
   return (
     <div>
       <div className="mb-6">
@@ -76,7 +79,7 @@ export default async function LocationDetailPage({ params }: Props) {
       </div>
 
       <div className="space-y-8 max-w-xl">
-        <VenueForm locationId={locationId} initialData={initialData} regions={regions} />
+        <VenueForm locationId={locationId} initialData={initialData} regions={regions} reviewStatus={reviewStatus} reviewNotes={reviewNotes} />
 
         <section className="rounded-lg border border-gray-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">

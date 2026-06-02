@@ -14,14 +14,15 @@ export default async function FeaturedPage() {
   const [featuredResult, availableResult] = await Promise.all([
     supabase
       .from('retailer_locations')
-      .select('id, retailer_id, region_id, name, is_active, logo_url, cover_image_url')
+      .select('id, retailer_id, region_id, name, is_active, logo_url, cover_image_url, review_status')
       .eq('is_featured', true)
       .order('name'),
     supabase
       .from('retailer_locations')
-      .select('id, retailer_id, region_id, name, is_active, logo_url, cover_image_url')
+      .select('id, retailer_id, region_id, name, is_active, logo_url, cover_image_url, review_status')
       .eq('is_featured', false)
       .eq('is_active', true)
+      .eq('review_status', 'approved')
       .order('name')
       .limit(100),
   ]);

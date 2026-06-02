@@ -379,6 +379,99 @@ export async function deactivateRetailerVenue(formData: FormData): Promise<void>
 }
 
 // ---------------------------------------------------------------------------
+// Venue moderation
+// ---------------------------------------------------------------------------
+
+/**
+ * Approves a venue listing, making it visible in consumer discovery.
+ * Clears any previous review notes.
+ */
+export async function approveVenue(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  const locationId = formData.get('location_id') as string;
+  const retailerId = formData.get('retailer_id') as string;
+
+  const supabase = createServiceClient();
+
+  const { data: venue } = await supabase
+    .from('retailer_locations')
+    .select('id, review_status')
+    .eq('id', locationId)
+    .eq('retailer_id', retailerId)
+    .maybeSingle();
+
+  if (!venue || venue.review_status === 'approved') return;
+
+  await supabase
+    .from('retailer_locations')
+    .update({
+      review_status: 'approved',
+      review_notes:  null,
+      approved_at:   new Date().toISOString(),
+      approved_by:   userId,
+    })
+    .eq('id', locationId);
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type:      'venue_approved',
+    target_table:     'retailer_locations',
+    target_id:        locationId,
+    reason:           'Approved by admin',
+    metadata_json:    { retailer_id: retailerId },
+  });
+
+  revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/featured');
+}
+
+/**
+ * Rejects a venue listing. A rejection note is required so the retailer
+ * knows what to fix before resubmitting.
+ */
+export async function rejectVenue(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  const locationId = formData.get('location_id') as string;
+  const retailerId = formData.get('retailer_id') as string;
+  const note       = (formData.get('review_notes') as string | null)?.trim() ?? '';
+
+  if (!note) return;
+
+  const supabase = createServiceClient();
+
+  const { data: venue } = await supabase
+    .from('retailer_locations')
+    .select('id, review_status')
+    .eq('id', locationId)
+    .eq('retailer_id', retailerId)
+    .maybeSingle();
+
+  if (!venue || venue.review_status === 'rejected') return;
+
+  await supabase
+    .from('retailer_locations')
+    .update({
+      review_status: 'rejected',
+      review_notes:  note,
+      rejected_at:   new Date().toISOString(),
+      rejected_by:   userId,
+    })
+    .eq('id', locationId);
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type:      'venue_rejected',
+    target_table:     'retailer_locations',
+    target_id:        locationId,
+    reason:           note,
+    metadata_json:    { retailer_id: retailerId },
+  });
+
+  revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/featured');
+}
+
+// ---------------------------------------------------------------------------
 // Featured venues (venue-level featured badge for BusinessCard)
 // ---------------------------------------------------------------------------
 
@@ -395,6 +488,18 @@ export async function toggleVenueFeatured(formData: FormData): Promise<void> {
   const currentFeatured = formData.get('is_featured') === 'true';
 
   const supabase = createServiceClient();
+
+  // When featuring (not unfeaturing), enforce that the venue is active and approved.
+  if (!currentFeatured) {
+    const { data: venue } = await supabase
+      .from('retailer_locations')
+      .select('is_active, review_status')
+      .eq('id', locationId)
+      .maybeSingle();
+
+    if (!venue || !venue.is_active || venue.review_status !== 'approved') return;
+  }
+
   await supabase
     .from('retailer_locations')
     .update({ is_featured: !currentFeatured })
@@ -410,6 +515,7 @@ export async function toggleVenueFeatured(formData: FormData): Promise<void> {
   });
 
   revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/featured');
 }
 
 // ---------------------------------------------------------------------------

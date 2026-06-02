@@ -387,6 +387,12 @@ export async function createVenue(
 
 /**
  * Updates an existing venue. Verifies retailer ownership.
+ *
+ * Review-status rules:
+ *  - draft / rejected → saving transitions to 'pending' (submitting for review)
+ *  - approved + any public field changed → 'pending' (re-review required)
+ *  - approved + no public field changed → status unchanged
+ *  - pending → status unchanged (already awaiting review)
  */
 export async function updateVenue(
   locationId: string,
@@ -400,17 +406,43 @@ export async function updateVenue(
 
   const service = createServiceClient();
 
-  const { data: existing } = await service
+  const { data: existing, error: fetchError } = await service
     .from('retailer_locations')
-    .select('id')
+    .select('id, review_status, name, address_line_1, address_line_2, town, county, postcode, phone, website_url, short_description, description')
     .eq('id', locationId)
     .eq('retailer_id', ctx.retailerId)
     .eq('is_active', true)
     .maybeSingle();
 
+  if (fetchError) {
+    console.error('[updateVenue] fetch error:', fetchError.message);
+    return { error: 'Failed to load venue. Please try again.' };
+  }
   if (!existing) return { error: 'Venue not found.' };
 
   const postcode = normalisePostcode(fields.postcode);
+
+  // Detect whether any public-listing field changed.
+  const publicFieldChanged =
+    (existing.name          ?? '') !== fields.name.trim()              ||
+    (existing.address_line_1 ?? '') !== fields.addressLine1.trim()     ||
+    (existing.address_line_2 ?? '') !== (fields.addressLine2.trim() || '') ||
+    (existing.town           ?? '') !== fields.town.trim()             ||
+    (existing.county         ?? '') !== (fields.county.trim() || '')   ||
+    (existing.postcode       ?? '') !== postcode                        ||
+    (existing.phone          ?? '') !== (fields.phone.trim() || '')    ||
+    (existing.website_url    ?? '') !== (fields.websiteUrl.trim() || '') ||
+    (existing.short_description ?? '') !== (fields.shortDescription.trim() || '') ||
+    (existing.description    ?? '') !== (fields.description.trim() || '');
+
+  let newReviewStatus: string | undefined;
+  if (existing.review_status === 'approved') {
+    newReviewStatus = publicFieldChanged ? 'pending' : undefined;
+  } else if (existing.review_status === 'draft' || existing.review_status === 'rejected') {
+    newReviewStatus = 'pending';
+  }
+  // 'pending' → no change (already queued for review)
+
   const { error } = await service
     .from('retailer_locations')
     .update({
@@ -426,6 +458,9 @@ export async function updateVenue(
       website_url:       fields.websiteUrl.trim() || null,
       short_description: fields.shortDescription.trim() || null,
       description:       fields.description.trim() || null,
+      ...(newReviewStatus
+        ? { review_status: newReviewStatus, submitted_at: new Date().toISOString() }
+        : {}),
     })
     .eq('id', locationId);
 

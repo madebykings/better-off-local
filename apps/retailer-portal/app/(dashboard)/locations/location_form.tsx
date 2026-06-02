@@ -59,14 +59,50 @@ function Field({
 
 const DESC_MAX = 500;
 
+function ReviewStatusBanner({ status, notes }: { status: string; notes: string | null }) {
+  if (status === 'approved') {
+    return (
+      <div role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+        Listing approved — your venue is live on the platform.
+      </div>
+    );
+  }
+  if (status === 'pending') {
+    return (
+      <div role="status" className="rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+        Changes submitted for review. Your venue details will update once approved.
+      </div>
+    );
+  }
+  if (status === 'rejected') {
+    return (
+      <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm">
+        <p className="font-medium text-red-800">Venue changes rejected</p>
+        {notes && <p className="mt-1 text-xs text-red-700">{notes}</p>}
+        <p className="mt-1.5 text-xs text-red-600">Update your details below and save to resubmit for review.</p>
+      </div>
+    );
+  }
+  // draft
+  return (
+    <div role="status" className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+      Draft — save your details to submit for review.
+    </div>
+  );
+}
+
 export function VenueForm({
   locationId,
   initialData,
   regions = [],
+  reviewStatus = 'draft',
+  reviewNotes = null,
 }: {
   locationId: string;
   initialData: VenueFields;
   regions?: RegionOption[];
+  reviewStatus?: string;
+  reviewNotes?: string | null;
 }) {
   const [fields, setFields] = useState<VenueFields>(initialData);
   const [errors, setErrors] = useState<Partial<Record<keyof VenueFields, string>>>({});
@@ -105,8 +141,15 @@ export function VenueForm({
     }
   }
 
+  const saveLabel = (() => {
+    if (isPending) return 'Saving…';
+    if (reviewStatus === 'draft' || reviewStatus === 'rejected') return 'Save and submit for review';
+    return 'Save changes';
+  })();
+
   return (
     <form onSubmit={handleSubmit} noValidate className="max-w-xl space-y-5">
+      <ReviewStatusBanner status={reviewStatus} notes={reviewNotes} />
       {serverError && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {serverError}
@@ -280,7 +323,7 @@ export function VenueForm({
           className="rounded-lg bg-green-800 px-6 py-2.5 text-sm font-semibold text-white
                      transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isPending ? 'Saving…' : 'Save changes'}
+          {saveLabel}
         </button>
         {saved && <span className="text-sm text-green-700">Saved ✓</span>}
       </div>

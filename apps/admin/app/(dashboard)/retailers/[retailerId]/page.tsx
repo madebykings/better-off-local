@@ -17,6 +17,8 @@ import {
   setVenueRegion,
   setVenueBillingStatus,
   toggleVenueFeatured,
+  approveVenue,
+  rejectVenue,
   updateRetailerDetails,
   updateVenueDetails,
   updateAdminVenueOpeningHours,
@@ -87,6 +89,21 @@ function QualityBadge({ score }: { score: number }) {
   );
 }
 
+function VenueReviewBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string }> = {
+    draft:    { label: 'Draft',          cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+    pending:  { label: 'Pending review', cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+    approved: { label: 'Approved',       cls: 'bg-green-100 text-green-700 border-green-200' },
+    rejected: { label: 'Rejected',       cls: 'bg-red-100 text-red-700 border-red-200' },
+  };
+  const { label, cls } = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-600 border-gray-200' };
+  return (
+    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -103,7 +120,7 @@ export default async function RetailerDetailPage({ params }: Props) {
     { data: links },
     { data: offer },
     { data: auditRows },
-    { data: venues },
+    { data: venues, error: venuesError },
     { data: subData },
     { data: activeRegions },
   ] = await Promise.all([
@@ -140,7 +157,7 @@ export default async function RetailerDetailPage({ params }: Props) {
       .order('created_at', { ascending: false }),
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, address_line_2, town, county, postcode, latitude, longitude, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at, opening_hours_json, logo_url, cover_image_url, phone, website_url, short_description, description')
+      .select('id, name, address_line_1, address_line_2, town, county, postcode, latitude, longitude, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at, opening_hours_json, logo_url, cover_image_url, phone, website_url, short_description, description, review_status, review_notes, submitted_at')
       .eq('retailer_id', retailerId)
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true }),
@@ -317,13 +334,26 @@ export default async function RetailerDetailPage({ params }: Props) {
 
           return (
             <div className="space-y-4">
+              {venuesError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  <p className="font-medium">Venue data failed to load</p>
+                  <p className="text-xs mt-1 font-mono">{venuesError.message}</p>
+                  <p className="text-xs mt-1 text-red-600">
+                    Migration 078 or 079 may not have been applied. Run the pending migrations in Supabase SQL Editor.
+                  </p>
+                </div>
+              )}
+
               {/* Allowance summary */}
               <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm space-y-1">
                 <p className="font-medium text-gray-700">
-                  {activeVenues.length} of {allowance} venue{allowance !== 1 ? 's' : ''} used
+                  {allVenues.length} venue{allVenues.length !== 1 ? 's' : ''} total
+                  {' · '}
+                  {activeVenues.length} active
                 </p>
                 <p className="text-xs text-gray-400">
-                  Base: 1 · Extra purchased: {extraQty}
+                  Billing slots: {activeVenues.length} of {allowance} used
+                  {' · '}Base: 1 · Extra purchased: {extraQty}
                   {override !== null ? ` · Override: ${override}` : ''}
                 </p>
               </div>
@@ -369,6 +399,7 @@ export default async function RetailerDetailPage({ params }: Props) {
                                 inactive:           'Inactive',
                               }[(v.billing_status as string)] ?? (v.billing_status as string).replace(/_/g, ' ')}
                               </span>
+                              <VenueReviewBadge status={v.review_status ?? 'draft'} />
                             </div>
                             {v.name && (
                               <p className="text-xs text-gray-400 truncate mt-0.5">
@@ -382,6 +413,9 @@ export default async function RetailerDetailPage({ params }: Props) {
                               <p className="text-xs text-amber-600 mt-0.5">
                                 Grace ends: {new Date(v.grace_period_ends_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                               </p>
+                            )}
+                            {(v.review_status === 'rejected') && v.review_notes && (
+                              <p className="text-xs text-red-600 mt-0.5">Rejected: {v.review_notes}</p>
                             )}
                           </div>
                           {activeVenues.length > 1 && !v.is_primary && v.is_active && (
@@ -402,7 +436,56 @@ export default async function RetailerDetailPage({ params }: Props) {
                         </div>
 
                         {/* Region + billing status + featured controls */}
-                        <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex flex-wrap gap-3">
+                        <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex flex-col gap-3">
+                          {/* Venue review controls */}
+                          <div className="flex items-center gap-2 w-full mb-2 pb-2 border-b border-gray-200">
+                            {v.review_status !== 'approved' && (
+                              <form action={approveVenue}>
+                                <input type="hidden" name="location_id" value={v.id} />
+                                <input type="hidden" name="retailer_id" value={retailerId} />
+                                <button
+                                  type="submit"
+                                  className="text-xs font-semibold rounded border border-green-300 bg-green-50 px-2.5 py-1 text-green-800 hover:bg-green-100 transition-colors"
+                                >
+                                  Approve venue
+                                </button>
+                              </form>
+                            )}
+                            {v.review_status === 'approved' && (
+                              <span className="text-xs text-green-700 font-medium">Venue approved</span>
+                            )}
+                            {v.review_status !== 'rejected' && (
+                              <form action={rejectVenue} className="flex items-center gap-1.5 flex-1">
+                                <input type="hidden" name="location_id" value={v.id} />
+                                <input type="hidden" name="retailer_id" value={retailerId} />
+                                <input
+                                  type="text"
+                                  name="review_notes"
+                                  placeholder="Rejection reason (required)"
+                                  className="flex-1 text-xs rounded border border-gray-200 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-red-400 focus:border-red-300"
+                                />
+                                <button
+                                  type="submit"
+                                  className="text-xs font-medium rounded border border-red-200 bg-red-50 px-2.5 py-1 text-red-700 hover:bg-red-100 transition-colors whitespace-nowrap"
+                                >
+                                  Reject
+                                </button>
+                              </form>
+                            )}
+                            {v.review_status === 'rejected' && (
+                              <form action={approveVenue}>
+                                <input type="hidden" name="location_id" value={v.id} />
+                                <input type="hidden" name="retailer_id" value={retailerId} />
+                                <button
+                                  type="submit"
+                                  className="text-xs font-semibold rounded border border-green-300 bg-green-50 px-2.5 py-1 text-green-800 hover:bg-green-100 transition-colors"
+                                >
+                                  Approve venue
+                                </button>
+                              </form>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-3">
                           {/* Featured toggle */}
                           <form action={toggleVenueFeatured} className="flex items-center gap-2">
                             <input type="hidden" name="location_id" value={v.id} />
@@ -464,6 +547,7 @@ export default async function RetailerDetailPage({ params }: Props) {
                               Set status
                             </button>
                           </form>
+                          </div>
                         </div>
 
                         {/* Collapsible opening hours editor */}
