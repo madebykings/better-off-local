@@ -389,3 +389,110 @@ export async function toggleOfferFeatured(formData: FormData): Promise<void> {
 
   revalidatePath('/featured');
 }
+
+// ---------------------------------------------------------------------------
+// Retailer editing
+// ---------------------------------------------------------------------------
+
+export async function updateRetailerDetails(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  const retailerId = formData.get('retailer_id') as string;
+
+  const supabase = createServiceClient();
+  await supabase
+    .from('retailers')
+    .update({
+      name:        (formData.get('name') as string | null)?.trim() || undefined,
+      tagline:     (formData.get('tagline') as string | null)?.trim() || null,
+      description: (formData.get('description') as string | null)?.trim() || null,
+      website_url: (formData.get('website_url') as string | null)?.trim() || null,
+      phone:       (formData.get('phone') as string | null)?.trim() || null,
+      email:       (formData.get('email') as string | null)?.trim() || null,
+      business_type: (formData.get('business_type') as string | null)?.trim() || null,
+      updated_at:  new Date().toISOString(),
+    })
+    .eq('id', retailerId);
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type: 'retailer_details_updated',
+    target_table: 'retailers',
+    target_id: retailerId,
+    reason: 'Edited by admin',
+    metadata_json: null,
+  });
+
+  revalidatePath(`/retailers/${retailerId}`);
+}
+
+// ---------------------------------------------------------------------------
+// Region management
+// ---------------------------------------------------------------------------
+
+export async function createRegion(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const name = (formData.get('name') as string | null)?.trim() ?? '';
+  const description = (formData.get('description') as string | null)?.trim() || null;
+  const threshold = parseInt((formData.get('member_threshold') as string | null) ?? '500', 10);
+
+  if (name.length < 2) return;
+
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  const supabase = createServiceClient();
+  await supabase.from('regions').insert({
+    name,
+    slug,
+    description,
+    country: 'GB',
+    postcode_prefixes: [],
+    member_threshold: isNaN(threshold) ? 500 : threshold,
+    is_active: true,
+  });
+
+  revalidatePath('/regions');
+}
+
+export async function updateRegionDetails(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const regionId = formData.get('region_id') as string;
+  const supabase = createServiceClient();
+
+  await supabase
+    .from('regions')
+    .update({
+      name:             (formData.get('name') as string | null)?.trim() || undefined,
+      description:      (formData.get('description') as string | null)?.trim() || null,
+      member_threshold: parseInt((formData.get('member_threshold') as string | null) ?? '0', 10),
+      is_active:        formData.get('is_active') === 'true',
+      updated_at:       new Date().toISOString(),
+    })
+    .eq('id', regionId);
+
+  revalidatePath('/regions');
+}
+
+// ---------------------------------------------------------------------------
+// Platform config (homepage content)
+// ---------------------------------------------------------------------------
+
+export async function updatePlatformConfig(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const supabase = createServiceClient();
+
+  await supabase
+    .from('platform_config')
+    .update({
+      homepage_headline: (formData.get('homepage_headline') as string | null)?.trim() || undefined,
+      homepage_body:     (formData.get('homepage_body') as string | null)?.trim() || undefined,
+      homepage_cta_text: (formData.get('homepage_cta_text') as string | null)?.trim() || undefined,
+      homepage_cta_url:  (formData.get('homepage_cta_url') as string | null)?.trim() || undefined,
+      updated_at:        new Date().toISOString(),
+    })
+    .eq('id', 1);
+
+  revalidatePath('/content');
+}

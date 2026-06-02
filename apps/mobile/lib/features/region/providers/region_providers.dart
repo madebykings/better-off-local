@@ -18,3 +18,17 @@ final regionStatsProvider =
     FutureProvider.family<Region?, String>((ref, regionId) async {
   return ref.watch(regionDataSourceProvider).fetchRegionStats(regionId);
 });
+
+/// The current member's region_id — keyed by userId so it can be invalidated
+/// after a region change without a full session reload.
+final memberRegionIdProvider = FutureProvider.family<String?, String>(
+  (ref, userId) async {
+    final client = ref.watch(supabaseClientProvider);
+    final row = await client
+        .from('profiles')
+        .select('region_id')
+        .eq('id', userId)
+        .maybeSingle();
+    return row?['region_id'] as String?;
+  },
+);

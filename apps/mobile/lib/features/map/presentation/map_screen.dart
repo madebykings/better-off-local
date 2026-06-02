@@ -36,8 +36,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   final _sheetController = DraggableScrollableController();
   final _searchController = TextEditingController();
   bool _hasFitBounds = false;
-  bool _mapCreated = false;
-  bool _cameraMoved = false;
 
   @override
   void initState() {
@@ -174,7 +172,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           GoogleMap(
             onMapCreated: (controller) {
               _mapController = controller;
-              setState(() => _mapCreated = true);
               debugPrint('[MAP] onMapCreated fired');
               final current = ref.read(mapRetailersProvider);
               if (!_hasFitBounds && current.isNotEmpty) {
@@ -182,9 +179,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 _fitMarkers(current);
               }
             },
-            onCameraMove: (_) {
-              if (!_cameraMoved) setState(() => _cameraMoved = true);
-            },
+            onCameraMove: (_) {},
             initialCameraPosition: _kDefaultCamera,
             markers: _buildMarkers(retailers, mapState.selectedRetailerId, profileId),
             myLocationEnabled: locationState.isGranted,
@@ -290,19 +285,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
 
-          // ── Staging debug overlay (debug builds only) ─────────────────
-          if (kDebugMode)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 62,
-              right: 12,
-              child: _MapDebugOverlay(
-                mapCreated: _mapCreated,
-                cameraMoved: _cameraMoved,
-                markerCount: retailers.length,
-                firstMarkerLat: retailers.isNotEmpty ? retailers.first.latitude : null,
-                firstMarkerLng: retailers.isNotEmpty ? retailers.first.longitude : null,
-              ),
-            ),
         ],
       ),
     );
@@ -758,59 +740,3 @@ class _Initials extends StatelessWidget {
       );
 }
 
-// ── Staging debug overlay (kDebugMode only) ───────────────────────────────────
-
-class _MapDebugOverlay extends StatelessWidget {
-  const _MapDebugOverlay({
-    required this.mapCreated,
-    required this.cameraMoved,
-    required this.markerCount,
-    required this.firstMarkerLat,
-    required this.firstMarkerLng,
-  });
-
-  final bool mapCreated;
-  final bool cameraMoved;
-  final int markerCount;
-  final double? firstMarkerLat;
-  final double? firstMarkerLng;
-
-  @override
-  Widget build(BuildContext context) {
-    const key = Env.googleMapsApiKey;
-    final keyLabel = key.isEmpty
-        ? 'MISSING'
-        : 'YES (…${key.substring(key.length > 4 ? key.length - 4 : 0)})';
-
-    final pinLabel = firstMarkerLat != null
-        ? '${firstMarkerLat!.toStringAsFixed(4)}, ${firstMarkerLng!.toStringAsFixed(4)}'
-        : 'none';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: DefaultTextStyle(
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontFamily: 'monospace',
-          height: 1.5,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('MAP DEBUG'),
-            Text('key: $keyLabel'),
-            Text('onMapCreated: ${mapCreated ? "YES" : "NO"}'),
-            Text('cameraMoved: ${cameraMoved ? "YES" : "NO"}'),
-            Text('markers: $markerCount'),
-            Text('pin[0]: $pinLabel'),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -16,6 +16,8 @@ const navItems = [
   { href: '/subscriptions', label: 'Subscriptions', icon: '💳' },
   { href: '/featured',      label: 'Featured',      icon: '⭐' },
   { href: '/referrals',     label: 'Referrals',     icon: '🎁' },
+  { href: '/revenue',       label: 'Revenue',       icon: '💰' },
+  { href: '/content',       label: 'Content',       icon: '✏️' },
   { href: '/audit',         label: 'Audit',         icon: '📋' },
   { href: '/settings',      label: 'Settings',      icon: '⚙️' },
 ];

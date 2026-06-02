@@ -63,10 +63,12 @@ export function ProfileForm({
   initialData,
   logoUrl,
   coverUrl,
+  categoryNames = [],
 }: {
   initialData: ProfileFields;
   logoUrl: string | null;
   coverUrl: string | null;
+  categoryNames?: string[];
 }) {
   const [fields, setFields] = useState<ProfileFields>(initialData);
   const [errors, setErrors] = useState<Partial<Record<keyof ProfileFields, string>>>({});
@@ -250,7 +252,7 @@ export function ProfileForm({
               disabled={isPending}
             >
               <option value="">Select a type…</option>
-              {BUSINESS_TYPES.map((t) => (
+              {(categoryNames.length > 0 ? categoryNames : BUSINESS_TYPES).map((t) => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>

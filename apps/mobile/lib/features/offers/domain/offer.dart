@@ -92,11 +92,12 @@ class Offer extends Equatable {
     if (type == 'fixed_discount' || text.contains('£')) {
       return const Color(0xFF3B82F6); // blue
     }
-    if (type == 'bundle' ||
-        text.contains('2 for') ||
-        text.contains('deal') ||
-        text.contains('meal')) {
+    if (type == 'bundle' || type == 'buy_one_get_one' ||
+        text.contains('2 for') || text.contains('bogo')) {
       return const Color(0xFF8B5CF6); // purple
+    }
+    if (type == 'meal_deal' || text.contains('deal') || text.contains('meal')) {
+      return const Color(0xFFEA580C); // deep orange
     }
     // Default: green (percentage_discount, other)
     return const Color(0xFF2D6A4F);
@@ -132,6 +133,28 @@ class Offer extends Equatable {
       maxRedemptionsTotal: rules?['max_redemptions_total'] as int?,
       cooldownHours: rules?['cooldown_hours'] as int?,
       newCustomersOnly: rules?['new_customers_only'] as bool? ?? false,
+    );
+  }
+
+  /// Constructs from a `consumer_discovery_offers` view row (no nested joins).
+  factory Offer.fromDiscoveryMap(Map<String, dynamic> map) {
+    return Offer(
+      id: map['id'] as String,
+      retailerId: map['retailer_id'] as String,
+      retailerName: map['retailer_name'] as String? ?? '',
+      title: map['title'] as String,
+      status: 'live',
+      shortSummary: map['short_summary'] as String?,
+      offerType: map['offer_type'] as String?,
+      valueText: map['value_text'] as String?,
+      startAt: map['start_at'] != null
+          ? DateTime.parse(map['start_at'] as String)
+          : null,
+      endAt: map['end_at'] != null
+          ? DateTime.parse(map['end_at'] as String)
+          : null,
+      isFeatured: map['is_featured'] as bool? ?? false,
+      imageUrl: map['image_url'] as String?,
     );
   }
 

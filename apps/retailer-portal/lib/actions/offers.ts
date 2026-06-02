@@ -24,6 +24,8 @@ export type OfferFields = {
   newCustomersOnly: boolean;
   venueScope: 'all' | 'specific';
   selectedLocationIds: string[];
+  imageUrl: string;            // public URL of the uploaded cover image, or ''
+  estimatedSavingPence: string; // integer string in pence, or ''
 };
 
 export type OfferActionResult = {
@@ -124,6 +126,10 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
       end_at: fields.endDate ? new Date(fields.endDate).toISOString() : null,
       status: 'draft',
       created_by_profile_id: ctx.userId,
+      image_url: fields.imageUrl.trim() || null,
+      estimated_saving_pence: fields.estimatedSavingPence.trim()
+        ? parseInt(fields.estimatedSavingPence, 10)
+        : null,
     })
     .select('id')
     .single();
@@ -185,6 +191,10 @@ export async function updateOffer(
       offer_type: fields.offerType,
       start_at: fields.startDate ? new Date(fields.startDate).toISOString() : null,
       end_at: fields.endDate ? new Date(fields.endDate).toISOString() : null,
+      image_url: fields.imageUrl.trim() || null,
+      estimated_saving_pence: fields.estimatedSavingPence.trim()
+        ? parseInt(fields.estimatedSavingPence, 10)
+        : null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', offerId);

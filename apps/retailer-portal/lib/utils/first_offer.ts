@@ -10,6 +10,8 @@ export const OFFER_TYPES = [
   'percentage_discount',
   'fixed_discount',
   'free_item',
+  'buy_one_get_one',
+  'meal_deal',
   'other',
 ] as const;
 

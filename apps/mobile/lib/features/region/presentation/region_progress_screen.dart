@@ -6,7 +6,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
-import '../../../core/providers/supabase_provider.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../domain/region.dart';
 import '../providers/region_providers.dart';
@@ -41,7 +40,7 @@ class _RegionProgressBody extends ConsumerWidget {
       return const Center(child: Text('Sign in required'));
     }
 
-    final regionIdAsync = ref.watch(_memberRegionIdProvider(userId!));
+    final regionIdAsync = ref.watch(memberRegionIdProvider(userId!));
 
     return regionIdAsync.when(
       loading: () => const LoadingIndicator(),
@@ -57,18 +56,6 @@ class _RegionProgressBody extends ConsumerWidget {
     );
   }
 }
-
-final _memberRegionIdProvider = FutureProvider.family<String?, String>(
-  (ref, userId) async {
-    final client = ref.watch(supabaseClientProvider);
-    final row = await client
-        .from('profiles')
-        .select('region_id')
-        .eq('id', userId)
-        .maybeSingle();
-    return row?['region_id'] as String?;
-  },
-);
 
 class _RegionStatsView extends ConsumerWidget {
   const _RegionStatsView({required this.regionId});

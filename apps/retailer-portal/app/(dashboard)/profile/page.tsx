@@ -10,11 +10,21 @@ export default async function ProfilePage() {
   const { retailerId } = await requireRetailerUser();
   const supabase = createServiceClient();
 
-  const { data: retailer } = await supabase
-    .from('retailers')
-    .select('name, tagline, website_url, description, business_type, phone, logo_url, cover_image_url')
-    .eq('id', retailerId)
-    .single();
+  const [{ data: retailer }, { data: categoryRows }] = await Promise.all([
+    supabase
+      .from('retailers')
+      .select('name, tagline, website_url, description, business_type, phone, logo_url, cover_image_url')
+      .eq('id', retailerId)
+      .single(),
+    supabase
+      .from('categories')
+      .select('name')
+      .eq('is_active', true)
+      .order('sort_order')
+      .order('name'),
+  ]);
+
+  const categoryNames = (categoryRows ?? []).map((c) => c.name as string);
 
   const initialData: ProfileFields = {
     name: retailer?.name ?? '',
@@ -37,6 +47,7 @@ export default async function ProfilePage() {
         initialData={initialData}
         logoUrl={retailer?.logo_url ?? null}
         coverUrl={retailer?.cover_image_url ?? null}
+        categoryNames={categoryNames}
       />
     </div>
   );

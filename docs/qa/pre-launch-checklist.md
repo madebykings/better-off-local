@@ -208,4 +208,108 @@ Executable by a human tester. Each item includes the user journey, expected resu
 
 ---
 
-*Checklist version: 1.0 — 2026-06-02*
+## 16. Change Region (Mobile)
+
+| # | Step | Expected result | Verify |
+|---|------|-----------------|--------|
+| 16.1 | Account → Change region | Region selection screen loads with all active regions | App |
+| 16.2 | Select a different region and tap Save | `profiles.region_id` updates immediately | Supabase: `profiles.region_id` |
+| 16.3 | Navigate to My Region after change | Region progress screen shows new region stats, not the old region | App |
+| 16.4 | Navigate back to home | Home screen shows offers for new region | App |
+
+---
+
+## 17. Offer Cover Images (Retailer Portal)
+
+| # | Step | Expected result | Verify |
+|---|------|-----------------|--------|
+| 17.1 | Create new offer with cover image | Upload button present; image uploads and previews | Portal |
+| 17.2 | Save offer with image | `offers.image_url` populated | Supabase: `offers` |
+| 17.3 | View offer in consumer app | Cover image appears on offer card | Consumer app |
+| 17.4 | Edit offer — replace image | Old image replaced; new URL saved | Supabase |
+| 17.5 | Remove image | `offers.image_url` set to null; placeholder shown | Consumer app |
+
+---
+
+## 18. Offer Types and Estimated Saving (Retailer Portal)
+
+| # | Step | Expected result | Verify |
+|---|------|-----------------|--------|
+| 18.1 | Create offer — select Buy One Get One | Type selectable; badge shows purple colour in app | Portal + Consumer app |
+| 18.2 | Create offer — select Meal Deal | Type selectable; badge shows orange colour | Portal + Consumer app |
+| 18.3 | Enter Estimated Customer Saving (e.g. 350 pence) | Stored as `estimated_saving_pence = 350` | Supabase: `offers` |
+| 18.4 | Consumer redeems offer with saving set | My Savings screen shows "Saved £3.50" for that redemption | Consumer app |
+
+---
+
+## 19. Business Type from Categories (Retailer Portal)
+
+| # | Step | Expected result | Verify |
+|---|------|-----------------|--------|
+| 19.1 | Admin creates a new category | Category appears in admin categories list | Admin portal |
+| 19.2 | Retailer visits Profile → Business type | Dropdown shows categories from admin, not hardcoded list | Portal |
+| 19.3 | Retailer selects category and saves | `retailers.business_type` updated | Supabase: `retailers` |
+
+---
+
+## 20. Admin: Retailer Editing
+
+| # | Step | Expected result | Verify |
+|---|------|-----------------|--------|
+| 20.1 | Admin opens retailer detail page | "Edit retailer details" form visible at bottom | Admin portal |
+| 20.2 | Update business name and save | `retailers.name` updates; admin action logged | Supabase + `admin_actions` |
+| 20.3 | Update description/website/phone | Changes persist | Supabase: `retailers` |
+
+---
+
+## 21. Admin: Region Management
+
+| # | Step | Expected result | Verify |
+|---|------|-----------------|--------|
+| 21.1 | Admin → Regions — Create region form | Form visible with name, description, threshold fields | Admin portal |
+| 21.2 | Create a new region | Region appears in list with correct threshold | Admin portal + Supabase: `regions` |
+| 21.3 | Edit existing region — update description | `regions.description` updated | Supabase |
+| 21.4 | Deactivate region | Region marked inactive; not shown to consumers | Admin portal + Consumer app |
+
+---
+
+## 22. Admin: Revenue Dashboard
+
+| # | Step | Expected result | Verify |
+|---|------|-----------------|--------|
+| 22.1 | Navigate to /revenue | Revenue page loads | Admin portal |
+| 22.2 | Monthly/annual member counts | Match `consumer_memberships` table counts | Supabase: `consumer_memberships` |
+| 22.3 | MRR and ARR displayed | Calculated from plan counts × prices | Visual |
+| 22.4 | Retailer counts | Match active retailer subscriptions | Supabase: `retailer_subscriptions` |
+
+---
+
+## 23. Admin: Homepage Content Management
+
+| # | Step | Expected result | Verify |
+|---|------|-----------------|--------|
+| 23.1 | Admin → Content | Form shows current headline, body, CTA | Admin portal |
+| 23.2 | Update headline text and save | `platform_config.homepage_headline` updated | Supabase: `platform_config` |
+| 23.3 | Update CTA destination URL | `platform_config.homepage_cta_url` updated | Supabase |
+
+---
+
+## 24. Admin: Billing Status Labels
+
+| # | Step | Expected result | Verify |
+|---|------|-----------------|--------|
+| 24.1 | Admin retailer detail — venue billing status | Shows "Free — growth region", "Payment required", "Paid", "Waived by admin" (not technical enum values) | Visual |
+| 24.2 | Change billing status via dropdown | Human-readable labels in dropdown | Visual |
+
+---
+
+## 25. Featured Offer Ordering (Mobile)
+
+| # | Step | Expected result | Verify |
+|---|------|-----------------|--------|
+| 25.1 | Home screen nearby offers | Featured offers appear first | App + Admin: /featured |
+| 25.2 | Among non-featured, most redeemed appears before newest | Verify by checking redemption counts | Supabase: `redemptions` count vs offer order |
+
+---
+
+*Checklist version: 2.0 — 2026-06-02*

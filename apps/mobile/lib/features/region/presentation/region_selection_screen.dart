@@ -42,10 +42,10 @@ class _RegionSelectionScreenState extends ConsumerState<RegionSelectionScreen> {
             profileId: session.user.id,
             regionId: _selectedId!,
           );
-      // Invalidate profile directly so the router re-evaluates hasRegion.
-      // Invalidating sessionProvider would also work (profileProvider depends
-      // on it) but is unnecessarily broad and triggers a full session reload.
+      // Invalidate profile so the router re-evaluates hasRegion.
       ref.invalidate(profileProvider);
+      // Invalidate region data so the region progress screen rebuilds fresh.
+      ref.invalidate(memberRegionIdProvider(session.user.id));
       if (mounted) {
         if (widget.isOnboarding) {
           context.go(RouteNames.home);

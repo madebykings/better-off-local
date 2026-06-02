@@ -45,13 +45,14 @@ export default async function CategoriesPage() {
             />
           </div>
           <div>
-            <label htmlFor="cat-icon" className="block text-xs text-gray-500 mb-1">Icon (optional)</label>
+            <label htmlFor="cat-icon" className="block text-xs text-gray-500 mb-1">Icon (emoji)</label>
             <input
               id="cat-icon"
               name="icon"
               type="text"
-              placeholder="e.g. heart"
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 w-36"
+              placeholder="🍕"
+              maxLength={4}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-center text-lg focus:outline-none focus:ring-1 focus:ring-green-700 w-20"
             />
           </div>
           <button

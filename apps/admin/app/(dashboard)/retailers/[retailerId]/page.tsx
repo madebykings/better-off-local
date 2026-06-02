@@ -16,6 +16,7 @@ import {
   deactivateRetailerVenue,
   setVenueRegion,
   setVenueBillingStatus,
+  updateRetailerDetails,
 } from '@/lib/actions/admin';
 
 export const metadata: Metadata = { title: 'Retailer review – Admin' };
@@ -343,7 +344,13 @@ export default async function RetailerDetailPage({ params }: Props) {
                                 </span>
                               )}
                               <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${billingCls}`}>
-                                {(v.billing_status as string).replace(/_/g, ' ')}
+                                {{
+                                free_growth_region: 'Free — growth region',
+                                paid_required:      'Payment required',
+                                paid:               'Paid',
+                                admin_waived:       'Waived',
+                                inactive:           'Inactive',
+                              }[(v.billing_status as string)] ?? (v.billing_status as string).replace(/_/g, ' ')}
                               </span>
                             </div>
                             {v.name && (
@@ -411,10 +418,10 @@ export default async function RetailerDetailPage({ params }: Props) {
                               className="text-xs rounded border border-gray-200 px-2 py-1 bg-white
                                          focus:outline-none focus:ring-1 focus:ring-green-700"
                             >
-                              <option value="free_growth_region">free growth region</option>
-                              <option value="paid_required">paid required</option>
-                              <option value="paid">paid</option>
-                              <option value="admin_waived">admin waived</option>
+                              <option value="free_growth_region">Free — growth region</option>
+                              <option value="paid_required">Payment required</option>
+                              <option value="paid">Paid</option>
+                              <option value="admin_waived">Waived by admin</option>
                             </select>
                             <button
                               type="submit"
@@ -467,6 +474,92 @@ export default async function RetailerDetailPage({ params }: Props) {
             </div>
           );
         })()}
+      </div>
+
+      {/* Edit retailer details */}
+      <div className="mt-6 bg-white rounded-lg border border-gray-200">
+        <div className="px-4 py-3 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">Edit retailer details</h2>
+        </div>
+        <form action={updateRetailerDetails} className="p-4 space-y-4 max-w-2xl">
+          <input type="hidden" name="retailer_id" value={retailerId} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Business name</label>
+              <input
+                type="text"
+                name="name"
+                defaultValue={retailer.name ?? ''}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Tagline</label>
+              <input
+                type="text"
+                name="tagline"
+                defaultValue={retailer.tagline ?? ''}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Description</label>
+            <textarea
+              name="description"
+              defaultValue={retailer.description ?? ''}
+              rows={3}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 resize-none"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Website</label>
+              <input
+                type="text"
+                name="website_url"
+                defaultValue={(retailer as any).website_url ?? ''}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Phone</label>
+              <input
+                type="text"
+                name="phone"
+                defaultValue={(retailer as any).phone ?? ''}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Email</label>
+              <input
+                type="email"
+                name="email"
+                defaultValue={(retailer as any).email ?? ''}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Business type</label>
+              <input
+                type="text"
+                name="business_type"
+                defaultValue={(retailer as any).business_type ?? ''}
+                placeholder="e.g. Food & Drink"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+              />
+            </div>
+          </div>
+          <div className="pt-2">
+            <button
+              type="submit"
+              className="rounded-lg bg-green-800 px-5 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+            >
+              Save changes
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

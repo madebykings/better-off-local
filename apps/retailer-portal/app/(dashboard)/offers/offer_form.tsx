@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   createOffer,
@@ -12,6 +12,7 @@ import {
   type OfferActionResult,
   type CreateOfferResult,
 } from '@/lib/actions/offers';
+import { uploadOfferImage } from '@/lib/actions/offer_images';
 import {
   OFFER_TYPES,
   type OfferType,
@@ -23,11 +24,13 @@ import { REDEMPTION_RULES, type RedemptionRule } from '@/lib/utils/redemption_ru
 // Constants
 // ---------------------------------------------------------------------------
 
-const OFFER_TYPE_CONFIG: Record<OfferType, { label: string; hint: string; icon: string }> = {
-  percentage_discount: { label: 'Percentage off', hint: 'e.g. 10% off', icon: '%' },
-  fixed_discount:      { label: 'Fixed amount off', hint: 'e.g. £5 off', icon: '£' },
-  free_item:           { label: 'Free item',        hint: 'e.g. Free coffee', icon: '🎁' },
-  other:               { label: 'Special deal',     hint: 'e.g. Members-only event', icon: '⭐' },
+const OFFER_TYPE_CONFIG: Record<OfferType, { label: string; hint: string; icon: string; savingHint: string }> = {
+  percentage_discount: { label: 'Percentage off',    hint: 'e.g. 10% off',                icon: '%',  savingHint: 'e.g. 50 for typical 10% off a £5 coffee' },
+  fixed_discount:      { label: 'Fixed amount off',  hint: 'e.g. £5 off',                 icon: '£',  savingHint: 'e.g. 500 for £5 off' },
+  free_item:           { label: 'Free item',          hint: 'e.g. Free coffee',            icon: '🎁', savingHint: 'e.g. 350 for a £3.50 item' },
+  buy_one_get_one:     { label: 'Buy one get one',   hint: 'e.g. BOGOF main course',       icon: '2️⃣', savingHint: 'e.g. 800 for half the cost of a £16 item' },
+  meal_deal:           { label: 'Meal deal',          hint: 'e.g. Lunch meal deal',        icon: '🍱', savingHint: 'e.g. 400 if the deal saves ~£4 vs buying separately' },
+  other:               { label: 'Special deal',       hint: 'e.g. Members-only event',    icon: '⭐', savingHint: 'Estimated pence saved per use, if applicable' },
 };
 
 const RULE_LABELS: Record<RedemptionRule, string> = {
@@ -105,11 +108,16 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
     venueScope: 'all',
     selectedLocationIds: [],
     newCustomersOnly: false,
+    imageUrl: '',
+    estimatedSavingPence: '',
     ...initialData,
   });
   const [errors, setErrors] = useState<Partial<Record<keyof OfferFields, string>>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   function set(key: keyof OfferFields) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -122,6 +130,26 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
   function setOfferType(type: OfferType) {
     setFields((prev) => ({ ...prev, offerType: type }));
     if (errors.offerType) setErrors((prev) => ({ ...prev, offerType: undefined }));
+  }
+
+  async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageError(null);
+    setImageUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const result = await uploadOfferImage(fd);
+      if ('error' in result) {
+        setImageError(result.error);
+      } else {
+        setFields((prev) => ({ ...prev, imageUrl: result.url }));
+      }
+    } finally {
+      setImageUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -455,6 +483,75 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
             className={inputCls(!!errors.totalCap)}
             disabled={!canEdit || isPending}
           />
+        </Field>
+
+        {/* Cover image */}
+        <Field
+          label="Cover image"
+          hint="Recommended: 1200 × 675 px (16:9). JPG, PNG or WebP. Max 10 MB."
+          error={imageError ?? undefined}
+        >
+          <div className="space-y-2">
+            {fields.imageUrl && (
+              <div className="relative w-full overflow-hidden rounded-lg border border-gray-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={fields.imageUrl}
+                  alt="Offer cover"
+                  className="w-full object-cover max-h-40"
+                />
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setFields((prev) => ({ ...prev, imageUrl: '' }))}
+                    className="absolute top-2 right-2 bg-white/90 rounded-full w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-600 text-xs border border-gray-200"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
+            {canEdit && (
+              <div>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleImageSelect}
+                  disabled={imageUploading || isPending}
+                />
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={imageUploading || isPending}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                >
+                  {imageUploading ? 'Uploading…' : fields.imageUrl ? '🔄 Replace image' : '📷 Upload cover image'}
+                </button>
+              </div>
+            )}
+          </div>
+        </Field>
+
+        {/* Estimated saving */}
+        <Field
+          label="Estimated customer saving (optional)"
+          hint={`Amount saved per redemption in pence. ${OFFER_TYPE_CONFIG[fields.offerType].savingHint}. Used in the savings screen and analytics.`}
+          error={errors.estimatedSavingPence}
+        >
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">p</span>
+            <input
+              type="number"
+              value={fields.estimatedSavingPence}
+              onChange={set('estimatedSavingPence')}
+              placeholder="e.g. 350 (= £3.50)"
+              min={1}
+              className={[inputCls(!!errors.estimatedSavingPence), 'pl-7'].join(' ')}
+              disabled={!canEdit || isPending}
+            />
+          </div>
         </Field>
 
         {/* New customers only */}
