@@ -7,6 +7,7 @@ import { Logo } from '@better-off-local/ui';
 const navItems = [
   { href: '/dashboard',     label: 'Dashboard',     icon: '⊞' },
   { href: '/review',        label: 'Review',        icon: '🔍' },
+  { href: '/crm',           label: 'Growth CRM',    icon: '📈' },
   { href: '/retailers',     label: 'Retailers',     icon: '🏪' },
   { href: '/offers',        label: 'Offers',        icon: '🏷️' },
   { href: '/members',       label: 'Members',       icon: '👥' },
