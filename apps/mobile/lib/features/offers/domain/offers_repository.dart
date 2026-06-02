@@ -13,6 +13,9 @@ abstract class OffersRepository {
     String? profileId,
   });
 
+  /// Home screen offers: featured → most redeemed → newest, capped at 10.
+  Future<List<Offer>> getHomeOffers();
+
   /// Returns the best live offer per retailer, keyed by retailer ID.
   /// Featured offers take priority; oldest live offer is the fallback.
   Future<Map<String, OfferSummary>> getFeaturedOffersByRetailers(

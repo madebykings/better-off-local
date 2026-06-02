@@ -2,6 +2,27 @@ import 'package:equatable/equatable.dart';
 
 import '../../offers/domain/offer_summary.dart';
 
+// ---------------------------------------------------------------------------
+// Safe field parsers — the consumer_discovery_retailers view can return
+// unexpected types (e.g. a boolean where a string is expected). These helpers
+// prevent runtime cast errors and surface a sensible fallback instead.
+// ---------------------------------------------------------------------------
+
+String? _parseString(dynamic v) {
+  if (v == null) return null;
+  if (v is String) return v;
+  return v.toString();
+}
+
+bool _parseBool(dynamic v) {
+  if (v is bool) return v;
+  if (v is String) return v.toLowerCase() == 'true';
+  if (v is num) return v != 0;
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+
 /// A single day's opening hours.
 class DayHours {
   const DayHours({required this.open, required this.close, required this.closed});
@@ -10,9 +31,9 @@ class DayHours {
   final bool closed;
 
   factory DayHours.fromMap(Map<String, dynamic> map) => DayHours(
-        open: map['open'] as String? ?? '',
-        close: map['close'] as String? ?? '',
-        closed: map['closed'] as bool? ?? false,
+        open: _parseString(map['open']) ?? '',
+        close: _parseString(map['close']) ?? '',
+        closed: _parseBool(map['closed']),
       );
 }
 
@@ -24,7 +45,8 @@ class OpeningHours {
   factory OpeningHours.fromJson(Map<String, dynamic> json) {
     return OpeningHours({
       for (final entry in json.entries)
-        entry.key: DayHours.fromMap(entry.value as Map<String, dynamic>),
+        if (entry.value is Map<String, dynamic>)
+          entry.key: DayHours.fromMap(entry.value as Map<String, dynamic>),
     });
   }
 
@@ -51,7 +73,6 @@ class OpeningHours {
     if (now.isBefore(openTime)) {
       return 'Closed · Opens today at ${today.open}';
     }
-    // After close — find next open day.
     final next = _nextOpenDay(now);
     return 'Closed${next != null ? ' · Opens $next' : ''}';
   }
@@ -64,6 +85,17 @@ class OpeningHours {
     final closeTime = _parseTime(today.close, now);
     if (openTime == null || closeTime == null) return false;
     return now.isAfter(openTime) && now.isBefore(closeTime);
+  }
+
+  /// True when the venue is open but closes within the next [minutesThreshold] minutes.
+  bool isClosingSoon({int minutesThreshold = 30}) {
+    final now = DateTime.now();
+    final today = days[_dayKey(now.weekday)];
+    if (today == null || today.closed) return false;
+    final closeTime = _parseTime(today.close, now);
+    if (closeTime == null) return false;
+    return now.isBefore(closeTime) &&
+        now.isAfter(closeTime.subtract(Duration(minutes: minutesThreshold)));
   }
 
   String? _nextOpenDay(DateTime from) {
@@ -120,6 +152,7 @@ class Retailer extends Equatable {
     this.featuredOffer,
     this.activeOfferCount = 0,
     this.openingHours,
+    this.isFeatured = false,
   });
 
   final String id;
@@ -144,6 +177,10 @@ class Retailer extends Equatable {
   final int activeOfferCount;
   final OpeningHours? openingHours;
 
+  /// True when the retailer is marked as featured in the backend.
+  /// Used to determine the badge shown on BusinessCard.
+  final bool isFeatured;
+
   String? get displayAddress {
     final parts = [addressLine1, town, postcode]
         .where((p) => p != null && p.isNotEmpty)
@@ -152,6 +189,8 @@ class Retailer extends Equatable {
   }
 
   /// Parses from the flat `consumer_discovery_retailers` view row.
+  /// Uses defensive helpers (_parseString, _parseBool) to survive any view
+  /// columns that return unexpected types (e.g. bool where String is expected).
   factory Retailer.fromMap(Map<String, dynamic> map) {
     final catNames = map['category_names'];
     final categories = <String>[];
@@ -170,18 +209,18 @@ class Retailer extends Equatable {
     return Retailer(
       id: map['id'] as String,
       name: map['name'] as String,
-      slug: map['slug'] as String? ?? '',
-      tagline: map['tagline'] as String?,
-      description: map['description'] as String?,
-      shortDescription: map['short_description'] as String?,
-      logoUrl: map['logo_url'] as String?,
-      coverImageUrl: map['cover_image_url'] as String?,
-      websiteUrl: map['website_url'] as String?,
-      phone: map['phone'] as String?,
-      email: map['email'] as String?,
-      addressLine1: map['address_line_1'] as String?,
-      town: map['town'] as String?,
-      postcode: map['postcode'] as String?,
+      slug: _parseString(map['slug']) ?? '',
+      tagline: _parseString(map['tagline']),
+      description: _parseString(map['description']),
+      shortDescription: _parseString(map['short_description']),
+      logoUrl: _parseString(map['logo_url']),
+      coverImageUrl: _parseString(map['cover_image_url']),
+      websiteUrl: _parseString(map['website_url']),
+      phone: _parseString(map['phone']),
+      email: _parseString(map['email']),
+      addressLine1: _parseString(map['address_line_1']),
+      town: _parseString(map['town']),
+      postcode: _parseString(map['postcode']),
       latitude: map['latitude'] != null
           ? double.tryParse(map['latitude'].toString())
           : null,
@@ -191,6 +230,7 @@ class Retailer extends Equatable {
       categories: categories,
       activeOfferCount: (map['active_offer_count'] as num?)?.toInt() ?? 0,
       openingHours: openingHours,
+      isFeatured: _parseBool(map['is_featured']),
     );
   }
 

@@ -59,6 +59,9 @@ final homeRetailersProvider = FutureProvider<List<Retailer>>((ref) async {
       distanceKm: distKm,
       categories: r.categories,
       featuredOffer: featuredOffers[r.id],
+      activeOfferCount: r.activeOfferCount,
+      openingHours: r.openingHours,
+      isFeatured: r.isFeatured,
     );
   }).toList();
 

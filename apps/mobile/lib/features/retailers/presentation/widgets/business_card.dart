@@ -361,10 +361,9 @@ class _BusinessInfo extends StatelessWidget {
   final bool compact;
 
   String _formatDistance(double km) {
-    final mi = km * 0.621371;
-    if (mi < 0.05) return '${(km * 1000).round()}m away';
-    if (mi < 10) return '${mi.toStringAsFixed(1)} mi away';
-    return '${mi.round()} mi away';
+    if (km < 1.0) return '${(km * 1000).round()}m away';
+    if (km < 10) return '${km.toStringAsFixed(1)} km away';
+    return '${km.round()} km away';
   }
 
   @override

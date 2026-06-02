@@ -6,11 +6,20 @@ import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
 import '../../../../core/widgets/section_header.dart';
+import '../../../retailers/domain/retailer.dart';
 import '../../../retailers/presentation/widgets/business_card.dart';
 import '../../home_providers.dart';
 
 class FeaturedRetailersSection extends ConsumerWidget {
   const FeaturedRetailersSection({super.key});
+
+  /// Returns the badge string for a retailer based on backend data.
+  /// Currently supports Featured (from is_featured flag).
+  /// Trending / Member Favourite / New require additional DB fields.
+  static String? _badgeFor(Retailer r) {
+    if (r.isFeatured) return '⭐ Featured';
+    return null;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,7 +31,7 @@ class FeaturedRetailersSection extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: SectionHeader(
-            title: 'Trending near you',
+            title: 'Nearby businesses',
             action: TextButton(
               onPressed: () => context.go(RouteNames.explore),
               child: Text(
@@ -61,7 +70,7 @@ class FeaturedRetailersSection extends ConsumerWidget {
                   padding: const EdgeInsets.only(right: 12),
                   child: BusinessCard(
                     retailer: shown[i],
-                    badge: '🔥 Trending',
+                    badge: _badgeFor(shown[i]),
                     onTap: () => context.push(
                       RouteNames.retailerDetail
                           .replaceAll(':retailerId', shown[i].id),

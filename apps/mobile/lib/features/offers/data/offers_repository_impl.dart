@@ -27,6 +27,12 @@ class OffersRepositoryImpl implements OffersRepository {
   }
 
   @override
+  Future<List<Offer>> getHomeOffers() async {
+    final rows = await _dataSource.fetchHomeOffers();
+    return rows.map(Offer.fromDiscoveryMap).toList();
+  }
+
+  @override
   Future<List<Category>> getCategories() async {
     final rows = await _dataSource.fetchCategories();
     return rows.map(Category.fromMap).toList();

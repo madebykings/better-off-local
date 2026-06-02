@@ -128,6 +128,18 @@ class OffersRemoteDataSource {
   /// Fetches the best offer per retailer from [retailerIds] using the
   /// `consumer_discovery_offers` view. Featured offers are preferred; oldest
   /// live offer is the fallback. Callers keep the first result per retailer.
+  /// Home screen offers: featured → most redeemed → newest, capped at [limit].
+  /// Uses _discoverySelect so all redemption rule fields are included.
+  Future<List<Map<String, dynamic>>> fetchHomeOffers({int limit = 10}) async {
+    return await _client
+        .from('consumer_discovery_offers')
+        .select(_discoverySelect)
+        .order('is_featured', ascending: false)
+        .order('redemption_count', ascending: false)
+        .order('created_at', ascending: false)
+        .limit(limit);
+  }
+
   Future<List<Map<String, dynamic>>> fetchFeaturedOfferForRetailers(
       List<String> retailerIds) async {
     return await _client

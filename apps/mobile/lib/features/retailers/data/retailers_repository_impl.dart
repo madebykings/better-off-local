@@ -52,6 +52,9 @@ class RetailersRepositoryImpl implements RetailerRepository {
             distanceKm: dist,
             categories: r.categories,
             featuredOffer: r.featuredOffer,
+            activeOfferCount: r.activeOfferCount,
+            openingHours: r.openingHours,
+            isFeatured: r.isFeatured,
           );
         })
         .toList()

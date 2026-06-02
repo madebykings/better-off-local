@@ -29,22 +29,9 @@ final liveOffersProvider = FutureProvider<List<Offer>>((ref) {
 });
 
 /// Home screen offers: featured first, then most redeemed, then newest. Limited to 10.
-final homeOffersProvider = FutureProvider<List<Offer>>((ref) async {
-  final client = ref.read(supabaseClientProvider);
-  final now = DateTime.now().toUtc().toIso8601String();
-  final rows = await client
-      .from('consumer_discovery_offers')
-      .select('id, retailer_id, title, short_summary, value_text, offer_type, '
-              'start_at, end_at, is_featured, image_url, estimated_saving_pence, '
-              'redemption_count')
-      .or('end_at.is.null,end_at.gt.$now')
-      .or('start_at.is.null,start_at.lte.$now')
-      .order('is_featured', ascending: false)
-      .order('redemption_count', ascending: false)
-      .order('created_at', ascending: false)
-      .limit(10);
-
-  return (rows as List).map((r) => Offer.fromDiscoveryMap(r)).toList();
+/// Delegates to the repository so all redemption rule fields are included in the query.
+final homeOffersProvider = FutureProvider<List<Offer>>((ref) {
+  return ref.read(offersRepositoryProvider).getHomeOffers();
 });
 
 /// Single offer detail by ID.
