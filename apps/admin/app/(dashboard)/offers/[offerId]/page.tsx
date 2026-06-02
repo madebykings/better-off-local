@@ -10,11 +10,27 @@ import {
   pauseOffer,
   reinstateOffer,
 } from '@/lib/actions/moderation';
+import { AdminOfferEditForm } from '@/components/offers/offer_edit_form';
+import { type AdminOfferFields } from '@/lib/actions/offer_admin';
+import { type OfferType } from '@/lib/utils/first_offer';
+import { ruleFromColumns } from '@/lib/utils/redemption_rules';
 
 export const metadata: Metadata = { title: 'Offer – Admin' };
 
 interface Props {
   params: Promise<{ offerId: string }>;
+}
+
+function extractDiscountValue(offerType: string, valueText: string): string {
+  if (offerType === 'percentage_discount') {
+    const m = valueText.match(/^(\d+(?:\.\d+)?)%/);
+    return m ? m[1] : '';
+  }
+  if (offerType === 'fixed_discount') {
+    const m = valueText.match(/^£(\d+(?:\.\d+)?)/);
+    return m ? m[1] : '';
+  }
+  return '';
 }
 
 function Field({ label, value }: { label: string; value?: string | null }) {
@@ -41,15 +57,20 @@ export default async function OfferDetailPage({ params }: Props) {
   const { offerId } = await params;
   const supabase = createServiceClient();
 
-  const [offerResult, rulesResult, actionsResult] = await Promise.all([
-    supabase
-      .from('offers')
-      .select('*, retailers(id, name, approval_status, visibility_status)')
-      .eq('id', offerId)
-      .single(),
+  const offerResult = await supabase
+    .from('offers')
+    .select('*, retailers(id, name, approval_status, visibility_status)')
+    .eq('id', offerId)
+    .single();
+
+  if (!offerResult.data) notFound();
+  const o = offerResult.data;
+  const retailerId = (o as any).retailer_id as string | null;
+
+  const [rulesResult, actionsResult, offerLocationsResult, locationsResult] = await Promise.all([
     supabase
       .from('offer_rules')
-      .select('max_redemptions_per_user, max_redemptions_per_day, max_redemptions_total')
+      .select('max_redemptions_per_user, max_redemptions_per_day, max_redemptions_total, cooldown_hours, new_customers_only')
       .eq('offer_id', offerId)
       .maybeSingle(),
     supabase
@@ -58,12 +79,47 @@ export default async function OfferDetailPage({ params }: Props) {
       .eq('target_table', 'offers')
       .eq('target_id', offerId)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('offer_locations')
+      .select('retailer_location_id')
+      .eq('offer_id', offerId),
+    retailerId
+      ? supabase
+          .from('retailer_locations')
+          .select('id, name, address_line_1')
+          .eq('retailer_id', retailerId)
+          .eq('is_active', true)
+          .order('is_primary', { ascending: false })
+      : Promise.resolve({ data: [] as { id: string; name: string | null; address_line_1: string | null }[] }),
   ]);
 
-  if (!offerResult.data) notFound();
-  const o = offerResult.data;
   const rules = rulesResult.data;
   const actions = actionsResult.data ?? [];
+  const offerLocations = offerLocationsResult.data ?? [];
+  const locations = locationsResult.data ?? [];
+
+  const initialFields: AdminOfferFields = {
+    offerType:            (o as any).offer_type as OfferType,
+    discountValue:        extractDiscountValue((o as any).offer_type, (o as any).value_text ?? ''),
+    headline:             (o as any).title ?? '',
+    shortSummary:         (o as any).short_summary ?? '',
+    description:          (o as any).description ?? '',
+    termsText:            (o as any).terms_text ?? '',
+    redemptionRule:       rules
+      ? ruleFromColumns({
+          max_redemptions_per_user: rules.max_redemptions_per_user,
+          max_redemptions_per_day:  rules.max_redemptions_per_day,
+          cooldown_hours:           rules.cooldown_hours,
+        })
+      : 'unlimited',
+    startDate:            (o as any).start_at ? (o as any).start_at.slice(0, 10) : '',
+    endDate:              (o as any).end_at   ? (o as any).end_at.slice(0, 10)   : '',
+    totalCap:             rules?.max_redemptions_total?.toString() ?? '',
+    newCustomersOnly:     rules?.new_customers_only ?? false,
+    venueScope:           ((o as any).venue_scope as 'all' | 'specific') ?? 'all',
+    selectedLocationIds:  offerLocations.map((l: any) => l.retailer_location_id as string),
+    estimatedSavingPence: (o as any).estimated_saving_pence?.toString() ?? '',
+  };
 
   function formatDate(iso: string | null) {
     return iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
@@ -141,6 +197,23 @@ export default async function OfferDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      {/* Edit offer */}
+      <details className="mb-6 group bg-white rounded-lg border border-gray-200">
+        <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-semibold text-gray-700 select-none hover:bg-gray-50 rounded-lg transition-colors">
+          Edit offer
+          <span className="text-gray-400 text-xs group-open:hidden">▶ expand</span>
+          <span className="text-gray-400 text-xs hidden group-open:inline">▼ collapse</span>
+        </summary>
+        <div className="border-t border-gray-100 p-4">
+          <AdminOfferEditForm
+            offerId={o.id}
+            initialFields={initialFields}
+            currentImageUrl={(o as any).image_url ?? null}
+            locations={locations}
+          />
+        </div>
+      </details>
 
       {/* Admin action history */}
       {actions.length > 0 && (
