@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
+import '../../../core/providers/supabase_provider.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../domain/region.dart';
 import '../providers/region_providers.dart';

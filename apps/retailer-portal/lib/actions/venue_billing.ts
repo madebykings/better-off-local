@@ -81,7 +81,7 @@ export async function purchaseVenueSlot(locationId: string): Promise<VenueBillin
     if (!res.ok || !data.id) {
       const msg = data.error?.message ?? 'Payment failed.';
       console.error('[purchaseVenueSlot] create item error:', msg);
-      return { error: `Could not add venue slot: ${msg}` };
+      return { error: `Could not add venue: ${msg}` };
     }
 
     stripeItemId = data.id;
@@ -107,7 +107,7 @@ export async function purchaseVenueSlot(locationId: string): Promise<VenueBillin
     if (!res.ok) {
       const msg = data.error?.message ?? 'Payment failed.';
       console.error('[purchaseVenueSlot] update item error:', msg);
-      return { error: `Could not add venue slot: ${msg}` };
+      return { error: `Could not add venue: ${msg}` };
     }
 
     stripeItemId = sub.extra_venue_stripe_item_id;

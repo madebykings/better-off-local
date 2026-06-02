@@ -83,7 +83,7 @@ function RegionStatusBadge({ region }: { region: RegionWithStats }) {
       <p className="text-sm font-medium text-amber-800">Payment required</p>
       <p className="text-xs text-amber-700 mt-1">
         {region.name} has reached {region.member_threshold} active members.
-        Adding a venue here requires a £10/year slot.
+        Adding a venue here requires an additional venue subscription at £9.99/year.
       </p>
     </div>
   );
@@ -212,7 +212,7 @@ export function NewVenueForm({
 
       {isBillableRegion && !isPrimaryVenue && (
         <div className="rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-          This venue cannot be added for free. Purchase a venue slot (£10/year) from the Billing page first,
+          This venue cannot be added for free. Add an additional venue (£9.99/year) from the Billing page first,
           then return here to add this venue.
         </div>
       )}

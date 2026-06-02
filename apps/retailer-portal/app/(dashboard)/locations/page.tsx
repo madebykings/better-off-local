@@ -89,7 +89,7 @@ export default async function LocationsPage() {
             href="/locations/new"
             className="shrink-0 text-xs font-semibold text-green-700 hover:text-green-800 border border-green-200 rounded-lg px-3 py-1.5 transition-colors"
           >
-            Add venue slot — £10/yr
+            Add venue — £9.99/yr
           </Link>
         )}
       </div>

@@ -347,7 +347,7 @@ export async function createVenue(
 
     if (count >= threshold) {
       return {
-        error: 'This region has reached its member threshold. Purchase a venue slot (£10/year) to add a venue here.',
+        error: 'This region has reached its member threshold. An additional venue subscription (£9.99/year) is required to add a venue here.',
       };
     }
   }
