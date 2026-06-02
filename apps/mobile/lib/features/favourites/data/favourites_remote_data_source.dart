@@ -7,7 +7,9 @@ class FavouritesRemoteDataSource {
   Future<List<Map<String, dynamic>>> fetchFavourites(String profileId) async {
     return await _client
         .from('favourites')
-        .select('id, profile_id, retailer_id, offer_id, created_at')
+        .select(
+          'id, profile_id, retailer_id, retailer_location_id, offer_id, created_at',
+        )
         .eq('profile_id', profileId)
         .order('created_at', ascending: false);
   }
@@ -57,11 +59,19 @@ class FavouritesRemoteDataSource {
         .eq('offer_id', offerId);
   }
 
-  Future<void> addRetailerFavourite(
-      {required String profileId, required String retailerId}) async {
+  /// Saves a retailer favourite, optionally tagged to a specific venue.
+  /// [locationId] should be the primary_location_id from the discovery view.
+  /// When provided it enables venue-level badge counting; when omitted the
+  /// save is attributed to the retailer only (pre-venue fallback).
+  Future<void> addRetailerFavourite({
+    required String profileId,
+    required String retailerId,
+    String? locationId,
+  }) async {
     await _client.from('favourites').insert({
       'profile_id': profileId,
       'retailer_id': retailerId,
+      if (locationId != null) 'retailer_location_id': locationId,
     });
   }
 

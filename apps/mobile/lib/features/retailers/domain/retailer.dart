@@ -156,6 +156,7 @@ class Retailer extends Equatable {
     this.createdAt,
     this.recentRedemptionCount = 0,
     this.favouriteCount = 0,
+    this.primaryLocationId,
   });
 
   final String id;
@@ -194,6 +195,10 @@ class Retailer extends Equatable {
 
   /// Times saved as a favourite by consumers — used for ❤️ Member Favourite.
   final int favouriteCount;
+
+  /// The primary venue's ID from the discovery view.
+  /// Passed to toggleRetailerFavourite so each save is venue-attributed.
+  final String? primaryLocationId;
 
   String? get displayAddress {
     final parts = [addressLine1, town, postcode]
@@ -251,6 +256,7 @@ class Retailer extends Equatable {
       recentRedemptionCount:
           (map['recent_redemption_count'] as num?)?.toInt() ?? 0,
       favouriteCount: (map['favourite_count'] as num?)?.toInt() ?? 0,
+      primaryLocationId: _parseString(map['primary_location_id']),
     );
   }
 

@@ -120,6 +120,9 @@ Future<void> toggleOfferFavourite(
 
 /// Toggle a favourite retailer on/off.
 ///
+/// [locationId] should be [Retailer.primaryLocationId] when available so the
+/// save is attributed to the specific venue, enabling venue-level badge counts.
+///
 /// Updates the UI instantly via pending-state providers. If the server call
 /// fails, the optimistic change is rolled back and a snackbar is shown if
 /// [context] is provided.
@@ -128,6 +131,7 @@ Future<void> toggleRetailerFavourite(
   String retailerId,
   bool isCurrentlyFavourited, [
   BuildContext? context,
+  String? locationId,
 ]) async {
   final session = ref.read(sessionProvider).valueOrNull;
   if (session == null) return;
@@ -150,7 +154,9 @@ Future<void> toggleRetailerFavourite(
           profileId: session.user.id, retailerId: retailerId);
     } else {
       await ds.addRetailerFavourite(
-          profileId: session.user.id, retailerId: retailerId);
+          profileId: session.user.id,
+          retailerId: retailerId,
+          locationId: locationId);
     }
     ref.invalidate(favouritesProvider);
   } catch (_) {

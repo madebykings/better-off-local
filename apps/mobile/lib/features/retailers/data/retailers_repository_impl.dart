@@ -58,6 +58,7 @@ class RetailersRepositoryImpl implements RetailerRepository {
             createdAt: r.createdAt,
             recentRedemptionCount: r.recentRedemptionCount,
             favouriteCount: r.favouriteCount,
+            primaryLocationId: r.primaryLocationId,
           );
         })
         .toList()

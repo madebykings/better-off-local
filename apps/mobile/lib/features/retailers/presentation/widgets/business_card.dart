@@ -94,7 +94,12 @@ class BusinessCard extends ConsumerWidget {
                     child: _HeartButton(
                       isFavourited: isFavourited,
                       onTap: () => toggleRetailerFavourite(
-                          ref, retailer.id, isFavourited, context),
+                        ref,
+                        retailer.id,
+                        isFavourited,
+                        context,
+                        retailer.primaryLocationId,
+                      ),
                     ),
                   ),
                   if (retailer.activeOfferCount > 0)

@@ -5,6 +5,7 @@ class Favourite extends Equatable {
     required this.id,
     required this.profileId,
     this.retailerId,
+    this.retailerLocationId,
     this.offerId,
     required this.createdAt,
   });
@@ -12,6 +13,10 @@ class Favourite extends Equatable {
   final String id;
   final String profileId;
   final String? retailerId;
+
+  /// The specific venue saved, if known. Populated for saves made after
+  /// migration 077; backfilled to primary location for older saves.
+  final String? retailerLocationId;
   final String? offerId;
   final DateTime createdAt;
 
@@ -23,6 +28,7 @@ class Favourite extends Equatable {
       id: map['id'] as String,
       profileId: map['profile_id'] as String,
       retailerId: map['retailer_id'] as String?,
+      retailerLocationId: map['retailer_location_id'] as String?,
       offerId: map['offer_id'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
     );
