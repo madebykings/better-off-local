@@ -18,6 +18,7 @@ import {
   setVenueBillingStatus,
   toggleVenueFeatured,
   updateRetailerDetails,
+  updateVenueDetails,
 } from '@/lib/actions/admin';
 
 export const metadata: Metadata = { title: 'Retailer review – Admin' };
@@ -135,7 +136,7 @@ export default async function RetailerDetailPage({ params }: Props) {
       .order('created_at', { ascending: false }),
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, town, postcode, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at')
+      .select('id, name, address_line_1, address_line_2, town, county, postcode, latitude, longitude, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at')
       .eq('retailer_id', retailerId)
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true }),
@@ -294,11 +295,12 @@ export default async function RetailerDetailPage({ params }: Props) {
       <div className="mt-8 max-w-2xl">
         <h2 className="text-base font-semibold text-gray-900 mb-4">Venues</h2>
         {(() => {
-          const extraQty   = subData?.extra_venues_quantity ?? 0;
-          const computed   = 1 + extraQty;
-          const override   = subData?.venue_allowance_override ?? null;
-          const allowance  = override ?? computed;
-          const activeVenues = (venues ?? []).filter((v: any) => v.is_active);
+          const extraQty    = subData?.extra_venues_quantity ?? 0;
+          const computed    = 1 + extraQty;
+          const override    = subData?.venue_allowance_override ?? null;
+          const allowance   = override ?? computed;
+          const allVenues   = venues ?? [];
+          const activeVenues = allVenues.filter((v: any) => v.is_active);
           const regions = activeRegions ?? [];
 
           const BILLING_BADGES: Record<string, string> = {
@@ -322,17 +324,22 @@ export default async function RetailerDetailPage({ params }: Props) {
                 </p>
               </div>
 
-              {/* Venue list */}
-              {activeVenues.length === 0 ? (
-                <p className="text-sm text-gray-400">No active venues.</p>
+              {/* Venue list — shows all venues including inactive */}
+              {allVenues.length === 0 ? (
+                <p className="text-sm text-gray-400">No venues.</p>
               ) : (
                 <div className="space-y-3">
-                  {activeVenues.map((v: any) => {
+                  {allVenues.map((v: any) => {
                     const billingCls = BILLING_BADGES[v.billing_status as string] ?? BILLING_BADGES.inactive;
                     const regionName = regions.find((r: any) => r.id === v.region_id)?.name ?? null;
 
                     return (
-                      <div key={v.id} className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+                      <div
+                        key={v.id}
+                        className={`rounded-lg border bg-white overflow-hidden ${
+                          v.is_active ? 'border-gray-200' : 'border-gray-200 opacity-60'
+                        }`}
+                      >
                         <div className="flex items-center justify-between px-4 py-3 gap-4">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -342,6 +349,11 @@ export default async function RetailerDetailPage({ params }: Props) {
                               {v.is_primary && (
                                 <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
                                   Primary
+                                </span>
+                              )}
+                              {!v.is_active && (
+                                <span className="shrink-0 rounded border border-gray-300 bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-500">
+                                  Inactive
                                 </span>
                               )}
                               <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${billingCls}`}>
@@ -368,7 +380,7 @@ export default async function RetailerDetailPage({ params }: Props) {
                               </p>
                             )}
                           </div>
-                          {activeVenues.length > 1 && !v.is_primary && (
+                          {activeVenues.length > 1 && !v.is_primary && v.is_active && (
                             <form action={deactivateRetailerVenue}>
                               <input type="hidden" name="location_id" value={v.id} />
                               <input type="hidden" name="retailer_id" value={retailerId} />
@@ -449,6 +461,131 @@ export default async function RetailerDetailPage({ params }: Props) {
                             </button>
                           </form>
                         </div>
+
+                        {/* Collapsible venue details edit form */}
+                        <details className="border-t border-gray-100 group">
+                          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 select-none">
+                            <span className="transition-transform group-open:rotate-90">▶</span>
+                            Edit venue details
+                          </summary>
+                          <form action={updateVenueDetails} className="px-4 py-4 bg-white space-y-3">
+                            <input type="hidden" name="location_id" value={v.id} />
+                            <input type="hidden" name="retailer_id" value={retailerId} />
+
+                            {/* Name */}
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Venue name</label>
+                              <input
+                                type="text"
+                                name="name"
+                                defaultValue={v.name ?? ''}
+                                placeholder="e.g. Main Street"
+                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+                              />
+                            </div>
+
+                            {/* Address */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Address line 1</label>
+                                <input
+                                  type="text"
+                                  name="address_line_1"
+                                  defaultValue={v.address_line_1 ?? ''}
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Address line 2</label>
+                                <input
+                                  type="text"
+                                  name="address_line_2"
+                                  defaultValue={v.address_line_2 ?? ''}
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Town / City</label>
+                                <input
+                                  type="text"
+                                  name="town"
+                                  defaultValue={v.town ?? ''}
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">County</label>
+                                <input
+                                  type="text"
+                                  name="county"
+                                  defaultValue={v.county ?? ''}
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Postcode</label>
+                                <input
+                                  type="text"
+                                  name="postcode"
+                                  defaultValue={v.postcode ?? ''}
+                                  placeholder="FK10 1AA"
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Coordinates */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Latitude</label>
+                                <input
+                                  type="number"
+                                  name="latitude"
+                                  step="any"
+                                  defaultValue={v.latitude ?? ''}
+                                  placeholder="56.1152"
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Longitude</label>
+                                <input
+                                  type="number"
+                                  name="longitude"
+                                  step="any"
+                                  defaultValue={v.longitude ?? ''}
+                                  placeholder="-3.7683"
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Active state */}
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id={`is_active_${v.id}`}
+                                name="is_active"
+                                defaultChecked={v.is_active ?? true}
+                                disabled={v.is_primary}
+                                className="h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-green-700 disabled:opacity-50"
+                              />
+                              <label htmlFor={`is_active_${v.id}`} className="text-xs text-gray-600">
+                                Active (visible on platform)
+                                {v.is_primary && <span className="ml-1 text-gray-400">(cannot deactivate primary venue)</span>}
+                              </label>
+                            </div>
+
+                            <div className="pt-1">
+                              <button
+                                type="submit"
+                                className="rounded-lg bg-green-800 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                              >
+                                Save venue
+                              </button>
+                            </div>
+                          </form>
+                        </details>
                       </div>
                     );
                   })}

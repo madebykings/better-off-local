@@ -474,6 +474,67 @@ export async function updateRetailerDetails(formData: FormData): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Venue editing
+// ---------------------------------------------------------------------------
+
+const UK_POSTCODE_RE = /^[A-Z]{1,2}[0-9][0-9A-Z]? [0-9][A-Z]{2}$/;
+
+function normalizePostcode(raw: string): string {
+  const stripped = raw.trim().toUpperCase().replace(/\s+/g, '');
+  if (stripped.length < 5) return raw.trim().toUpperCase();
+  return `${stripped.slice(0, stripped.length - 3)} ${stripped.slice(stripped.length - 3)}`;
+}
+
+export async function updateVenueDetails(formData: FormData): Promise<void> {
+  const { userId } = await requireAdmin();
+  const locationId = formData.get('location_id') as string;
+  const retailerId = formData.get('retailer_id') as string;
+
+  const rawPostcode = (formData.get('postcode') as string | null)?.trim() ?? '';
+  const postcode    = rawPostcode ? normalizePostcode(rawPostcode) : null;
+  if (postcode && !UK_POSTCODE_RE.test(postcode)) {
+    throw new Error(`Invalid UK postcode: ${postcode}`);
+  }
+
+  const rawLat   = (formData.get('latitude')  as string | null)?.trim();
+  const rawLng   = (formData.get('longitude') as string | null)?.trim();
+  const parsedLat = rawLat ? parseFloat(rawLat) : null;
+  const parsedLng = rawLng ? parseFloat(rawLng) : null;
+  const latitude  = parsedLat !== null && !isNaN(parsedLat) && parsedLat >= -90  && parsedLat <= 90  ? parsedLat : null;
+  const longitude = parsedLng !== null && !isNaN(parsedLng) && parsedLng >= -180 && parsedLng <= 180 ? parsedLng : null;
+
+  const isActive = formData.get('is_active') === 'on';
+
+  const supabase = createServiceClient();
+  await supabase
+    .from('retailer_locations')
+    .update({
+      name:           (formData.get('name')           as string | null)?.trim() || null,
+      address_line_1: (formData.get('address_line_1') as string | null)?.trim() || null,
+      address_line_2: (formData.get('address_line_2') as string | null)?.trim() || null,
+      town:           (formData.get('town')           as string | null)?.trim() || null,
+      county:         (formData.get('county')         as string | null)?.trim() || null,
+      postcode,
+      latitude,
+      longitude,
+      is_active:      isActive,
+      updated_at:     new Date().toISOString(),
+    })
+    .eq('id', locationId);
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type:      'venue_details_updated',
+    target_table:     'retailer_locations',
+    target_id:        locationId,
+    reason:           'Edited by admin',
+    metadata_json:    { retailer_id: retailerId },
+  });
+
+  revalidatePath(`/retailers/${retailerId}`);
+}
+
+// ---------------------------------------------------------------------------
 // Region management
 // ---------------------------------------------------------------------------
 
