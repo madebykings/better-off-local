@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -20,9 +21,16 @@ export function RetailerSidebar() {
   return (
     <aside className="w-56 shrink-0 border-r border-gray-200 bg-white flex flex-col">
       <div className="h-14 flex items-center px-4 border-b border-gray-200">
-        <span className="font-semibold text-sm text-green-800">
-          Better Off Local
-        </span>
+        <Link href="/dashboard">
+          <Image
+            src="/better-off-local-logo.png"
+            alt="Better Off Local"
+            width={142}
+            height={69}
+            className="h-8 w-auto"
+            priority
+          />
+        </Link>
       </div>
       <nav className="flex-1 py-4 space-y-0.5 px-2">
         {navItems.map((item) => {
