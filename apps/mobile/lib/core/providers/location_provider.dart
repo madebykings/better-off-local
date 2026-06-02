@@ -97,5 +97,15 @@ final locationNotifierProvider =
 });
 
 /// Simple nullable position — set by [LocationNotifier] after a successful
-/// fetch. Read by [homeRetailersProvider] for distance calculations.
+/// fetch. Watched by [homeRetailersProvider] for distance calculations.
 final locationProvider = StateProvider<Position?>((ref) => null);
+
+/// Silently checks whether location permission is already granted and, if so,
+/// fetches the device position without prompting the user.
+///
+/// Watched by [HomeScreen] so distance calculations run on the first home
+/// screen load. Uses a plain (non-autoDispose) FutureProvider so the init
+/// only fires once per app session.
+final locationInitProvider = FutureProvider<void>((ref) {
+  return ref.read(locationNotifierProvider.notifier).init();
+});

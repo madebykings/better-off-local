@@ -13,11 +13,18 @@ import '../../home_providers.dart';
 class FeaturedRetailersSection extends ConsumerWidget {
   const FeaturedRetailersSection({super.key});
 
-  /// Returns the badge string for a retailer based on backend data.
-  /// Currently supports Featured (from is_featured flag).
-  /// Trending / Member Favourite / New require additional DB fields.
+  /// Derives the single most significant badge for a retailer.
+  ///
+  /// Priority: Featured > Member Favourite > Trending > New.
+  /// Thresholds are intentionally low for a hyper-local launch.
   static String? _badgeFor(Retailer r) {
     if (r.isFeatured) return '⭐ Featured';
+    if (r.favouriteCount >= 3) return '❤️ Member Favourite';
+    if (r.totalRedemptionCount >= 5) return '🔥 Trending';
+    if (r.createdAt != null) {
+      final ageDays = DateTime.now().difference(r.createdAt!).inDays;
+      if (ageDays <= 30) return '✨ New';
+    }
     return null;
   }
 

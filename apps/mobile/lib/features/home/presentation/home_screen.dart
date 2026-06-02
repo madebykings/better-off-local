@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
+import '../../../core/providers/location_provider.dart';
 import '../../../core/widgets/brand_logo.dart';
 import 'widgets/categories_section.dart';
 import 'widgets/featured_retailers_section.dart';
@@ -16,6 +17,10 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Trigger a silent location permission check on first home screen load.
+    // If permission is already granted, this sets locationProvider so
+    // homeRetailersProvider can compute distances without prompting the user.
+    ref.watch(locationInitProvider);
     return const Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(

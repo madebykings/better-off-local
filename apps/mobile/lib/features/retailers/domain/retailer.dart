@@ -153,6 +153,9 @@ class Retailer extends Equatable {
     this.activeOfferCount = 0,
     this.openingHours,
     this.isFeatured = false,
+    this.createdAt,
+    this.totalRedemptionCount = 0,
+    this.favouriteCount = 0,
   });
 
   final String id;
@@ -178,8 +181,16 @@ class Retailer extends Equatable {
   final OpeningHours? openingHours;
 
   /// True when the retailer is marked as featured in the backend.
-  /// Used to determine the badge shown on BusinessCard.
   final bool isFeatured;
+
+  /// When the retailer joined the platform — used for the ✨ New badge.
+  final DateTime? createdAt;
+
+  /// Lifetime successful redemptions across all offers — used for 🔥 Trending.
+  final int totalRedemptionCount;
+
+  /// Times saved as a favourite by consumers — used for ❤️ Member Favourite.
+  final int favouriteCount;
 
   String? get displayAddress {
     final parts = [addressLine1, town, postcode]
@@ -231,6 +242,12 @@ class Retailer extends Equatable {
       activeOfferCount: (map['active_offer_count'] as num?)?.toInt() ?? 0,
       openingHours: openingHours,
       isFeatured: _parseBool(map['is_featured']),
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'].toString())
+          : null,
+      totalRedemptionCount:
+          (map['total_redemption_count'] as num?)?.toInt() ?? 0,
+      favouriteCount: (map['favourite_count'] as num?)?.toInt() ?? 0,
     );
   }
 

@@ -27,7 +27,7 @@ final homeRetailersProvider = FutureProvider<List<Retailer>>((ref) async {
       .read(offersRepositoryProvider)
       .getFeaturedOffersByRetailers(retailerIds);
 
-  final location = ref.read(locationProvider);
+  final location = ref.watch(locationProvider);
 
   var enriched = retailers.map((r) {
     double? distKm;
@@ -62,6 +62,9 @@ final homeRetailersProvider = FutureProvider<List<Retailer>>((ref) async {
       activeOfferCount: r.activeOfferCount,
       openingHours: r.openingHours,
       isFeatured: r.isFeatured,
+      createdAt: r.createdAt,
+      totalRedemptionCount: r.totalRedemptionCount,
+      favouriteCount: r.favouriteCount,
     );
   }).toList();
 
