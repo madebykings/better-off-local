@@ -19,7 +19,10 @@ import {
   toggleVenueFeatured,
   updateRetailerDetails,
   updateVenueDetails,
+  updateAdminVenueOpeningHours,
 } from '@/lib/actions/admin';
+import { AdminOpeningHoursEditor } from '@/components/venue/opening_hours_editor';
+import { parseOpeningHours } from '@/lib/utils/opening_hours';
 
 export const metadata: Metadata = { title: 'Retailer review – Admin' };
 
@@ -136,7 +139,7 @@ export default async function RetailerDetailPage({ params }: Props) {
       .order('created_at', { ascending: false }),
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, address_line_2, town, county, postcode, latitude, longitude, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at')
+      .select('id, name, address_line_1, address_line_2, town, county, postcode, latitude, longitude, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at, opening_hours_json')
       .eq('retailer_id', retailerId)
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true }),
@@ -461,6 +464,21 @@ export default async function RetailerDetailPage({ params }: Props) {
                             </button>
                           </form>
                         </div>
+
+                        {/* Collapsible opening hours editor */}
+                        <details className="border-t border-gray-100 group">
+                          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 select-none">
+                            <span className="transition-transform group-open:rotate-90">▶</span>
+                            Edit opening hours
+                          </summary>
+                          <div className="px-4 py-4 bg-white">
+                            <AdminOpeningHoursEditor
+                              locationId={v.id}
+                              initialData={parseOpeningHours(v.opening_hours_json)}
+                              saveAction={updateAdminVenueOpeningHours}
+                            />
+                          </div>
+                        </details>
 
                         {/* Collapsible venue details edit form */}
                         <details className="border-t border-gray-100 group">

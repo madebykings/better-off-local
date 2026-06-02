@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
+import { DAY_KEYS, type OpeningHoursData } from '@/lib/utils/opening_hours';
 
 // ---------------------------------------------------------------------------
 // Categories
@@ -532,6 +533,51 @@ export async function updateVenueDetails(formData: FormData): Promise<void> {
   });
 
   revalidatePath(`/retailers/${retailerId}`);
+}
+
+export async function updateAdminVenueOpeningHours(
+  locationId: string,
+  hours: OpeningHoursData,
+): Promise<{ error?: string } | null> {
+  const { userId } = await requireAdmin();
+
+  for (const day of DAY_KEYS) {
+    const { open, all_day, start, end } = hours[day];
+    if (!open || all_day) continue;
+    if (!start || !end) return { error: `${day}: please set opening and closing times.` };
+    if (end <= start)   return { error: `${day}: closing time must be after opening time.` };
+  }
+
+  const supabase = createServiceClient();
+  const { error: updateError } = await supabase
+    .from('retailer_locations')
+    .update({ opening_hours_json: hours, updated_at: new Date().toISOString() })
+    .eq('id', locationId);
+
+  if (updateError) {
+    console.error('[updateAdminVenueOpeningHours]', updateError.message);
+    return { error: 'Failed to save opening hours.' };
+  }
+
+  const { data: loc } = await supabase
+    .from('retailer_locations')
+    .select('retailer_id')
+    .eq('id', locationId)
+    .single();
+
+  if (loc?.retailer_id) {
+    await supabase.from('admin_actions').insert({
+      admin_profile_id: userId,
+      action_type:      'venue_opening_hours_updated',
+      target_table:     'retailer_locations',
+      target_id:        locationId,
+      reason:           'Edited by admin',
+      metadata_json:    { retailer_id: loc.retailer_id },
+    });
+    revalidatePath(`/retailers/${loc.retailer_id}`);
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
