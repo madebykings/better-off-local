@@ -10,18 +10,18 @@ import '../../domain/offer_availability.dart';
 // ---------------------------------------------------------------------------
 // OfferCard — single shared component for all offer surfaces.
 //
-// compact: true  → 180 px wide horizontal-scroll variant (Home nearby row).
+// compact: true  → 176 px wide horizontal-scroll variant (Home nearby row).
 // compact: false → full-width vertical-list variant (Explore, Retailer detail,
 //                  Favourites, Search results).
 //
 // Card layout:
 //   ┌──────────────────────┐
-//   │  cover image         │  imageHeight
+//   │  [Open Now]   [♡]    │  cover image area
+//   │                      │
+//   │  [Save 20%]          │  savings badge bottom-left
 //   ├──────────────────────┤
-//   │  title (max 2 lines) │  textBodyHeight (fixed)
-//   │  retailer name       │
-//   │           ⋮ spacer   │
-//   │  ↩ redemption rule   │  ← always at bottom of text area
+//   │  Offer title         │  content area
+//   │  Redemption rule     │
 //   └──────────────────────┘
 // ---------------------------------------------------------------------------
 
@@ -32,12 +32,16 @@ class OfferCard extends ConsumerWidget {
     this.availability,
     this.onTap,
     this.compact = false,
+    this.isOpenNow = false,
   });
 
   final Offer offer;
   final OfferAvailability? availability;
   final VoidCallback? onTap;
   final bool compact;
+
+  /// Shows an "Open now" badge top-left when true.
+  final bool isOpenNow;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -46,26 +50,15 @@ class OfferCard extends ConsumerWidget {
     final isAvailable = compact ? true : (availability?.isAvailable ?? true);
     final opacity = compact ? 1.0 : (availability?.cardOpacity ?? 1.0);
 
-    // Compact vs full sizing — only image height and font scale differ.
-    // Text body uses natural height to prevent RenderFlex overflow.
-    final double imageHeight = compact ? 100 : 130;
+    final double imageHeight = compact ? 110.0 : 185.0;
     final EdgeInsets bodyPadding = compact
         ? const EdgeInsets.fromLTRB(10, 9, 10, 10)
-        : const EdgeInsets.fromLTRB(12, 10, 12, 12);
-    final double? titleFontSize = compact ? 13 : null;
-    final double retailerFontSize = compact ? 11 : 12;
-    final double redemptionFontSize = compact ? 10 : 11;
-    final double heartSize = compact ? 26 : 30;
-    final double heartIconSize = compact ? 13 : 16;
-    final EdgeInsets badgePadding = compact
-        ? const EdgeInsets.symmetric(horizontal: 6, vertical: 3)
-        : const EdgeInsets.symmetric(horizontal: 8, vertical: 4);
-    final double badgeFontSize = compact ? 10 : 11;
+        : const EdgeInsets.fromLTRB(12, 12, 12, 12);
 
     Widget card = Card(
       clipBehavior: Clip.antiAlias,
       elevation: 0,
-      margin: EdgeInsets.zero, // remove default Card margin to prevent overflow
+      margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.border),
@@ -74,50 +67,25 @@ class OfferCard extends ConsumerWidget {
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // collapse to content height
+          mainAxisSize: MainAxisSize.min,
           children: [
             _OfferImageStack(
               offer: offer,
               isFavourited: isFavourited,
               isAvailable: isAvailable,
+              isOpenNow: isOpenNow,
               availabilityBadgeLabel:
                   isAvailable ? null : availability?.state.badgeLabel,
               onFavouriteTap: () =>
                   toggleOfferFavourite(ref, offer.id, isFavourited, context),
               imageHeight: imageHeight,
-              heartSize: heartSize,
-              heartIconSize: heartIconSize,
-              badgePadding: badgePadding,
-              badgeFontSize: badgeFontSize,
+              compact: compact,
             ),
-            // Natural-height text body — no fixed SizedBox to avoid overflow.
             Padding(
               padding: bodyPadding,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    offer.title,
-                    style: AppTextStyles.titleMedium
-                        .copyWith(fontSize: titleFontSize),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    offer.retailerName,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                      fontSize: retailerFontSize,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 7),
-                  _RedemptionLimitRow(
-                      offer: offer, fontSize: redemptionFontSize),
-                ],
+              child: _OfferCardBody(
+                offer: offer,
+                compact: compact,
               ),
             ),
           ],
@@ -125,7 +93,6 @@ class OfferCard extends ConsumerWidget {
       ),
     );
 
-    // Compact cards have a fixed width; height is natural (no overflow risk).
     if (compact) {
       card = SizedBox(width: 176, child: card);
     }
@@ -136,7 +103,7 @@ class OfferCard extends ConsumerWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Shared image stack (cover + badge + heart + availability strip)
+// Image stack: cover + open-now badge + savings badge + heart + availability
 // ---------------------------------------------------------------------------
 
 class _OfferImageStack extends StatelessWidget {
@@ -144,31 +111,30 @@ class _OfferImageStack extends StatelessWidget {
     required this.offer,
     required this.isFavourited,
     required this.isAvailable,
+    required this.isOpenNow,
     required this.availabilityBadgeLabel,
     required this.onFavouriteTap,
     required this.imageHeight,
-    this.heartSize = 30,
-    this.heartIconSize = 16,
-    this.badgePadding =
-        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    this.badgeFontSize = 11,
+    required this.compact,
   });
 
   final Offer offer;
   final bool isFavourited;
   final bool isAvailable;
+  final bool isOpenNow;
   final String? availabilityBadgeLabel;
   final VoidCallback onFavouriteTap;
   final double imageHeight;
-  final double heartSize;
-  final double heartIconSize;
-  final EdgeInsets badgePadding;
-  final double badgeFontSize;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final double heartSize = compact ? 26 : 32;
+    final double heartIconSize = compact ? 13 : 16;
+
     return Stack(
       children: [
+        // Cover image
         SizedBox(
           height: imageHeight,
           width: double.infinity,
@@ -181,31 +147,18 @@ class _OfferImageStack extends StatelessWidget {
               : _CoverPlaceholder(),
         ),
 
-        if (offer.valueText != null)
+        // Open now badge — top-left
+        if (isOpenNow)
           Positioned(
             top: 8,
             left: 8,
-            child: Container(
-              padding: badgePadding,
-              decoration: BoxDecoration(
-                color: offer.badgeColor(context),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                offer.valueText!,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: badgeFontSize,
-                  letterSpacing: 0.1,
-                ),
-              ),
-            ),
+            child: _OpenNowBadge(compact: compact),
           ),
 
+        // Favourite heart — top-right
         Positioned(
-          top: 6,
-          right: 6,
+          top: 8,
+          right: 8,
           child: GestureDetector(
             onTap: onFavouriteTap,
             child: Container(
@@ -216,7 +169,7 @@ class _OfferImageStack extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: Colors.black.withValues(alpha: 0.10),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -225,13 +178,25 @@ class _OfferImageStack extends StatelessWidget {
               child: Icon(
                 isFavourited ? Icons.favorite : Icons.favorite_border,
                 size: heartIconSize,
-                color:
-                    isFavourited ? AppColors.error : AppColors.textSecondary,
+                color: isFavourited ? AppColors.error : AppColors.textSecondary,
               ),
             ),
           ),
         ),
 
+        // Savings badge — bottom-left of image
+        if (offer.valueText != null)
+          Positioned(
+            bottom: 8,
+            left: 8,
+            child: _SavingsBadge(
+              label: offer.valueText!,
+              color: offer.badgeColor(context),
+              compact: compact,
+            ),
+          ),
+
+        // Availability overlay strip — shown when offer is unavailable
         if (!isAvailable && availabilityBadgeLabel != null)
           Positioned(
             left: 0,
@@ -258,22 +223,147 @@ class _OfferImageStack extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Redemption limit row
+// "Open now" badge — white pill with green status dot
 // ---------------------------------------------------------------------------
 
-class _RedemptionLimitRow extends StatelessWidget {
-  const _RedemptionLimitRow({required this.offer, this.fontSize = 11});
+class _OpenNowBadge extends StatelessWidget {
+  const _OpenNowBadge({required this.compact});
 
-  final Offer offer;
-  final double fontSize;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 9,
+        vertical: compact ? 3 : 5,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: compact ? 6 : 7,
+            height: compact ? 6 : 7,
+            decoration: const BoxDecoration(
+              color: Color(0xFF22C55E),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Open now',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: compact ? 10 : 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Savings badge — dark pill with value text (e.g., "Save 20%", "BOGOF")
+// ---------------------------------------------------------------------------
+
+class _SavingsBadge extends StatelessWidget {
+  const _SavingsBadge({
+    required this.label,
+    required this.color,
+    required this.compact,
+  });
+
+  final String label;
+  final Color color;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 10,
+        vertical: compact ? 3 : 5,
+      ),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: compact ? 10 : 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.1,
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Card body: offer title + redemption rule
+// ---------------------------------------------------------------------------
+
+class _OfferCardBody extends StatelessWidget {
+  const _OfferCardBody({required this.offer, required this.compact});
+
+  final Offer offer;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          offer.title,
+          style: AppTextStyles.titleMedium.copyWith(
+            fontSize: compact ? 14.0 : 16.0,
+            fontWeight: FontWeight.w700,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        _RedemptionRow(offer: offer, compact: compact),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Redemption limit row
+// ---------------------------------------------------------------------------
+
+class _RedemptionRow extends StatelessWidget {
+  const _RedemptionRow({required this.offer, required this.compact});
+
+  final Offer offer;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final double fontSize = compact ? 10 : 12;
     return Row(
       children: [
         Icon(
           offer.redemptionLimitIcon,
-          size: fontSize + 2,
+          size: fontSize + 1,
           color: AppColors.textSecondary,
         ),
         const SizedBox(width: 4),
@@ -303,10 +393,8 @@ class _CoverPlaceholder extends StatelessWidget {
     return Container(
       color: AppColors.background,
       child: const Center(
-        child: Icon(Icons.storefront_outlined,
-            size: 36, color: AppColors.border),
+        child: Icon(Icons.storefront_outlined, size: 36, color: AppColors.border),
       ),
     );
   }
 }
-

@@ -37,8 +37,7 @@ class NearbyOffersSection extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          // Height = image(100) + body padding(19) + title(~40) + gap(7) + redemption(~14) = ~180
-          // Add 8px breathing room so the card shadow is never clipped.
+          // Height = image(110) + body(9+title~19+gap4+redemption~12+10) = ~164 + 8px shadow room.
           height: 188,
           child: offersAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),

@@ -8,6 +8,7 @@ import '../../../app/theme/app_text_styles.dart';
 import '../../offers/domain/offer.dart';
 import '../../offers/presentation/widgets/offer_card.dart';
 import '../../retailers/domain/retailer.dart';
+import '../../retailers/presentation/widgets/business_card.dart';
 import '../data/favourites_remote_data_source.dart';
 import '../providers/favourites_providers.dart';
 
@@ -159,40 +160,12 @@ class _FavouriteRetailersTab extends ConsumerWidget {
             itemCount: retailers.length,
             itemBuilder: (context, i) {
               final r = retailers[i];
-              return Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: AppColors.border),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
-                  leading: r.logoUrl != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            r.logoUrl!,
-                            width: 48,
-                            height: 48,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.storefront_outlined,
-                              color: AppColors.border,
-                            ),
-                          ),
-                        )
-                      : const Icon(Icons.storefront_outlined,
-                          color: AppColors.border, size: 36),
-                  title: Text(r.name, style: AppTextStyles.titleMedium),
-                  subtitle: r.shortDescription != null
-                      ? Text(
-                          r.shortDescription!,
-                          style: AppTextStyles.bodyMedium,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        )
-                      : null,
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: BusinessCard(
+                  retailer: r,
+                  compact: false,
+                  badge: 'Member favourite',
                   onTap: () => context.push(
                     RouteNames.retailerDetail
                         .replaceAll(':retailerId', r.id),
