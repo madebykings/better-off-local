@@ -189,14 +189,22 @@ export async function updateOffer(
   const newValueText = computeValueText(fields.offerType, fields.discountValue);
   const newTitle = fields.headline.trim();
 
-  // Material change on a live offer — return to pending review.
+  // Material change on a live or approved offer — return to pending review.
   const isMaterialChange =
-    existing.status === 'live' &&
+    (existing.status === 'live' || existing.status === 'approved') &&
     (existing.offer_type !== fields.offerType ||
       existing.value_text !== newValueText ||
       existing.title !== newTitle);
 
-  const newStatus = isMaterialChange ? 'pending' : existing.status;
+  // Rejected offers revert to draft on save so the retailer can resubmit.
+  let newStatus = existing.status;
+  if (isMaterialChange) {
+    newStatus = 'pending';
+  } else if (existing.status === 'rejected') {
+    newStatus = 'draft';
+  }
+
+  const statusChanged = newStatus !== existing.status;
 
   const { error } = await service
     .from('offers')
@@ -213,7 +221,7 @@ export async function updateOffer(
       estimated_saving_pence: fields.estimatedSavingPence.trim()
         ? parseInt(fields.estimatedSavingPence, 10)
         : null,
-      ...(isMaterialChange ? { status: newStatus } : {}),
+      ...(statusChanged ? { status: newStatus } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('id', offerId);

@@ -6,11 +6,11 @@ import { createServiceClient } from '@/lib/supabase/service';
 
 export interface ProfileFields {
   name: string;
-  shortDescription: string; // → retailers.short_description (shown beneath name)
-  description: string;      // → retailers.description (full marketing copy)
+  shortDescription: string; // → retailers.short_description
+  contactName: string;      // → retailers.contact_name
   businessType: string;
-  website: string;
-  phone: string;
+  phone: string;            // → retailers.phone (owner/contact phone)
+  email: string;            // → retailers.email (owner/contact email)
 }
 
 export interface ProfileActionResult {
@@ -32,20 +32,13 @@ function validate(fields: ProfileFields): Partial<Record<keyof ProfileFields, st
   if (!fields.businessType) {
     errors.businessType = 'Please select a business type.';
   }
-  if (fields.website.trim()) {
-    const raw = fields.website.trim();
-    try {
-      new URL(raw.startsWith('http') ? raw : `https://${raw}`);
-    } catch {
-      errors.website = 'Please enter a valid website URL (e.g. https://yoursite.com).';
-    }
-  }
   return errors;
 }
 
 /**
- * Updates the authenticated retailer's public profile.
- * Does not advance the onboarding step — safe to call post-onboarding.
+ * Updates the authenticated retailer's brand identity and owner contact details.
+ * Venue-specific public fields (description, phone, website) are edited on the
+ * venue / location page, not here.
  */
 export async function updateRetailerProfile(
   fields: ProfileFields,
@@ -70,13 +63,13 @@ export async function updateRetailerProfile(
   const { error } = await service
     .from('retailers')
     .update({
-      name: fields.name.trim(),
+      name:              fields.name.trim(),
       short_description: fields.shortDescription.trim(),
-      description: fields.description.trim() || null,
-      business_type: fields.businessType || null,
-      website_url: fields.website.trim() || null,
-      phone: fields.phone.trim() || null,
-      updated_at: new Date().toISOString(),
+      contact_name:      fields.contactName.trim() || null,
+      business_type:     fields.businessType || null,
+      phone:             fields.phone.trim() || null,
+      email:             fields.email.trim() || null,
+      updated_at:        new Date().toISOString(),
     })
     .eq('id', link.retailer_id);
 

@@ -25,7 +25,11 @@ export interface LocationActionResult {
 // Extended fields for named multi-venue management.
 export interface VenueFields extends LocationFields {
   name: string;
-  regionId: string;  // uuid of selected region, or '' if none
+  regionId: string;       // uuid of selected region, or '' if none
+  phone: string;          // → retailer_locations.phone (venue-level public phone)
+  websiteUrl: string;     // → retailer_locations.website_url
+  shortDescription: string; // → retailer_locations.short_description
+  description: string;    // → retailer_locations.description (long form)
 }
 
 export interface VenueActionResult {
@@ -410,14 +414,18 @@ export async function updateVenue(
   const { error } = await service
     .from('retailer_locations')
     .update({
-      region_id: fields.regionId || null,
-      name: fields.name.trim(),
-      address_line_1: fields.addressLine1.trim(),
-      address_line_2: fields.addressLine2.trim() || null,
-      town: fields.town.trim(),
-      county: fields.county.trim() || null,
+      region_id:         fields.regionId || null,
+      name:              fields.name.trim(),
+      address_line_1:    fields.addressLine1.trim(),
+      address_line_2:    fields.addressLine2.trim() || null,
+      town:              fields.town.trim(),
+      county:            fields.county.trim() || null,
       postcode,
-      country: 'United Kingdom',
+      country:           'United Kingdom',
+      phone:             fields.phone.trim() || null,
+      website_url:       fields.websiteUrl.trim() || null,
+      short_description: fields.shortDescription.trim() || null,
+      description:       fields.description.trim() || null,
     })
     .eq('id', locationId);
 

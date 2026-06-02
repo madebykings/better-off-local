@@ -191,7 +191,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
 
   const isDraft = !offerStatus || offerStatus === 'draft';
   const isLiveOrPaused = offerStatus === 'live' || offerStatus === 'paused';
-  const canEdit = isDraft || isLiveOrPaused;
+  const canEdit = isDraft || isLiveOrPaused || offerStatus === 'pending' || offerStatus === 'approved' || offerStatus === 'rejected';
   const descCount = fields.description.length;
 
   return (

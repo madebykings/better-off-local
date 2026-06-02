@@ -13,7 +13,7 @@ export default async function ProfilePage() {
   const [{ data: retailer }, { data: categoryRows }] = await Promise.all([
     supabase
       .from('retailers')
-      .select('name, short_description, description, website_url, business_type, phone, logo_url, cover_image_url')
+      .select('name, short_description, contact_name, business_type, phone, email, logo_url')
       .eq('id', retailerId)
       .single(),
     supabase
@@ -27,12 +27,12 @@ export default async function ProfilePage() {
   const categoryNames = (categoryRows ?? []).map((c) => c.name as string);
 
   const initialData: ProfileFields = {
-    name: retailer?.name ?? '',
-    shortDescription: retailer?.short_description ?? '',
-    description: retailer?.description ?? '',
-    website: retailer?.website_url ?? '',
-    businessType: retailer?.business_type ?? '',
-    phone: retailer?.phone ?? '',
+    name:             (retailer as any)?.name             ?? '',
+    shortDescription: (retailer as any)?.short_description ?? '',
+    contactName:      (retailer as any)?.contact_name      ?? '',
+    businessType:     (retailer as any)?.business_type     ?? '',
+    phone:            (retailer as any)?.phone             ?? '',
+    email:            (retailer as any)?.email             ?? '',
   };
 
   return (
@@ -40,13 +40,13 @@ export default async function ProfilePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Retailer profile</h1>
         <p className="mt-1 text-sm text-gray-500">
-          This information appears on your public listing in the Better Off Local app.
+          Your brand identity and owner contact details. Venue-specific information
+          (description, phone, website) is managed on the Locations page.
         </p>
       </div>
       <ProfileForm
         initialData={initialData}
-        logoUrl={retailer?.logo_url ?? null}
-        coverUrl={retailer?.cover_image_url ?? null}
+        logoUrl={(retailer as any)?.logo_url ?? null}
         categoryNames={categoryNames}
       />
     </div>

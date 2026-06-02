@@ -140,7 +140,7 @@ export default async function RetailerDetailPage({ params }: Props) {
       .order('created_at', { ascending: false }),
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, address_line_2, town, county, postcode, latitude, longitude, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at, opening_hours_json, logo_url, cover_image_url')
+      .select('id, name, address_line_1, address_line_2, town, county, postcode, latitude, longitude, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at, opening_hours_json, logo_url, cover_image_url, phone, website_url, short_description, description')
       .eq('retailer_id', retailerId)
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true }),
@@ -619,6 +619,49 @@ export default async function RetailerDetailPage({ params }: Props) {
                               </label>
                             </div>
 
+                            {/* Venue public content */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-gray-100">
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Venue phone</label>
+                                <input
+                                  type="text"
+                                  name="phone"
+                                  defaultValue={(v as any).phone ?? ''}
+                                  placeholder="e.g. 01259 123456"
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-500 mb-1">Venue website</label>
+                                <input
+                                  type="text"
+                                  name="website_url"
+                                  defaultValue={(v as any).website_url ?? ''}
+                                  placeholder="https://yoursite.com"
+                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Venue short description</label>
+                              <textarea
+                                name="short_description"
+                                defaultValue={(v as any).short_description ?? ''}
+                                rows={2}
+                                placeholder="Brief description shown on the listing card."
+                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 resize-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Venue description</label>
+                              <textarea
+                                name="description"
+                                defaultValue={(v as any).description ?? ''}
+                                rows={3}
+                                placeholder="Full marketing copy shown on the venue detail page."
+                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 resize-none"
+                              />
+                            </div>
                             <div className="pt-1">
                               <button
                                 type="submit"
@@ -696,32 +739,33 @@ export default async function RetailerDetailPage({ params }: Props) {
               <input
                 type="text"
                 name="tagline"
-                defaultValue={retailer.tagline ?? ''}
+                defaultValue={(retailer as any).tagline ?? ''}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Description</label>
+            <label className="block text-xs text-gray-500 mb-1">Short description</label>
             <textarea
-              name="description"
-              defaultValue={retailer.description ?? ''}
-              rows={3}
+              name="short_description"
+              defaultValue={(retailer as any).short_description ?? ''}
+              rows={2}
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 resize-none"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Website</label>
+              <label className="block text-xs text-gray-500 mb-1">Owner / contact name</label>
               <input
                 type="text"
-                name="website_url"
-                defaultValue={(retailer as any).website_url ?? ''}
+                name="contact_name"
+                defaultValue={(retailer as any).contact_name ?? ''}
+                placeholder="e.g. Jane Smith"
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Phone</label>
+              <label className="block text-xs text-gray-500 mb-1">Owner / contact phone</label>
               <input
                 type="text"
                 name="phone"
@@ -730,7 +774,7 @@ export default async function RetailerDetailPage({ params }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Email</label>
+              <label className="block text-xs text-gray-500 mb-1">Owner / contact email</label>
               <input
                 type="email"
                 name="email"

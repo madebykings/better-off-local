@@ -451,14 +451,14 @@ export async function updateRetailerDetails(formData: FormData): Promise<void> {
   await supabase
     .from('retailers')
     .update({
-      name:        (formData.get('name') as string | null)?.trim() || undefined,
-      tagline:     (formData.get('tagline') as string | null)?.trim() || null,
-      description: (formData.get('description') as string | null)?.trim() || null,
-      website_url: (formData.get('website_url') as string | null)?.trim() || null,
-      phone:       (formData.get('phone') as string | null)?.trim() || null,
-      email:       (formData.get('email') as string | null)?.trim() || null,
-      business_type: (formData.get('business_type') as string | null)?.trim() || null,
-      updated_at:  new Date().toISOString(),
+      name:             (formData.get('name')          as string | null)?.trim() || undefined,
+      tagline:          (formData.get('tagline')        as string | null)?.trim() || null,
+      short_description:(formData.get('short_description') as string | null)?.trim() || null,
+      contact_name:     (formData.get('contact_name')  as string | null)?.trim() || null,
+      phone:            (formData.get('phone')          as string | null)?.trim() || null,
+      email:            (formData.get('email')          as string | null)?.trim() || null,
+      business_type:    (formData.get('business_type') as string | null)?.trim() || null,
+      updated_at:       new Date().toISOString(),
     })
     .eq('id', retailerId);
 
@@ -510,16 +510,20 @@ export async function updateVenueDetails(formData: FormData): Promise<void> {
   await supabase
     .from('retailer_locations')
     .update({
-      name:           (formData.get('name')           as string | null)?.trim() || null,
-      address_line_1: (formData.get('address_line_1') as string | null)?.trim() || null,
-      address_line_2: (formData.get('address_line_2') as string | null)?.trim() || null,
-      town:           (formData.get('town')           as string | null)?.trim() || null,
-      county:         (formData.get('county')         as string | null)?.trim() || null,
+      name:              (formData.get('name')              as string | null)?.trim() || null,
+      address_line_1:    (formData.get('address_line_1')    as string | null)?.trim() || null,
+      address_line_2:    (formData.get('address_line_2')    as string | null)?.trim() || null,
+      town:              (formData.get('town')              as string | null)?.trim() || null,
+      county:            (formData.get('county')            as string | null)?.trim() || null,
       postcode,
       latitude,
       longitude,
-      is_active:      isActive,
-      updated_at:     new Date().toISOString(),
+      is_active:         isActive,
+      phone:             (formData.get('phone')             as string | null)?.trim() || null,
+      website_url:       (formData.get('website_url')       as string | null)?.trim() || null,
+      short_description: (formData.get('short_description') as string | null)?.trim() || null,
+      description:       (formData.get('description')       as string | null)?.trim() || null,
+      updated_at:        new Date().toISOString(),
     })
     .eq('id', locationId);
 

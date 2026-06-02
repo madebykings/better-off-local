@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { updateRetailerProfile, type ProfileFields } from '@/lib/actions/profile';
 import { ImageUploadZone } from '@/components/onboarding/image_upload_zone';
 
-const LOGO_MAX_BYTES  = 5  * 1024 * 1024;  // 5 MB
-const COVER_MAX_BYTES = 10 * 1024 * 1024;  // 10 MB
+const LOGO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const BUSINESS_TYPES = [
   'Food & Drink',
@@ -62,12 +61,10 @@ function Field({
 export function ProfileForm({
   initialData,
   logoUrl,
-  coverUrl,
   categoryNames = [],
 }: {
   initialData: ProfileFields;
   logoUrl: string | null;
-  coverUrl: string | null;
   categoryNames?: string[];
 }) {
   const [fields, setFields] = useState<ProfileFields>(initialData);
@@ -75,9 +72,7 @@ export function ProfileForm({
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isPending, setIsPending] = useState(false);
-
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(logoUrl);
-  const [currentCoverUrl, setCurrentCoverUrl] = useState<string | null>(coverUrl);
 
   function setField(key: keyof ProfileFields) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -114,42 +109,33 @@ export function ProfileForm({
   return (
     <div className="max-w-xl space-y-8">
 
-      {/* ── Images ───────────────────────────────────────────────────────── */}
+      {/* ── Brand logo ───────────────────────────────────────────────────── */}
       <section>
         <h2 className="mb-4 text-sm font-semibold text-gray-700 uppercase tracking-wide">
-          Images
+          Brand logo
         </h2>
         <p className="mb-4 text-xs text-gray-400">
-          Images upload immediately. JPG, PNG, or WebP only.
+          Your brand logo appears on listing cards and your dashboard. JPG, PNG, or WebP · max 5 MB.
         </p>
-
-        <div className="space-y-5">
-          <ImageUploadZone
-            slot="cover"
-            label="Cover image"
-            aspectHint="Recommended: 1600 × 600 px · max 10 MB · shown at top of your listing"
-            maxBytes={COVER_MAX_BYTES}
-            currentUrl={currentCoverUrl}
-            onUploaded={(url) => setCurrentCoverUrl(url)}
-            onRemoved={() => setCurrentCoverUrl(null)}
-          />
-
-          <ImageUploadZone
-            slot="logo"
-            label="Logo"
-            aspectHint="Recommended: 400 × 400 px minimum, square · max 5 MB · shown on listing cards and dashboard avatar"
-            maxBytes={LOGO_MAX_BYTES}
-            currentUrl={currentLogoUrl}
-            onUploaded={(url) => setCurrentLogoUrl(url)}
-            onRemoved={() => setCurrentLogoUrl(null)}
-          />
-        </div>
+        <ImageUploadZone
+          slot="logo"
+          label="Logo"
+          aspectHint="Recommended: 400 × 400 px minimum, square"
+          maxBytes={LOGO_MAX_BYTES}
+          currentUrl={currentLogoUrl}
+          onUploaded={(url) => setCurrentLogoUrl(url)}
+          onRemoved={() => setCurrentLogoUrl(null)}
+        />
+        <p className="mt-3 text-xs text-gray-400">
+          Venue cover images and location-specific branding are managed on the{' '}
+          <a href="/locations" className="text-green-700 underline">Locations</a> page.
+        </p>
       </section>
 
-      {/* ── Text fields ──────────────────────────────────────────────────── */}
+      {/* ── Brand identity ───────────────────────────────────────────────── */}
       <section>
         <h2 className="mb-4 text-sm font-semibold text-gray-700 uppercase tracking-wide">
-          Listing details
+          Brand identity
         </h2>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
@@ -181,7 +167,7 @@ export function ProfileForm({
             id="shortDescription"
             label="Short description"
             required
-            hint="Shown directly beneath your business name in the app. Keep it punchy — one or two sentences."
+            hint="Shown beneath your business name. One or two punchy sentences."
             error={errors.shortDescription}
           >
             <div className="relative">
@@ -206,23 +192,6 @@ export function ProfileForm({
             </div>
           </Field>
 
-          <Field
-            id="description"
-            label="Full description"
-            hint="Optional — longer marketing copy shown on your full listing page."
-            error={errors.description}
-          >
-            <textarea
-              id="description"
-              value={fields.description}
-              onChange={setField('description')}
-              rows={4}
-              placeholder="Tell members what makes your business worth visiting, your story, your specialities…"
-              className={[inputCls(!!errors.description), 'resize-none leading-relaxed'].join(' ')}
-              disabled={isPending}
-            />
-          </Field>
-
           <Field id="businessType" label="Business type" required error={errors.businessType}>
             <select
               id="businessType"
@@ -238,40 +207,50 @@ export function ProfileForm({
             </select>
           </Field>
 
-          <Field
-            id="website"
-            label="Website"
-            hint="Optional — shown as a link on your listing."
-            error={errors.website}
-          >
-            <input
-              id="website"
-              type="url"
-              value={fields.website}
-              onChange={setField('website')}
-              placeholder="e.g. https://yoursite.com"
-              autoComplete="url"
-              className={inputCls(!!errors.website)}
-              disabled={isPending}
-            />
-          </Field>
+          {/* ── Owner / contact details ─────────────────────────────── */}
+          <div className="border-t border-gray-100 pt-6">
+            <p className="text-sm font-medium text-gray-700 mb-4">Owner / contact details</p>
+            <div className="space-y-5">
+              <Field id="contactName" label="Contact name" hint="The person members or the Better Off Local team should contact.">
+                <input
+                  id="contactName"
+                  type="text"
+                  value={fields.contactName}
+                  onChange={setField('contactName')}
+                  placeholder="e.g. Jane Smith"
+                  autoComplete="name"
+                  className={inputCls(false)}
+                  disabled={isPending}
+                />
+              </Field>
 
-          <Field
-            id="phone"
-            label="Phone number"
-            hint="Optional — shown on your listing so members can call directly."
-          >
-            <input
-              id="phone"
-              type="tel"
-              value={fields.phone}
-              onChange={setField('phone')}
-              placeholder="e.g. 01259 123456"
-              autoComplete="tel"
-              className={inputCls(false)}
-              disabled={isPending}
-            />
-          </Field>
+              <Field id="phone" label="Contact phone">
+                <input
+                  id="phone"
+                  type="tel"
+                  value={fields.phone}
+                  onChange={setField('phone')}
+                  placeholder="e.g. 01259 123456"
+                  autoComplete="tel"
+                  className={inputCls(false)}
+                  disabled={isPending}
+                />
+              </Field>
+
+              <Field id="email" label="Contact email">
+                <input
+                  id="email"
+                  type="email"
+                  value={fields.email}
+                  onChange={setField('email')}
+                  placeholder="e.g. hello@yourbusiness.com"
+                  autoComplete="email"
+                  className={inputCls(false)}
+                  disabled={isPending}
+                />
+              </Field>
+            </div>
+          </div>
 
           <div className="flex items-center gap-4 border-t border-gray-100 pt-6">
             <button

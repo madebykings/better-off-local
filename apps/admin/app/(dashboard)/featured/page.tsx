@@ -1,48 +1,103 @@
 import type { Metadata } from 'next';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
-import { toggleOfferFeatured } from '@/lib/actions/admin';
+import { toggleVenueFeatured } from '@/lib/actions/admin';
 
 export const metadata: Metadata = { title: 'Featured – Admin' };
-
-const STATUS_CLASSES: Record<string, string> = {
-  live:    'bg-green-100 text-green-800 border-green-200',
-  paused:  'bg-yellow-100 text-yellow-800 border-yellow-200',
-  expired: 'bg-gray-100 text-gray-700 border-gray-200',
-  pending: 'bg-blue-100 text-blue-800 border-blue-200',
-  draft:   'bg-gray-100 text-gray-500 border-gray-200',
-};
 
 export default async function FeaturedPage() {
   await requireAdmin();
   const supabase = createServiceClient();
 
-  const [featuredResult, liveResult] = await Promise.all([
-    // Currently featured offers
+  const [featuredResult, availableResult] = await Promise.all([
     supabase
-      .from('offers')
-      .select('id, title, status, is_featured, retailers(name)')
+      .from('retailer_locations')
+      .select('id, retailer_id, name, is_active, logo_url, cover_image_url, retailers(name), regions(name)')
       .eq('is_featured', true)
-      .order('title'),
-    // Live offers not yet featured (for promotion)
+      .order('name'),
     supabase
-      .from('offers')
-      .select('id, title, status, is_featured, retailers(name)')
+      .from('retailer_locations')
+      .select('id, retailer_id, name, is_active, logo_url, cover_image_url, retailers(name), regions(name)')
       .eq('is_featured', false)
-      .eq('status', 'live')
-      .order('title')
-      .limit(50),
+      .eq('is_active', true)
+      .order('name')
+      .limit(100),
   ]);
 
-  const featured = (featuredResult.data ?? []) as any[];
-  const promotable = (liveResult.data ?? []) as any[];
+  const featured  = (featuredResult.data  ?? []) as any[];
+  const available = (availableResult.data ?? []) as any[];
+
+  function VenueRow({ v, currentFeatured }: { v: any; currentFeatured: boolean }) {
+    return (
+      <tr className="hover:bg-gray-50">
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-3">
+            {v.logo_url && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={v.logo_url} alt="" className="w-8 h-8 rounded object-cover border border-gray-100 shrink-0" />
+            )}
+            {!v.logo_url && v.cover_image_url && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={v.cover_image_url} alt="" className="w-8 h-8 rounded object-cover border border-gray-100 shrink-0" />
+            )}
+            {!v.logo_url && !v.cover_image_url && (
+              <div className="w-8 h-8 rounded border border-gray-100 bg-gray-50 shrink-0" />
+            )}
+            <span className="font-medium text-gray-800">{v.name ?? '—'}</span>
+          </div>
+        </td>
+        <td className="px-4 py-3 text-gray-600">{v.retailers?.name ?? '—'}</td>
+        <td className="px-4 py-3 text-gray-500 text-xs">{v.regions?.name ?? '—'}</td>
+        <td className="px-4 py-3">
+          {v.is_active ? (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-green-100 text-green-800 border-green-200">
+              Active
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-gray-100 text-gray-500 border-gray-200">
+              Inactive
+            </span>
+          )}
+        </td>
+        <td className="px-4 py-3">
+          <form action={toggleVenueFeatured}>
+            <input type="hidden" name="location_id" value={v.id} />
+            <input type="hidden" name="retailer_id" value={v.retailer_id} />
+            <input type="hidden" name="is_featured" value={String(currentFeatured)} />
+            <button
+              type="submit"
+              className={
+                currentFeatured
+                  ? 'text-xs text-red-500 hover:text-red-700 underline'
+                  : 'text-xs text-green-700 hover:text-green-900 underline font-medium'
+              }
+            >
+              {currentFeatured ? 'Unfeature' : 'Feature'}
+            </button>
+          </form>
+        </td>
+      </tr>
+    );
+  }
+
+  const tableHead = (
+    <thead className="bg-gray-50 border-b border-gray-200">
+      <tr>
+        <th className="text-left px-4 py-3 font-medium text-gray-600">Venue</th>
+        <th className="text-left px-4 py-3 font-medium text-gray-600">Retailer</th>
+        <th className="text-left px-4 py-3 font-medium text-gray-600">Region</th>
+        <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+        <th className="px-4 py-3" />
+      </tr>
+    </thead>
+  );
 
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Featured</h1>
+        <h1 className="text-2xl font-semibold">Featured venues</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Featured offers are shown prominently in the consumer app.
+          Featured venues are shown prominently in the consumer app. Feature individual locations, not the whole retailer.
         </p>
       </div>
 
@@ -53,39 +108,15 @@ export default async function FeaturedPage() {
         </h2>
         {featured.length === 0 ? (
           <div className="text-center py-8 text-sm text-gray-400 border border-gray-200 rounded-lg bg-white">
-            No featured offers.
+            No featured venues.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Offer</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Retailer</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
+              {tableHead}
               <tbody className="divide-y divide-gray-100">
-                {featured.map((o: any) => (
-                  <tr key={o.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-800">{o.title}</td>
-                    <td className="px-4 py-3 text-gray-600">{o.retailers?.name ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${STATUS_CLASSES[o.status] ?? ''}`}>
-                        {o.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <form action={toggleOfferFeatured}>
-                        <input type="hidden" name="id" value={o.id} />
-                        <input type="hidden" name="is_featured" value="true" />
-                        <button type="submit" className="text-xs text-red-500 hover:text-red-700 underline">
-                          Unfeature
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
+                {featured.map((v: any) => (
+                  <VenueRow key={v.id} v={v} currentFeatured={true} />
                 ))}
               </tbody>
             </table>
@@ -93,40 +124,22 @@ export default async function FeaturedPage() {
         )}
       </div>
 
-      {/* Live offers to promote */}
+      {/* Active venues available to feature */}
       <div>
         <h2 className="text-base font-semibold text-gray-800 mb-3">
-          Live offers available to feature
+          Active venues available to feature
         </h2>
-        {promotable.length === 0 ? (
+        {available.length === 0 ? (
           <div className="text-center py-8 text-sm text-gray-400 border border-gray-200 rounded-lg bg-white">
-            No live offers available to feature.
+            No active venues available to feature.
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Offer</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Retailer</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
+              {tableHead}
               <tbody className="divide-y divide-gray-100">
-                {promotable.map((o: any) => (
-                  <tr key={o.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-800">{o.title}</td>
-                    <td className="px-4 py-3 text-gray-600">{o.retailers?.name ?? '—'}</td>
-                    <td className="px-4 py-3">
-                      <form action={toggleOfferFeatured}>
-                        <input type="hidden" name="id" value={o.id} />
-                        <input type="hidden" name="is_featured" value="false" />
-                        <button type="submit" className="text-xs text-green-700 hover:text-green-900 underline font-medium">
-                          Feature
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
+                {available.map((v: any) => (
+                  <VenueRow key={v.id} v={v} currentFeatured={false} />
                 ))}
               </tbody>
             </table>

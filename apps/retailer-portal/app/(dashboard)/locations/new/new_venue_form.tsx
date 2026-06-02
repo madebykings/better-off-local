@@ -12,13 +12,17 @@ type RegionWithStats = {
 };
 
 const EMPTY: VenueFields = {
-  name:         '',
-  regionId:     '',
-  addressLine1: '',
-  addressLine2: '',
-  town:         '',
-  county:       '',
-  postcode:     '',
+  name:             '',
+  regionId:         '',
+  addressLine1:     '',
+  addressLine2:     '',
+  town:             '',
+  county:           '',
+  postcode:         '',
+  phone:            '',
+  websiteUrl:       '',
+  shortDescription: '',
+  description:      '',
 };
 
 function inputCls(hasError: boolean) {
