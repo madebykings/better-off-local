@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
 import { deactivateVenue } from '@/lib/actions/location';
+import { VenueCapDialog } from '@/components/locations/venue_cap_dialog';
 
 export const metadata: Metadata = { title: 'Locations – Retailer Portal' };
 
@@ -20,21 +21,68 @@ export default async function LocationsPage() {
   const { retailerId } = await requireRetailerUser();
   const supabase = createServiceClient();
 
-  const [{ data: locations }, { data: sub }] = await Promise.all([
-    supabase
+  const [{ data: locations }, { data: sub }, { data: locationWithRegion }] =
+    await Promise.all([
+      supabase
+        .from('retailer_locations')
+        .select('id, name, address_line_1, town, postcode, is_primary, is_active, billing_status, region_id')
+        .eq('retailer_id', retailerId)
+        .eq('is_active', true)
+        .order('is_primary', { ascending: false })
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('retailer_subscriptions')
+        .select('extra_venues_quantity, venue_allowance_override')
+        .eq('retailer_id', retailerId)
+        .eq('status', 'active')
+        .maybeSingle(),
+      supabase
+        .from('retailer_locations')
+        .select('region_id')
+        .eq('retailer_id', retailerId)
+        .eq('is_primary', true)
+        .eq('is_active', true)
+        .maybeSingle(),
+    ]);
+
+  // Fetch region stats for the primary venue's region.
+  const primaryRegionId = locationWithRegion?.region_id;
+  let regionStats: {
+    region_name: string;
+    active_member_count: number;
+    paying_member_count: number;
+    active_retailer_count: number;
+    live_offer_count: number;
+    member_threshold: number;
+    billing_status: string | null;
+  } | null = null;
+
+  if (primaryRegionId) {
+    const { data: statsRow } = await supabase
+      .from('region_public_stats')
+      .select('name, active_member_count, paying_member_count, active_retailer_count, live_offer_count, member_threshold')
+      .eq('id', primaryRegionId)
+      .maybeSingle();
+
+    const { data: primaryLoc } = await supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, town, postcode, is_primary, is_active, billing_status, region_id')
+      .select('billing_status')
       .eq('retailer_id', retailerId)
-      .eq('is_active', true)
-      .order('is_primary', { ascending: false })
-      .order('created_at', { ascending: true }),
-    supabase
-      .from('retailer_subscriptions')
-      .select('extra_venues_quantity, venue_allowance_override')
-      .eq('retailer_id', retailerId)
-      .eq('status', 'active')
-      .maybeSingle(),
-  ]);
+      .eq('is_primary', true)
+      .maybeSingle();
+
+    if (statsRow) {
+      regionStats = {
+        region_name: statsRow.name ?? 'Your region',
+        active_member_count: statsRow.active_member_count ?? 0,
+        paying_member_count: statsRow.paying_member_count ?? 0,
+        active_retailer_count: statsRow.active_retailer_count ?? 0,
+        live_offer_count: statsRow.live_offer_count ?? 0,
+        member_threshold: statsRow.member_threshold ?? 100,
+        billing_status: primaryLoc?.billing_status ?? null,
+      };
+    }
+  }
 
   const BILLING_BADGES: Record<string, string> = {
     free_growth_region: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -44,10 +92,10 @@ export default async function LocationsPage() {
     inactive:           'bg-gray-50 text-gray-500 border-gray-200',
   };
 
-  const extraQty   = sub?.extra_venues_quantity ?? 0;
-  const allowance  = sub?.venue_allowance_override ?? (1 + extraQty);
+  const extraQty    = sub?.extra_venues_quantity ?? 0;
+  const allowance   = sub?.venue_allowance_override ?? (1 + extraQty);
   const activeCount = locations?.length ?? 0;
-  const atCap      = activeCount >= allowance;
+  const atCap       = activeCount >= allowance;
   const canDeactivate = activeCount > 1;
 
   return (
@@ -59,18 +107,81 @@ export default async function LocationsPage() {
             Your trading addresses shown on the map and your listing.
           </p>
         </div>
-        <Link
-          href="/locations/new"
-          className={[
-            'text-sm px-4 py-2 rounded-lg transition-colors',
-            atCap
-              ? 'bg-gray-100 text-gray-500 cursor-default'
-              : 'bg-green-800 text-white hover:bg-green-700',
-          ].join(' ')}
-        >
-          Add location
-        </Link>
+
+        {/* Add location CTA — always visible.
+            When at cap, clicking shows a billing explanation dialog. */}
+        {atCap ? (
+          <VenueCapDialog />
+        ) : (
+          <Link
+            href="/locations/new"
+            className="text-sm px-4 py-2 rounded-lg transition-colors bg-green-800 text-white hover:bg-green-700"
+          >
+            Add location
+          </Link>
+        )}
       </div>
+
+      {/* Region growth stats */}
+      {regionStats && (
+        <div className="mb-6 rounded-lg border border-blue-100 bg-blue-50 px-5 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-blue-900">
+              {regionStats.region_name}
+            </h2>
+            {regionStats.billing_status === 'free_growth_region' && (
+              <span className="text-xs font-medium text-blue-600 bg-blue-100 border border-blue-200 rounded px-2 py-0.5">
+                Free Growth Region
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-3">
+            <div>
+              <p className="text-lg font-bold text-blue-900">{regionStats.paying_member_count}</p>
+              <p className="text-xs text-blue-600">Active members</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-blue-900">{regionStats.member_threshold}</p>
+              <p className="text-xs text-blue-600">Target</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-blue-900">{regionStats.active_retailer_count}</p>
+              <p className="text-xs text-blue-600">Retailers</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-blue-900">{regionStats.live_offer_count}</p>
+              <p className="text-xs text-blue-600">Live offers</p>
+            </div>
+          </div>
+          {/* Progress bar */}
+          {regionStats.member_threshold > 0 && (
+            <div>
+              <div className="flex justify-between text-xs text-blue-600 mb-1">
+                <span>
+                  {Math.round((regionStats.paying_member_count / regionStats.member_threshold) * 100)}% to billing activation
+                </span>
+                <span>
+                  {Math.max(0, regionStats.member_threshold - regionStats.paying_member_count)} more members needed
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-blue-200 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-blue-600 transition-all"
+                  style={{
+                    width: `${Math.min(100, (regionStats.paying_member_count / regionStats.member_threshold) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
+          {regionStats.billing_status === 'free_growth_region' && (
+            <p className="mt-2 text-xs text-blue-600">
+              Your first venue is free while {regionStats.region_name} grows.
+              Billing activates once the region reaches {regionStats.member_threshold} members.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Allowance bar */}
       <div className="mb-6 rounded-lg border border-gray-200 bg-white px-4 py-3 flex items-center justify-between gap-4">
@@ -85,12 +196,9 @@ export default async function LocationsPage() {
           </p>
         </div>
         {atCap && (
-          <Link
-            href="/locations/new"
-            className="shrink-0 text-xs font-semibold text-green-700 hover:text-green-800 border border-green-200 rounded-lg px-3 py-1.5 transition-colors"
-          >
-            Add venue — £9.99/yr
-          </Link>
+          <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 font-medium">
+            At capacity
+          </span>
         )}
       </div>
 

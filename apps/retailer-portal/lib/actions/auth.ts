@@ -31,6 +31,36 @@ export async function signIn(
   redirect('/dashboard');
 }
 
+export async function signUp(
+  _prevState: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const email = (formData.get('email') as string | null)?.trim() ?? '';
+  const password = (formData.get('password') as string | null) ?? '';
+  const confirmPassword = (formData.get('confirmPassword') as string | null) ?? '';
+
+  if (!email || !password) return { error: 'Email and password are required.' };
+  if (password.length < 8) return { error: 'Password must be at least 8 characters.' };
+  if (password !== confirmPassword) return { error: 'Passwords do not match.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/auth/callback?next=/onboarding` },
+  });
+
+  if (error) {
+    if (error.message.toLowerCase().includes('already registered')) {
+      return { error: 'An account with this email already exists. Sign in instead.' };
+    }
+    return { error: 'Registration failed. Please try again.' };
+  }
+
+  // Redirect to a "check your email" confirmation page.
+  redirect('/sign-up/confirm');
+}
+
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();

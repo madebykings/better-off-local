@@ -136,7 +136,8 @@ class Offer extends Equatable {
     );
   }
 
-  /// Constructs from a `consumer_discovery_offers` view row (no nested joins).
+  /// Constructs from a `consumer_discovery_offers` view row.
+  /// The view exposes flat retailer info and rules fields directly.
   factory Offer.fromDiscoveryMap(Map<String, dynamic> map) {
     return Offer(
       id: map['id'] as String,
@@ -155,6 +156,12 @@ class Offer extends Equatable {
           : null,
       isFeatured: map['is_featured'] as bool? ?? false,
       imageUrl: map['image_url'] as String?,
+      retailerLogoUrl: map['retailer_logo_url'] as String?,
+      maxRedemptionsPerUser: map['max_redemptions_per_user'] as int?,
+      maxRedemptionsPerDay: map['max_redemptions_per_day'] as int?,
+      maxRedemptionsTotal: map['max_redemptions_total'] as int?,
+      cooldownHours: map['cooldown_hours'] as int?,
+      newCustomersOnly: map['new_customers_only'] as bool? ?? false,
     );
   }
 

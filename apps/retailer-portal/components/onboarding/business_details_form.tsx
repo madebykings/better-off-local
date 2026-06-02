@@ -25,7 +25,7 @@ const BUSINESS_TYPES = [
   'Other',
 ] as const;
 
-const DESCRIPTION_MAX = 160;
+const SHORT_DESC_MAX = 160;
 const AUTOSAVE_DELAY_MS = 12_000; // 12 seconds
 
 // ---------------------------------------------------------------------------
@@ -39,8 +39,8 @@ function validate(fields: BusinessDetailsFields): FormErrors {
   if (fields.name.trim().length < 2) {
     errors.name = 'Business name is required (at least 2 characters).';
   }
-  if (fields.description.trim().length < 20) {
-    errors.description = 'Description must be at least 20 characters.';
+  if (fields.shortDescription.trim().length < 10) {
+    errors.shortDescription = 'Short description must be at least 10 characters.';
   }
   if (!fields.businessType) {
     errors.businessType = 'Please select a business type.';
@@ -108,7 +108,7 @@ function Field({
 
 function RetailerCardPreview({ fields }: { fields: BusinessDetailsFields }) {
   const hasName = fields.name.trim().length > 0;
-  const hasDesc = fields.description.trim().length > 0;
+  const hasDesc = (fields.shortDescription ?? '').trim().length > 0;
 
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_20px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]">
@@ -169,16 +169,11 @@ function RetailerCardPreview({ fields }: { fields: BusinessDetailsFields }) {
           <div className="h-4 w-40 rounded bg-gray-100" />
         )}
 
-        {/* Tagline */}
-        {fields.tagline && (
-          <p className="mt-1 text-[12px] text-gray-500">{fields.tagline}</p>
-        )}
-
-        {/* Description */}
+        {/* Short description */}
         <div className="mt-2.5">
           {hasDesc ? (
             <p className="line-clamp-3 text-[13px] leading-relaxed text-gray-500">
-              {fields.description}
+              {fields.shortDescription}
             </p>
           ) : (
             <div className="space-y-1.5">
@@ -293,7 +288,7 @@ export function BusinessDetailsForm({
     router.push(prev?.path ?? '/dashboard');
   }
 
-  const descCount = fields.description.length;
+  const shortDescCount = (fields.shortDescription ?? '').length;
 
   return (
     <div className="grid grid-cols-1 gap-x-14 gap-y-10 lg:grid-cols-[1fr_320px]">
@@ -322,51 +317,33 @@ export function BusinessDetailsForm({
         </Field>
 
         <Field
-          id="tagline"
-          label="Tagline"
-          hint="Optional — one punchy line that tells members what makes you special."
-        >
-          <input
-            id="tagline"
-            type="text"
-            value={fields.tagline}
-            onChange={setField('tagline')}
-            maxLength={80}
-            placeholder="e.g. Handmade food, made with love"
-            className={inputCls(false)}
-            disabled={isPending}
-          />
-        </Field>
-
-        <Field
-          id="description"
+          id="shortDescription"
           label="Short description"
           required
-          hint="Shown on your listing card and detail page. Aim for 1–2 sentences."
-          error={errors.description}
+          hint="Shown directly beneath your name in the app. One or two sentences that tell members what makes you special."
+          error={errors.shortDescription}
         >
           <div className="relative">
             <textarea
-              id="description"
-              value={fields.description}
-              onChange={setField('description')}
-              maxLength={DESCRIPTION_MAX}
+              id="shortDescription"
+              value={fields.shortDescription}
+              onChange={setField('shortDescription')}
+              maxLength={SHORT_DESC_MAX}
               rows={3}
-              placeholder="Tell members what makes your business worth visiting…"
+              placeholder="e.g. A cosy café in the heart of Alloa serving locally sourced food and great coffee."
               className={[
-                inputCls(!!errors.description),
+                inputCls(!!errors.shortDescription),
                 'resize-none leading-relaxed pb-6',
               ].join(' ')}
               disabled={isPending}
             />
-            {/* Character counter — turns amber when nearing the limit */}
             <span
               className={[
                 'pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums transition-colors',
-                descCount > 130 ? 'text-amber-500' : 'text-gray-300',
+                shortDescCount > 130 ? 'text-amber-500' : 'text-gray-300',
               ].join(' ')}
             >
-              {descCount}/{DESCRIPTION_MAX}
+              {shortDescCount}/{SHORT_DESC_MAX}
             </span>
           </div>
         </Field>

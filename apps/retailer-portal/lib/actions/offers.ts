@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { type RuleColumns, ruleToColumns } from '@/lib/utils/redemption_rules';
-import { type OfferType, OFFER_TYPES } from '@/lib/utils/first_offer';
+import { type OfferType, OFFER_TYPES, computeValueText, needsDiscountValue } from '@/lib/utils/first_offer';
 import type { RedemptionRule } from '@/lib/utils/redemption_rules';
 
 // ---------------------------------------------------------------------------
@@ -13,7 +13,7 @@ import type { RedemptionRule } from '@/lib/utils/redemption_rules';
 // ---------------------------------------------------------------------------
 
 export type OfferFields = {
-  benefitText: string;
+  discountValue: string;   // numeric value for % or £ types — computed into value_text
   headline: string;
   description: string;
   offerType: OfferType;
@@ -41,8 +41,14 @@ export type CreateOfferResult = { offerId: string } | OfferActionResult;
 
 function validateOffer(fields: OfferFields): Partial<Record<keyof OfferFields, string>> {
   const errors: Partial<Record<keyof OfferFields, string>> = {};
-  if (!fields.benefitText.trim()) {
-    errors.benefitText = 'Please enter the benefit, e.g. "10% off" or "Free coffee".';
+  if (needsDiscountValue(fields.offerType) && !fields.discountValue.trim()) {
+    errors.discountValue = 'Please enter the discount value (e.g. 10 for 10% or 5 for £5).';
+  }
+  if (needsDiscountValue(fields.offerType) && fields.discountValue.trim()) {
+    const n = parseFloat(fields.discountValue);
+    if (isNaN(n) || n <= 0) {
+      errors.discountValue = 'Please enter a positive number.';
+    }
   }
   if (!fields.headline.trim()) {
     errors.headline = 'Please enter a headline for the offer.';
@@ -119,7 +125,7 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
       retailer_location_id: null,
       venue_scope: fields.venueScope,
       title: fields.headline.trim(),
-      value_text: fields.benefitText.trim(),
+      value_text: computeValueText(fields.offerType, fields.discountValue),
       description: fields.description.trim(),
       offer_type: fields.offerType,
       start_at: fields.startDate ? new Date(fields.startDate).toISOString() : null,
@@ -170,23 +176,35 @@ export async function updateOffer(
 
   const service = createServiceClient();
 
-  // Verify ownership.
+  // Verify ownership and get current state for material-change detection.
   const { data: existing } = await service
     .from('offers')
-    .select('id, status')
+    .select('id, status, offer_type, value_text, title')
     .eq('id', offerId)
     .eq('retailer_id', ctx.retailerId)
     .maybeSingle();
 
   if (!existing) return { error: 'Offer not found.' };
 
+  const newValueText = computeValueText(fields.offerType, fields.discountValue);
+  const newTitle = fields.headline.trim();
+
+  // Material change on a live offer — return to pending review.
+  const isMaterialChange =
+    existing.status === 'live' &&
+    (existing.offer_type !== fields.offerType ||
+      existing.value_text !== newValueText ||
+      existing.title !== newTitle);
+
+  const newStatus = isMaterialChange ? 'pending' : existing.status;
+
   const { error } = await service
     .from('offers')
     .update({
       retailer_location_id: null,
       venue_scope: fields.venueScope,
-      title: fields.headline.trim(),
-      value_text: fields.benefitText.trim(),
+      title: newTitle,
+      value_text: newValueText,
       description: fields.description.trim(),
       offer_type: fields.offerType,
       start_at: fields.startDate ? new Date(fields.startDate).toISOString() : null,
@@ -195,6 +213,7 @@ export async function updateOffer(
       estimated_saving_pence: fields.estimatedSavingPence.trim()
         ? parseInt(fields.estimatedSavingPence, 10)
         : null,
+      ...(isMaterialChange ? { status: newStatus } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('id', offerId);
@@ -279,6 +298,31 @@ export async function togglePauseOffer(formData: FormData): Promise<void> {
 
   revalidatePath(`/offers/${offerId}`);
   revalidatePath('/offers');
+}
+
+export async function archiveOffer(formData: FormData): Promise<void> {
+  const offerId = formData.get('offer_id') as string;
+  const ctx = await getRetailerCtx();
+  if (!ctx) return;
+
+  const service = createServiceClient();
+  const { data: offer } = await service
+    .from('offers')
+    .select('status')
+    .eq('id', offerId)
+    .eq('retailer_id', ctx.retailerId)
+    .maybeSingle();
+
+  if (!offer) return;
+  if (!['live', 'paused', 'draft'].includes(offer.status)) return;
+
+  await service
+    .from('offers')
+    .update({ status: 'archived', updated_at: new Date().toISOString() })
+    .eq('id', offerId);
+
+  revalidatePath('/offers');
+  redirect('/offers');
 }
 
 export async function deleteDraftOffer(formData: FormData): Promise<void> {

@@ -6,10 +6,10 @@ import { createServiceClient } from '@/lib/supabase/service';
 
 export interface ProfileFields {
   name: string;
-  tagline: string;
-  website: string;
-  description: string;
+  shortDescription: string; // → retailers.short_description (shown beneath name)
+  description: string;      // → retailers.description (full marketing copy)
   businessType: string;
+  website: string;
   phone: string;
 }
 
@@ -23,8 +23,11 @@ function validate(fields: ProfileFields): Partial<Record<keyof ProfileFields, st
   if (fields.name.trim().length < 2) {
     errors.name = 'Business name is required (at least 2 characters).';
   }
-  if (fields.description.trim().length < 20) {
-    errors.description = 'Description must be at least 20 characters.';
+  if (fields.shortDescription.trim().length < 10) {
+    errors.shortDescription = 'Short description must be at least 10 characters.';
+  }
+  if (fields.shortDescription.trim().length > 160) {
+    errors.shortDescription = 'Short description must be 160 characters or fewer.';
   }
   if (!fields.businessType) {
     errors.businessType = 'Please select a business type.';
@@ -68,10 +71,10 @@ export async function updateRetailerProfile(
     .from('retailers')
     .update({
       name: fields.name.trim(),
-      tagline: fields.tagline.trim() || null,
-      website_url: fields.website.trim() || null,
-      description: fields.description.trim(),
+      short_description: fields.shortDescription.trim(),
+      description: fields.description.trim() || null,
       business_type: fields.businessType || null,
+      website_url: fields.website.trim() || null,
       phone: fields.phone.trim() || null,
       updated_at: new Date().toISOString(),
     })

@@ -2,6 +2,101 @@ import 'package:equatable/equatable.dart';
 
 import '../../offers/domain/offer_summary.dart';
 
+/// A single day's opening hours.
+class DayHours {
+  const DayHours({required this.open, required this.close, required this.closed});
+  final String open;   // e.g. "09:00"
+  final String close;  // e.g. "17:00"
+  final bool closed;
+
+  factory DayHours.fromMap(Map<String, dynamic> map) => DayHours(
+        open: map['open'] as String? ?? '',
+        close: map['close'] as String? ?? '',
+        closed: map['closed'] as bool? ?? false,
+      );
+}
+
+/// Parsed opening hours keyed by lowercase day name (monday … sunday).
+class OpeningHours {
+  const OpeningHours(this.days);
+  final Map<String, DayHours> days;
+
+  factory OpeningHours.fromJson(Map<String, dynamic> json) {
+    return OpeningHours({
+      for (final entry in json.entries)
+        entry.key: DayHours.fromMap(entry.value as Map<String, dynamic>),
+    });
+  }
+
+  /// Returns "Open now · Closes at HH:MM" or "Closed · Opens {next}" or null.
+  String? get statusLabel {
+    final now = DateTime.now();
+    final dayKey = _dayKey(now.weekday);
+    final today = days[dayKey];
+    if (today == null) return null;
+
+    if (today.closed) {
+      final next = _nextOpenDay(now);
+      if (next == null) return 'Closed';
+      return 'Closed · Opens $next';
+    }
+
+    final openTime = _parseTime(today.open, now);
+    final closeTime = _parseTime(today.close, now);
+    if (openTime == null || closeTime == null) return null;
+
+    if (now.isAfter(openTime) && now.isBefore(closeTime)) {
+      return 'Open now · Closes at ${today.close}';
+    }
+    if (now.isBefore(openTime)) {
+      return 'Closed · Opens today at ${today.open}';
+    }
+    // After close — find next open day.
+    final next = _nextOpenDay(now);
+    return 'Closed${next != null ? ' · Opens $next' : ''}';
+  }
+
+  bool get isOpenNow {
+    final now = DateTime.now();
+    final today = days[_dayKey(now.weekday)];
+    if (today == null || today.closed) return false;
+    final openTime = _parseTime(today.open, now);
+    final closeTime = _parseTime(today.close, now);
+    if (openTime == null || closeTime == null) return false;
+    return now.isAfter(openTime) && now.isBefore(closeTime);
+  }
+
+  String? _nextOpenDay(DateTime from) {
+    for (var i = 1; i <= 7; i++) {
+      final next = from.add(Duration(days: i));
+      final key = _dayKey(next.weekday);
+      final h = days[key];
+      if (h != null && !h.closed && h.open.isNotEmpty) {
+        if (i == 1) return 'tomorrow at ${h.open}';
+        return '${_capitalize(key)} at ${h.open}';
+      }
+    }
+    return null;
+  }
+
+  DateTime? _parseTime(String t, DateTime base) {
+    final parts = t.split(':');
+    if (parts.length != 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    return DateTime(base.year, base.month, base.day, h, m);
+  }
+
+  static String _dayKey(int weekday) {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    return days[weekday - 1];
+  }
+
+  static String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+}
+
 class Retailer extends Equatable {
   const Retailer({
     required this.id,
@@ -24,6 +119,7 @@ class Retailer extends Equatable {
     this.categories = const [],
     this.featuredOffer,
     this.activeOfferCount = 0,
+    this.openingHours,
   });
 
   final String id;
@@ -46,6 +142,7 @@ class Retailer extends Equatable {
   final List<String> categories;
   final OfferSummary? featuredOffer;
   final int activeOfferCount;
+  final OpeningHours? openingHours;
 
   String? get displayAddress {
     final parts = [addressLine1, town, postcode]
@@ -55,19 +152,19 @@ class Retailer extends Equatable {
   }
 
   /// Parses from the flat `consumer_discovery_retailers` view row.
-  ///
-  /// Location fields (`address_line_1`, `town`, `postcode`, `latitude`,
-  /// `longitude`) are top-level columns. Categories arrive as a JSON array
-  /// of name strings in `category_names`.
   factory Retailer.fromMap(Map<String, dynamic> map) {
-    // category_names is a JSON array of strings from the view's json_agg.
-    // PostgREST deserialises JSON columns as List<dynamic>.
     final catNames = map['category_names'];
     final categories = <String>[];
     if (catNames is List) {
       for (final n in catNames) {
         if (n is String) categories.add(n);
       }
+    }
+
+    OpeningHours? openingHours;
+    final ohJson = map['opening_hours_json'];
+    if (ohJson is Map<String, dynamic>) {
+      openingHours = OpeningHours.fromJson(ohJson);
     }
 
     return Retailer(
@@ -93,6 +190,7 @@ class Retailer extends Equatable {
           : null,
       categories: categories,
       activeOfferCount: (map['active_offer_count'] as num?)?.toInt() ?? 0,
+      openingHours: openingHours,
     );
   }
 

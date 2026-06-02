@@ -11,8 +11,7 @@ import { type OnboardingStepId, getStepById, ONBOARDING_STEPS } from '@/lib/onbo
 
 export interface BusinessDetailsFields {
   name: string;
-  tagline: string;
-  description: string;
+  shortDescription: string; // → retailers.short_description
   businessType: string;
   phone: string;
 }
@@ -33,8 +32,11 @@ function validateBusinessDetails(
   if (fields.name.trim().length < 2) {
     errors.name = 'Business name is required (at least 2 characters).';
   }
-  if (fields.description.trim().length < 20) {
-    errors.description = 'Description must be at least 20 characters.';
+  if (fields.shortDescription.trim().length < 10) {
+    errors.shortDescription = 'Short description must be at least 10 characters.';
+  }
+  if (fields.shortDescription.trim().length > 160) {
+    errors.shortDescription = 'Short description must be 160 characters or fewer.';
   }
   if (!fields.businessType) {
     errors.businessType = 'Please select a business type.';
@@ -132,8 +134,7 @@ export async function saveBusinessDetails(
       .from('retailers')
       .update({
         name: fields.name.trim(),
-        tagline: fields.tagline.trim() || null,
-        description: fields.description.trim(),
+        short_description: fields.shortDescription.trim(),
         business_type: fields.businessType || null,
         phone: fields.phone.trim() || null,
         ...(shouldAdvance ? { onboarding_step: 'branding' } : {}),
@@ -154,8 +155,7 @@ export async function saveBusinessDetails(
       .insert({
         name: fields.name.trim(),
         slug,
-        tagline: fields.tagline.trim() || null,
-        description: fields.description.trim(),
+        short_description: fields.shortDescription.trim(),
         business_type: fields.businessType || null,
         phone: fields.phone.trim() || null,
         onboarding_step: 'branding',
@@ -210,8 +210,7 @@ export async function draftSaveBusinessDetails(
       .from('retailers')
       .update({
         name: fields.name.trim(),
-        tagline: fields.tagline.trim() || null,
-        description: fields.description.trim() || null,
+        short_description: fields.shortDescription.trim() || null,
         business_type: fields.businessType || null,
         phone: fields.phone.trim() || null,
         updated_at: new Date().toISOString(),
@@ -236,8 +235,7 @@ export async function draftSaveBusinessDetails(
       .insert({
         name: fields.name.trim(),
         slug,
-        tagline: fields.tagline.trim() || null,
-        description: fields.description.trim() || null,
+        short_description: fields.shortDescription.trim() || null,
         business_type: fields.businessType || null,
         phone: fields.phone.trim() || null,
         onboarding_step: 'business-details',

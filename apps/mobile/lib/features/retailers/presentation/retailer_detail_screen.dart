@@ -11,6 +11,7 @@ import '../../offers/domain/offer.dart';
 import '../../offers/domain/offer_availability.dart';
 import '../../offers/presentation/widgets/offer_card.dart';
 import '../../offers/providers/offers_providers.dart';
+import '../domain/retailer.dart';
 import '../providers/retailer_providers.dart';
 
 class RetailerDetailScreen extends ConsumerWidget {
@@ -158,6 +159,10 @@ class RetailerDetailScreen extends ConsumerWidget {
                         ),
                       ],
                       const SizedBox(height: 16),
+                      if (retailer.openingHours != null)
+                        _OpeningHoursRow(hours: retailer.openingHours!),
+                      if (retailer.openingHours != null)
+                        const SizedBox(height: 12),
                       _ContactRow(retailer: retailer),
                       const SizedBox(height: 28),
                       Text('Offers',
@@ -478,6 +483,42 @@ class _OfferPickerSheet extends StatelessWidget {
         child: const Icon(Icons.local_offer_outlined,
             size: 24, color: AppColors.border),
       );
+}
+
+// ── Opening hours row ───────────────────────────────────────────────────────
+
+class _OpeningHoursRow extends StatelessWidget {
+  const _OpeningHoursRow({required this.hours});
+  final OpeningHours hours;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = hours.statusLabel;
+    if (label == null) return const SizedBox.shrink();
+
+    final isOpen = hours.isOpenNow;
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: isOpen ? AppColors.success : AppColors.textDisabled,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: isOpen ? AppColors.success : AppColors.textSecondary,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // ── Contact row ─────────────────────────────────────────────────────────────

@@ -10,8 +10,7 @@ export default async function BusinessDetailsPage() {
 
   const initialData: BusinessDetailsFields = {
     name: retailer?.name ?? '',
-    tagline: retailer?.tagline ?? '',
-    description: retailer?.description ?? '',
+    shortDescription: retailer?.short_description ?? '',
     businessType: retailer?.business_type ?? '',
     phone: retailer?.phone ?? '',
   };

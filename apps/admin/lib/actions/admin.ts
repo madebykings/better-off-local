@@ -56,6 +56,20 @@ export async function createCategory(formData: FormData): Promise<void> {
   revalidatePath('/categories');
 }
 
+export async function updateCategoryIcon(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const id = formData.get('id') as string;
+  const icon = (formData.get('icon') as string | null)?.trim() || null;
+
+  const supabase = createServiceClient();
+  await supabase
+    .from('categories')
+    .update({ icon, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  revalidatePath('/categories');
+}
+
 // ---------------------------------------------------------------------------
 // Retailers
 // ---------------------------------------------------------------------------

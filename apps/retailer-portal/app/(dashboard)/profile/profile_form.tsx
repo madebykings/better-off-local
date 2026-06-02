@@ -19,7 +19,7 @@ const BUSINESS_TYPES = [
   'Other',
 ] as const;
 
-const DESCRIPTION_MAX = 160;
+const SHORT_DESC_MAX = 160;
 
 function inputCls(hasError: boolean) {
   return [
@@ -76,8 +76,6 @@ export function ProfileForm({
   const [saved, setSaved] = useState(false);
   const [isPending, setIsPending] = useState(false);
 
-  // Image URLs are managed by ImageUploadZone — saved immediately on upload.
-  // We track them in state only to allow the live preview to stay in sync.
   const [currentLogoUrl, setCurrentLogoUrl] = useState<string | null>(logoUrl);
   const [currentCoverUrl, setCurrentCoverUrl] = useState<string | null>(coverUrl);
 
@@ -111,7 +109,7 @@ export function ProfileForm({
     }
   }
 
-  const descCount = fields.description.length;
+  const shortDescCount = fields.shortDescription.length;
 
   return (
     <div className="max-w-xl space-y-8">
@@ -180,20 +178,64 @@ export function ProfileForm({
           </Field>
 
           <Field
-            id="tagline"
-            label="Tagline"
-            hint="Optional — appears on listing cards in the app. One punchy line that tells members what makes you special."
+            id="shortDescription"
+            label="Short description"
+            required
+            hint="Shown directly beneath your business name in the app. Keep it punchy — one or two sentences."
+            error={errors.shortDescription}
           >
-            <input
-              id="tagline"
-              type="text"
-              value={fields.tagline}
-              onChange={setField('tagline')}
-              maxLength={80}
-              placeholder="e.g. Handmade food, made with love"
-              className={inputCls(false)}
+            <div className="relative">
+              <textarea
+                id="shortDescription"
+                value={fields.shortDescription}
+                onChange={setField('shortDescription')}
+                maxLength={SHORT_DESC_MAX}
+                rows={2}
+                placeholder="e.g. A cosy café in the heart of Alloa serving locally sourced food and great coffee."
+                className={[inputCls(!!errors.shortDescription), 'resize-none leading-relaxed pb-6'].join(' ')}
+                disabled={isPending}
+              />
+              <span
+                className={[
+                  'pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums transition-colors',
+                  shortDescCount > 130 ? 'text-amber-500' : 'text-gray-300',
+                ].join(' ')}
+              >
+                {shortDescCount}/{SHORT_DESC_MAX}
+              </span>
+            </div>
+          </Field>
+
+          <Field
+            id="description"
+            label="Full description"
+            hint="Optional — longer marketing copy shown on your full listing page."
+            error={errors.description}
+          >
+            <textarea
+              id="description"
+              value={fields.description}
+              onChange={setField('description')}
+              rows={4}
+              placeholder="Tell members what makes your business worth visiting, your story, your specialities…"
+              className={[inputCls(!!errors.description), 'resize-none leading-relaxed'].join(' ')}
               disabled={isPending}
             />
+          </Field>
+
+          <Field id="businessType" label="Business type" required error={errors.businessType}>
+            <select
+              id="businessType"
+              value={fields.businessType}
+              onChange={setField('businessType')}
+              className={inputCls(!!errors.businessType) + ' cursor-pointer'}
+              disabled={isPending}
+            >
+              <option value="">Select a type…</option>
+              {(categoryNames.length > 0 ? categoryNames : BUSINESS_TYPES).map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
           </Field>
 
           <Field
@@ -212,50 +254,6 @@ export function ProfileForm({
               className={inputCls(!!errors.website)}
               disabled={isPending}
             />
-          </Field>
-
-          <Field
-            id="description"
-            label="Short description"
-            required
-            hint="Shown on your listing card and detail page."
-            error={errors.description}
-          >
-            <div className="relative">
-              <textarea
-                id="description"
-                value={fields.description}
-                onChange={setField('description')}
-                maxLength={DESCRIPTION_MAX}
-                rows={3}
-                placeholder="Tell members what makes your business worth visiting…"
-                className={[inputCls(!!errors.description), 'resize-none leading-relaxed pb-6'].join(' ')}
-                disabled={isPending}
-              />
-              <span
-                className={[
-                  'pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums transition-colors',
-                  descCount > 130 ? 'text-amber-500' : 'text-gray-300',
-                ].join(' ')}
-              >
-                {descCount}/{DESCRIPTION_MAX}
-              </span>
-            </div>
-          </Field>
-
-          <Field id="businessType" label="Business type" required error={errors.businessType}>
-            <select
-              id="businessType"
-              value={fields.businessType}
-              onChange={setField('businessType')}
-              className={inputCls(!!errors.businessType) + ' cursor-pointer'}
-              disabled={isPending}
-            >
-              <option value="">Select a type…</option>
-              {(categoryNames.length > 0 ? categoryNames : BUSINESS_TYPES).map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
           </Field>
 
           <Field

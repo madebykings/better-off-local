@@ -6,7 +6,7 @@ import { type OnboardingStepId, getStepById, ONBOARDING_STEPS } from '@/lib/onbo
 export type OnboardingRetailer = {
   id: string;
   name: string | null;
-  tagline: string | null;
+  short_description: string | null;
   description: string | null;
   business_type: string | null;
   phone: string | null;
@@ -53,7 +53,7 @@ export async function requireOnboardingRetailer(): Promise<OnboardingRetailerCon
 
   const { data: retailer } = await service
     .from('retailers')
-    .select('id, name, tagline, description, business_type, phone, logo_url, cover_image_url, onboarding_step')
+    .select('id, name, short_description, description, business_type, phone, logo_url, cover_image_url, onboarding_step')
     .eq('id', retailerUser.retailer_id)
     .single();
 
@@ -66,7 +66,7 @@ export async function requireOnboardingRetailer(): Promise<OnboardingRetailerCon
     retailer: {
       id: retailer.id,
       name: retailer.name,
-      tagline: retailer.tagline ?? null,
+      short_description: retailer.short_description ?? null,
       description: retailer.description ?? null,
       business_type: retailer.business_type ?? null,
       phone: retailer.phone ?? null,

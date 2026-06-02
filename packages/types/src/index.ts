@@ -6,7 +6,7 @@
 
 export type MembershipStatus = 'active' | 'expired' | 'cancelled' | 'none';
 
-export type OfferStatus = 'pending' | 'active' | 'paused' | 'rejected' | 'expired';
+export type OfferStatus = 'pending' | 'active' | 'paused' | 'rejected' | 'expired' | 'archived';
 
 export type RetailerStatus = 'pending' | 'active' | 'suspended' | 'rejected';
 
@@ -61,6 +61,7 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  icon: string | null;
   isActive: boolean;
   sortOrder: number;
 }

@@ -12,7 +12,7 @@ import type { ScanResult, RedemptionStatus } from './validate_redemption';
 export type PassOffer = {
   offerId: string;
   title: string;
-  benefitText: string | null;
+  valueText: string | null;
   venueScope: 'all' | 'specific';
   availabilityState: string;
   availableAt: string | null;
@@ -135,7 +135,7 @@ export async function getOffersForPass(rawToken: string): Promise<PassOffersResu
       return {
         offerId: row.offer_id,
         title: detail.title as string,
-        benefitText: (detail.value_text as string | null) ?? null,
+        valueText: (detail.value_text as string | null) ?? null,
         venueScope: ((detail.venue_scope as string) === 'specific' ? 'specific' : 'all'),
         availabilityState: row.availability_state,
         availableAt: row.available_at ?? null,

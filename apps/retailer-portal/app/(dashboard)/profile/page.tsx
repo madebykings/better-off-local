@@ -13,7 +13,7 @@ export default async function ProfilePage() {
   const [{ data: retailer }, { data: categoryRows }] = await Promise.all([
     supabase
       .from('retailers')
-      .select('name, tagline, website_url, description, business_type, phone, logo_url, cover_image_url')
+      .select('name, short_description, description, website_url, business_type, phone, logo_url, cover_image_url')
       .eq('id', retailerId)
       .single(),
     supabase
@@ -28,9 +28,9 @@ export default async function ProfilePage() {
 
   const initialData: ProfileFields = {
     name: retailer?.name ?? '',
-    tagline: retailer?.tagline ?? '',
-    website: retailer?.website_url ?? '',
+    shortDescription: retailer?.short_description ?? '',
     description: retailer?.description ?? '',
+    website: retailer?.website_url ?? '',
     businessType: retailer?.business_type ?? '',
     phone: retailer?.phone ?? '',
   };

@@ -17,10 +17,49 @@ export const OFFER_TYPES = [
 
 export type OfferType = (typeof OFFER_TYPES)[number];
 
+/**
+ * Derives the card badge text from offer type + optional discount value.
+ * This is the single source of truth for value_text stored in the DB.
+ */
+export function computeValueText(offerType: OfferType, discountValue: string): string {
+  const v = discountValue.trim();
+  switch (offerType) {
+    case 'percentage_discount':
+      return v ? `${v}% OFF` : '';
+    case 'fixed_discount':
+      return v ? `£${v} OFF` : '';
+    case 'free_item':
+      return 'FREE ITEM';
+    case 'buy_one_get_one':
+      return 'BUY ONE GET ONE';
+    case 'meal_deal':
+      return 'MEAL DEAL';
+    case 'other':
+      return 'SPECIAL DEAL';
+    default:
+      return '';
+  }
+}
+
+/** Returns true for offer types that require a numeric discount value. */
+export function needsDiscountValue(offerType: OfferType): boolean {
+  return offerType === 'percentage_discount' || offerType === 'fixed_discount';
+}
+
+/** Label for the discount value input based on offer type. */
+export function discountValueLabel(offerType: OfferType): string {
+  return offerType === 'percentage_discount' ? 'Discount percentage' : 'Discount amount (£)';
+}
+
+/** Placeholder for the discount value input based on offer type. */
+export function discountValuePlaceholder(offerType: OfferType): string {
+  return offerType === 'percentage_discount' ? 'e.g. 10 (for 10% off)' : 'e.g. 5 (for £5 off)';
+}
+
 export type FirstOfferFields = {
-  benefitText: string;   // e.g. "10% off", "Free coffee" — large display value
-  headline: string;      // e.g. "10% off every visit" — full offer title
-  description: string;   // terms / description, required, min 20 chars → offers.description
+  discountValue: string; // numeric string, used for percentage/fixed types
+  headline: string;      // full offer title → offers.title
+  description: string;   // terms / description → offers.description
   offerType: OfferType;
   redemptionRule: RedemptionRule;
   startDate: string;     // YYYY-MM-DD or ''
@@ -34,7 +73,7 @@ export type FirstOfferActionResult = {
 };
 
 export const EMPTY_OFFER: FirstOfferFields = {
-  benefitText: '',
+  discountValue: '',
   headline: '',
   description: '',
   offerType: 'percentage_discount',

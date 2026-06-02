@@ -13,6 +13,8 @@ import {
   type FirstOfferFields,
   type FirstOfferActionResult,
   OFFER_TYPES,
+  computeValueText,
+  needsDiscountValue,
 } from '@/lib/utils/first_offer';
 
 // ---------------------------------------------------------------------------
@@ -24,8 +26,8 @@ function validateFirstOffer(
 ): Partial<Record<keyof FirstOfferFields, string>> {
   const errors: Partial<Record<keyof FirstOfferFields, string>> = {};
 
-  if (!fields.benefitText.trim()) {
-    errors.benefitText = 'Please enter the benefit, e.g. "10% off" or "Free coffee".';
+  if (needsDiscountValue(fields.offerType) && !fields.discountValue.trim()) {
+    errors.discountValue = 'Please enter the discount value (e.g. 10 for 10% or 5 for £5).';
   }
 
   if (!fields.headline.trim()) {
@@ -126,7 +128,7 @@ export async function saveFirstOffer(
   const offerPayload = {
     retailer_id: retailerId,
     title: fields.headline.trim(),
-    value_text: fields.benefitText.trim(),
+    value_text: computeValueText(fields.offerType, fields.discountValue),
     description: fields.description.trim(),
     offer_type: fields.offerType,
     start_at: fields.startDate ? new Date(fields.startDate).toISOString() : null,

@@ -8,7 +8,21 @@ import '../../domain/offer.dart';
 import '../../domain/offer_availability.dart';
 
 // ---------------------------------------------------------------------------
-// Full offer card — used in Explore list and Retailer detail
+// OfferCard — single shared component for all offer surfaces.
+//
+// compact: true  → 180 px wide horizontal-scroll variant (Home nearby row).
+// compact: false → full-width vertical-list variant (Explore, Retailer detail,
+//                  Favourites, Search results).
+//
+// Card layout:
+//   ┌──────────────────────┐
+//   │  cover image         │  imageHeight
+//   ├──────────────────────┤
+//   │  title (max 2 lines) │  textBodyHeight (fixed)
+//   │  retailer name       │
+//   │           ⋮ spacer   │
+//   │  ↩ redemption rule   │  ← always at bottom of text area
+//   └──────────────────────┘
 // ---------------------------------------------------------------------------
 
 class OfferCard extends ConsumerWidget {
@@ -17,165 +31,107 @@ class OfferCard extends ConsumerWidget {
     required this.offer,
     this.availability,
     this.onTap,
+    this.compact = false,
   });
 
   final Offer offer;
   final OfferAvailability? availability;
   final VoidCallback? onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isFavourited =
         ref.watch(favouriteOfferIdsProvider).contains(offer.id);
-    final isAvailable = availability?.isAvailable ?? true;
-    final opacity = availability?.cardOpacity ?? 1.0;
+    final isAvailable = compact ? true : (availability?.isAvailable ?? true);
+    final opacity = compact ? 1.0 : (availability?.cardOpacity ?? 1.0);
 
-    return Opacity(
-      opacity: opacity,
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AppColors.border),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image + overlays
-              _OfferImageStack(
-                offer: offer,
-                isFavourited: isFavourited,
-                isAvailable: isAvailable,
-                availabilityBadgeLabel: isAvailable
-                    ? null
-                    : availability?.state.badgeLabel,
-                onFavouriteTap: () =>
-                    toggleOfferFavourite(ref, offer.id, isFavourited, context),
-                imageHeight: 130,
-              ),
+    final double imageHeight = compact ? 96 : 130;
+    final double textBodyHeight = compact ? 72 : 90;
+    final EdgeInsets bodyPadding = compact
+        ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
+        : const EdgeInsets.fromLTRB(12, 10, 12, 10);
+    final double? titleFontSize = compact ? 13 : null;
+    final double retailerFontSize = compact ? 11 : 12;
+    final double redemptionFontSize = compact ? 10 : 11;
+    final double heartSize = compact ? 24 : 30;
+    final double heartIconSize = compact ? 12 : 16;
+    final EdgeInsets badgePadding = compact
+        ? const EdgeInsets.symmetric(horizontal: 6, vertical: 3)
+        : const EdgeInsets.symmetric(horizontal: 8, vertical: 4);
+    final double badgeFontSize = compact ? 10 : 11;
 
-              // Text body
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+    Widget card = Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _OfferImageStack(
+              offer: offer,
+              isFavourited: isFavourited,
+              isAvailable: isAvailable,
+              availabilityBadgeLabel:
+                  isAvailable ? null : availability?.state.badgeLabel,
+              onFavouriteTap: () =>
+                  toggleOfferFavourite(ref, offer.id, isFavourited, context),
+              imageHeight: imageHeight,
+              heartSize: heartSize,
+              heartIconSize: heartIconSize,
+              badgePadding: badgePadding,
+              badgeFontSize: badgeFontSize,
+            ),
+            SizedBox(
+              height: textBodyHeight,
+              child: Padding(
+                padding: bodyPadding,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Offer title
-                    Text(
-                      offer.title,
-                      style: AppTextStyles.titleMedium,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          offer.title,
+                          style: AppTextStyles.titleMedium
+                              .copyWith(fontSize: titleFontSize),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          offer.retailerName,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: retailerFontSize,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 3),
-                    // Retailer name
-                    Text(
-                      offer.retailerName,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    // Redemption limit row
-                    _RedemptionLimitRow(offer: offer),
+                    _RedemptionLimitRow(
+                        offer: offer, fontSize: redemptionFontSize),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
-  }
-}
 
-// ---------------------------------------------------------------------------
-// Compact card — used in horizontal scrolling rows (Home nearby/trending)
-// ---------------------------------------------------------------------------
+    if (compact) card = SizedBox(width: 180, child: card);
+    if (opacity < 1.0) card = Opacity(opacity: opacity, child: card);
 
-class OfferCardCompact extends ConsumerWidget {
-  const OfferCardCompact({
-    super.key,
-    required this.offer,
-    this.onTap,
-  });
-
-  final Offer offer;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isFavourited =
-        ref.watch(favouriteOfferIdsProvider).contains(offer.id);
-
-    return SizedBox(
-      width: 180,
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: AppColors.border),
-        ),
-        child: InkWell(
-          onTap: onTap,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Image + overlays (compact height)
-              _OfferImageStack(
-                offer: offer,
-                isFavourited: isFavourited,
-                isAvailable: true,
-                availabilityBadgeLabel: null,
-                onFavouriteTap: () =>
-                    toggleOfferFavourite(ref, offer.id, isFavourited, context),
-                imageHeight: 96,
-                heartSize: 24,
-                heartIconSize: 12,
-                badgePadding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                badgeFontSize: 10,
-              ),
-
-              // Text body
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      offer.title,
-                      style: AppTextStyles.titleMedium.copyWith(fontSize: 13),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      offer.retailerName,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    _RedemptionLimitRow(offer: offer, fontSize: 10),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return card;
   }
 }
 
@@ -213,7 +169,6 @@ class _OfferImageStack extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Cover image
         SizedBox(
           height: imageHeight,
           width: double.infinity,
@@ -226,7 +181,6 @@ class _OfferImageStack extends StatelessWidget {
               : _CoverPlaceholder(),
         ),
 
-        // Offer value badge — top left
         if (offer.valueText != null)
           Positioned(
             top: 8,
@@ -249,7 +203,6 @@ class _OfferImageStack extends StatelessWidget {
             ),
           ),
 
-        // Favourite heart — top right
         Positioned(
           top: 6,
           right: 6,
@@ -272,13 +225,13 @@ class _OfferImageStack extends StatelessWidget {
               child: Icon(
                 isFavourited ? Icons.favorite : Icons.favorite_border,
                 size: heartIconSize,
-                color: isFavourited ? AppColors.error : AppColors.textSecondary,
+                color:
+                    isFavourited ? AppColors.error : AppColors.textSecondary,
               ),
             ),
           ),
         ),
 
-        // Availability strip — bottom of image, only when not available
         if (!isAvailable && availabilityBadgeLabel != null)
           Positioned(
             left: 0,
@@ -356,3 +309,4 @@ class _CoverPlaceholder extends StatelessWidget {
     );
   }
 }
+

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { SignInForm } from '@/components/auth/sign_in_form';
 
 export const metadata: Metadata = { title: 'Sign in – Retailer Portal' };
@@ -13,6 +14,12 @@ export default function SignInPage() {
         </p>
       </div>
       <SignInForm />
+      <p className="mt-6 text-center text-sm text-gray-500">
+        New retailer?{' '}
+        <Link href="/sign-up" className="text-green-700 hover:text-green-800 font-medium">
+          Create an account
+        </Link>
+      </p>
     </div>
   );
 }

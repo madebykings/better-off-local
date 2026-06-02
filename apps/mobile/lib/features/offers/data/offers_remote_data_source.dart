@@ -11,15 +11,26 @@ class OffersRemoteDataSource {
       'offer_rules(max_redemptions_per_user, max_redemptions_per_day, '
       'cooldown_hours, max_redemptions_total, new_customers_only)';
 
+  // Flat select for consumer_discovery_offers view (includes retailer info +
+  // rules + redemption_count for correct sort: featured → redeemed → newest).
+  static const _discoverySelect =
+      'id, retailer_id, retailer_name, retailer_logo_url, title, short_summary, '
+      'value_text, offer_type, start_at, end_at, is_featured, image_url, '
+      'estimated_saving_pence, redemption_count, '
+      'max_redemptions_per_user, max_redemptions_per_day, '
+      'max_redemptions_total, cooldown_hours, new_customers_only';
+
   static const _detailSelect =
       '*, retailers(id, name, slug, logo_url, cover_image_url, '
       'short_description, description, phone, email, website_url, '
       'retailer_locations(address_line_1, town, postcode, '
       'latitude, longitude, is_primary))';
 
+  /// Fetches live offers for the explore screen.
+  /// Uses the consumer_discovery_offers view so offers sort by:
+  ///   featured → most redeemed → newest.
+  /// The view already filters for live/approved/within-dates.
   Future<List<Map<String, dynamic>>> fetchOffers({String? categoryId}) async {
-    final now = DateTime.now().toUtc().toIso8601String();
-
     if (categoryId != null) {
       final catRows = await _client
           .from('retailer_categories')
@@ -30,23 +41,19 @@ class OffersRemoteDataSource {
       if (retailerIds.isEmpty) return [];
 
       return await _client
-          .from('offers')
-          .select(_listSelect)
-          .eq('status', 'live')
-          .or('end_at.is.null,end_at.gt.$now')
-          .or('start_at.is.null,start_at.lte.$now')
+          .from('consumer_discovery_offers')
+          .select(_discoverySelect)
           .inFilter('retailer_id', retailerIds)
           .order('is_featured', ascending: false)
+          .order('redemption_count', ascending: false)
           .order('created_at', ascending: false);
     }
 
     return await _client
-        .from('offers')
-        .select(_listSelect)
-        .eq('status', 'live')
-        .or('end_at.is.null,end_at.gt.$now')
-        .or('start_at.is.null,start_at.lte.$now')
+        .from('consumer_discovery_offers')
+        .select(_discoverySelect)
         .order('is_featured', ascending: false)
+        .order('redemption_count', ascending: false)
         .order('created_at', ascending: false);
   }
 

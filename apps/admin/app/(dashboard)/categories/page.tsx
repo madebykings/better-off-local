@@ -1,9 +1,34 @@
 import type { Metadata } from 'next';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
-import { toggleCategoryActive, createCategory } from '@/lib/actions/admin';
+import { toggleCategoryActive, createCategory, updateCategoryIcon } from '@/lib/actions/admin';
 
 export const metadata: Metadata = { title: 'Categories – Admin' };
+
+// Icon options that match the mobile app's _iconForCategory mapping.
+// Value = icon name string stored in DB; emoji shown for visual reference.
+const ICON_OPTIONS = [
+  { value: 'restaurant', emoji: '🍽️', label: 'Restaurant / Food' },
+  { value: 'coffee', emoji: '☕', label: 'Coffee / Café' },
+  { value: 'sports_bar', emoji: '🍺', label: 'Bar / Pub / Drinks' },
+  { value: 'shopping_bag', emoji: '🛍️', label: 'Shopping / Retail' },
+  { value: 'spa', emoji: '💆', label: 'Beauty / Spa / Salon' },
+  { value: 'fitness_center', emoji: '💪', label: 'Fitness / Gym' },
+  { value: 'favorite_border', emoji: '❤️', label: 'Health / Wellness' },
+  { value: 'local_activity', emoji: '🎭', label: 'Entertainment / Activities' },
+  { value: 'child_care', emoji: '👶', label: 'Family / Kids' },
+  { value: 'build', emoji: '🔧', label: 'Services / Trades' },
+  { value: 'pets', emoji: '🐾', label: 'Pets' },
+  { value: 'hotel', emoji: '🏨', label: 'Hospitality / Tourism' },
+  { value: 'local_pharmacy', emoji: '💊', label: 'Pharmacy / Health' },
+  { value: 'school', emoji: '🎓', label: 'Education' },
+  { value: 'directions_car', emoji: '🚗', label: 'Automotive' },
+] as const;
+
+function iconEmoji(iconValue: string | null): string {
+  if (!iconValue) return '—';
+  return ICON_OPTIONS.find((o) => o.value === iconValue)?.emoji ?? iconValue;
+}
 
 export default async function CategoriesPage() {
   await requireAdmin();
@@ -25,42 +50,49 @@ export default async function CategoriesPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Categories</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Platform category taxonomy used for retailer and offer classification.
+          Platform category taxonomy. Icons must match the mobile app icon family.
+          Slug is immutable after creation.
         </p>
       </div>
 
       {/* Add category */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Add category</h2>
-        <form action={createCategory} className="flex items-end gap-3 flex-wrap">
-          <div>
-            <label htmlFor="cat-name" className="block text-xs text-gray-500 mb-1">Name *</label>
-            <input
-              id="cat-name"
-              name="name"
-              type="text"
-              placeholder="e.g. Health & Wellness"
-              required
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 w-56"
-            />
+        <form action={createCategory} className="space-y-3">
+          <div className="flex items-end gap-3 flex-wrap">
+            <div>
+              <label htmlFor="cat-name" className="block text-xs text-gray-500 mb-1">Name *</label>
+              <input
+                id="cat-name"
+                name="name"
+                type="text"
+                placeholder="e.g. Health & Wellness"
+                required
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 w-56"
+              />
+            </div>
+            <div>
+              <label htmlFor="cat-icon" className="block text-xs text-gray-500 mb-1">Icon</label>
+              <select
+                id="cat-icon"
+                name="icon"
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
+              >
+                <option value="">None</option>
+                {ICON_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.emoji} {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit"
+              className="rounded-lg bg-green-800 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+            >
+              Add
+            </button>
           </div>
-          <div>
-            <label htmlFor="cat-icon" className="block text-xs text-gray-500 mb-1">Icon (emoji)</label>
-            <input
-              id="cat-icon"
-              name="icon"
-              type="text"
-              placeholder="🍕"
-              maxLength={4}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-center text-lg focus:outline-none focus:ring-1 focus:ring-green-700 w-20"
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded-lg bg-green-800 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-          >
-            Add
-          </button>
         </form>
       </div>
 
@@ -74,7 +106,7 @@ export default async function CategoriesPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">Icon</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Order</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-              <th className="px-4 py-3" />
+              <th className="px-4 py-3 text-right" colSpan={2} />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -82,7 +114,29 @@ export default async function CategoriesPage() {
               <tr key={c.id} className={`hover:bg-gray-50 ${!c.is_active ? 'opacity-50' : ''}`}>
                 <td className="px-4 py-3 font-medium text-gray-800">{c.name}</td>
                 <td className="px-4 py-3 text-gray-500 font-mono text-xs">{c.slug}</td>
-                <td className="px-4 py-3 text-gray-500">{c.icon ?? '—'}</td>
+                <td className="px-4 py-3">
+                  <form action={updateCategoryIcon} className="flex items-center gap-2">
+                    <input type="hidden" name="id" value={c.id} />
+                    <select
+                      name="icon"
+                      defaultValue={c.icon ?? ''}
+                      className="rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-700"
+                    >
+                      <option value="">None</option>
+                      {ICON_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.emoji} {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="submit"
+                      className="text-xs text-green-700 hover:text-green-900 underline"
+                    >
+                      Save
+                    </button>
+                  </form>
+                </td>
                 <td className="px-4 py-3 text-gray-500">{c.sort_order}</td>
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${
@@ -93,7 +147,7 @@ export default async function CategoriesPage() {
                     {c.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-right">
                   <form action={toggleCategoryActive}>
                     <input type="hidden" name="id" value={c.id} />
                     <input type="hidden" name="is_active" value={String(c.is_active)} />

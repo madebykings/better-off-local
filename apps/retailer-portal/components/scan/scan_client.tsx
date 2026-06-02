@@ -317,10 +317,10 @@ function OfferChooserCard({
                          hover:border-green-400 hover:bg-green-50 active:bg-green-100
                          transition-colors focus:outline-none focus:ring-2 focus:ring-green-700/30"
             >
-              {offer.benefitText && (
-                <p className="text-xl font-bold text-gray-900">{offer.benefitText}</p>
+              {offer.valueText && (
+                <p className="text-xl font-bold text-gray-900">{offer.valueText}</p>
               )}
-              <p className={`text-sm text-gray-600 ${offer.benefitText ? 'mt-0.5' : 'font-medium'}`}>
+              <p className={`text-sm text-gray-600 ${offer.valueText ? 'mt-0.5' : 'font-medium'}`}>
                 {offer.title}
               </p>
               {offer.venueScope === 'specific' && (

@@ -19,7 +19,7 @@ export default async function BrandingPage() {
         initialLogoUrl={retailer?.logo_url ?? null}
         initialCoverUrl={retailer?.cover_image_url ?? null}
         retailerName={retailer?.name ?? null}
-        retailerTagline={retailer?.tagline ?? null}
+        retailerTagline={retailer?.short_description ?? null}
         retailerBusinessType={retailer?.business_type ?? null}
       />
     </StepWrapper>

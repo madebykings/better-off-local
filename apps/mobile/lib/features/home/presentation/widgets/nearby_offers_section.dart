@@ -53,8 +53,9 @@ class NearbyOffersSection extends ConsumerWidget {
                 itemCount: offers.length,
                 itemBuilder: (context, i) => Padding(
                   padding: const EdgeInsets.only(right: 12),
-                  child: OfferCardCompact(
+                  child: OfferCard(
                     offer: offers[i],
+                    compact: true,
                     onTap: () => context.push(
                       RouteNames.offerDetail.replaceAll(':offerId', offers[i].id),
                     ),

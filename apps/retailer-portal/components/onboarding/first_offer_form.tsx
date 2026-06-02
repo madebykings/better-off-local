@@ -8,6 +8,7 @@ import {
   OFFER_TYPES,
   type FirstOfferFields,
   type OfferType,
+  computeValueText,
 } from '@/lib/utils/first_offer';
 import { saveFirstOffer } from '@/lib/actions/first_offer';
 
@@ -46,7 +47,7 @@ const REDEMPTION_RULE_SHORT: Record<RedemptionRule, string> = {
 
 type OfferSuggestion = {
   label: string;
-  benefitText: string;
+  discountValue: string; // numeric string for % or £ types; '' for others
   headline: string;
   description: string;
   offerType: OfferType;
@@ -56,21 +57,21 @@ const CATEGORY_SUGGESTIONS: Record<string, OfferSuggestion[]> = {
   cafes: [
     {
       label: 'Free drink with cake',
-      benefitText: 'Free hot drink',
+      discountValue: '',
       headline: 'Free hot drink with any cake',
       description: 'Enjoy a complimentary tea, coffee or hot chocolate when you buy any slice of cake. Valid on all cakes at full price.',
       offerType: 'free_item',
     },
     {
       label: '10% off every visit',
-      benefitText: '10% off',
+      discountValue: '10',
       headline: '10% off everything, every visit',
       description: 'Better Off Local members save 10% on their entire order, every time they visit. Just show your membership card to the team.',
       offerType: 'percentage_discount',
     },
     {
       label: 'Free size upgrade',
-      benefitText: 'Free size upgrade',
+      discountValue: '',
       headline: 'Free size upgrade on all drinks',
       description: 'Upgrade any standard drink to the next size, on us. Show your membership in-store to redeem. Available on all hot and cold drinks.',
       offerType: 'free_item',
@@ -79,21 +80,21 @@ const CATEGORY_SUGGESTIONS: Record<string, OfferSuggestion[]> = {
   restaurants: [
     {
       label: '15% off your bill',
-      benefitText: '15% off',
+      discountValue: '15',
       headline: '15% off your total food bill',
       description: 'Dine with us and save 15% off your total food bill. Valid on all food items, dine-in only. Just show your membership when you arrive.',
       offerType: 'percentage_discount',
     },
     {
       label: 'Free dessert',
-      benefitText: 'Free dessert',
+      discountValue: '',
       headline: 'Free dessert with any main course',
       description: 'Choose any dessert from our menu completely free when you order a main course. Valid for one dessert per member, per visit.',
       offerType: 'free_item',
     },
     {
       label: '£5 off orders over £20',
-      benefitText: '£5 off',
+      discountValue: '5',
       headline: '£5 off when you spend £20 or more',
       description: 'Spend £20 or more on food and drink and we\'ll take £5 off your bill. Just show your Better Off Local membership to the team.',
       offerType: 'fixed_discount',
@@ -102,21 +103,21 @@ const CATEGORY_SUGGESTIONS: Record<string, OfferSuggestion[]> = {
   bars: [
     {
       label: '10% off all drinks',
-      benefitText: '10% off drinks',
+      discountValue: '10',
       headline: '10% off all drinks, all night',
       description: 'Members save 10% on their drinks tab all night, every night. Show your membership when you order at the bar.',
       offerType: 'percentage_discount',
     },
     {
       label: 'Free welcome drink',
-      benefitText: 'Free drink',
+      discountValue: '',
       headline: 'Free welcome drink for members',
       description: 'Start your visit with a complimentary house wine, beer, or soft drink on arrival. Valid once per visit per member.',
       offerType: 'free_item',
     },
     {
       label: '£5 off your tab',
-      benefitText: '£5 off',
+      discountValue: '5',
       headline: '£5 off your drinks tab',
       description: 'Spend £20 or more at the bar and save £5. Show your Better Off Local membership when you pay.',
       offerType: 'fixed_discount',
@@ -125,21 +126,21 @@ const CATEGORY_SUGGESTIONS: Record<string, OfferSuggestion[]> = {
   beauty: [
     {
       label: '20% off first visit',
-      benefitText: '20% off',
+      discountValue: '20',
       headline: '20% off your first treatment',
       description: 'New to us? Enjoy 20% off any treatment on your first visit. Valid for all new clients showing a Better Off Local membership.',
       offerType: 'percentage_discount',
     },
     {
       label: 'Free nail art',
-      benefitText: 'Free nail art',
+      discountValue: '',
       headline: 'Free nail art with any manicure',
       description: 'Book any manicure and we\'ll add a free nail art design of your choice. Just mention your membership when you book or arrive.',
       offerType: 'free_item',
     },
     {
       label: '10% off all treatments',
-      benefitText: '10% off',
+      discountValue: '10',
       headline: '10% off every treatment, every visit',
       description: 'Better Off Local members save 10% on all treatments, every visit. Show your membership when you arrive at the salon.',
       offerType: 'percentage_discount',
@@ -148,21 +149,21 @@ const CATEGORY_SUGGESTIONS: Record<string, OfferSuggestion[]> = {
   fitness: [
     {
       label: 'First class free',
-      benefitText: 'First class free',
+      discountValue: '',
       headline: 'Your first class is on us',
       description: 'New members can try any class completely free. No commitment, no catch — just come and give it a go. Book online or at reception.',
       offerType: 'free_item',
     },
     {
       label: '20% off first month',
-      benefitText: '20% off',
+      discountValue: '20',
       headline: '20% off your first month',
       description: 'Join up and save 20% on your first month\'s membership. Show your Better Off Local card when signing up at reception.',
       offerType: 'percentage_discount',
     },
     {
       label: 'Bring a friend free',
-      benefitText: 'Free guest pass',
+      discountValue: '',
       headline: 'Bring a friend for free',
       description: 'Bring a friend along for a free one-day guest pass, on us. A great way to share the experience. Valid once per month per member.',
       offerType: 'free_item',
@@ -171,21 +172,21 @@ const CATEGORY_SUGGESTIONS: Record<string, OfferSuggestion[]> = {
   shopping: [
     {
       label: '10% off everything',
-      benefitText: '10% off',
+      discountValue: '10',
       headline: '10% off everything in store',
       description: 'Better Off Local members enjoy 10% off all full-priced items in store. Just show your membership card at the till.',
       offerType: 'percentage_discount',
     },
     {
       label: '£5 off when you spend £30',
-      benefitText: '£5 off',
+      discountValue: '5',
       headline: '£5 off when you spend £30 or more',
       description: 'Spend £30 or more and save £5 at the till. Just show your Better Off Local membership to the team when you pay.',
       offerType: 'fixed_discount',
     },
     {
       label: 'Free gift wrapping',
-      benefitText: 'Free gift wrapping',
+      discountValue: '',
       headline: 'Free gift wrapping on any purchase',
       description: 'We\'ll gift wrap your purchase beautifully, completely free of charge. Just ask at the counter and show your membership card.',
       offerType: 'free_item',
@@ -194,21 +195,21 @@ const CATEGORY_SUGGESTIONS: Record<string, OfferSuggestion[]> = {
   services: [
     {
       label: 'Free consultation',
-      benefitText: 'Free consultation',
+      discountValue: '',
       headline: 'Free initial consultation',
       description: 'Book a free, no-obligation consultation with our team. A great chance to talk through your needs with no commitment required.',
       offerType: 'free_item',
     },
     {
       label: '10% off first booking',
-      benefitText: '10% off',
+      discountValue: '10',
       headline: '10% off your first booking',
       description: 'New customers save 10% on their first booking with us. Show your Better Off Local membership at the time of booking.',
       offerType: 'percentage_discount',
     },
     {
       label: '£10 off first service',
-      benefitText: '£10 off',
+      discountValue: '10',
       headline: '£10 off your first service',
       description: 'Save £10 on your first service with us. Valid for new customers showing a Better Off Local membership on arrival.',
       offerType: 'fixed_discount',
@@ -217,21 +218,21 @@ const CATEGORY_SUGGESTIONS: Record<string, OfferSuggestion[]> = {
   health: [
     {
       label: 'Free consultation',
-      benefitText: 'Free consultation',
+      discountValue: '',
       headline: 'Free initial health consultation',
       description: 'Book a free initial consultation with one of our practitioners. Available to all new patients with a Better Off Local membership.',
       offerType: 'free_item',
     },
     {
       label: '15% off all appointments',
-      benefitText: '15% off',
+      discountValue: '15',
       headline: '15% off all appointments',
       description: 'Better Off Local members save 15% on all appointments. Show your membership when you book or arrive for your appointment.',
       offerType: 'percentage_discount',
     },
     {
       label: '10% off products',
-      benefitText: '10% off',
+      discountValue: '10',
       headline: '10% off all health products',
       description: 'Save 10% on our full range of health products in store. Show your Better Off Local membership card at the counter.',
       offerType: 'percentage_discount',
@@ -240,21 +241,21 @@ const CATEGORY_SUGGESTIONS: Record<string, OfferSuggestion[]> = {
   activities: [
     {
       label: 'First session half price',
-      benefitText: '50% off',
+      discountValue: '50',
       headline: 'First session half price',
       description: 'Try us out with your first session at half the normal price. Just show your Better Off Local membership when you arrive.',
       offerType: 'percentage_discount',
     },
     {
       label: 'Free equipment hire',
-      benefitText: 'Free equipment hire',
+      discountValue: '',
       headline: 'Free equipment hire with every visit',
       description: 'Members get free equipment hire included with every visit. No need to bring your own — just show your membership at reception.',
       offerType: 'free_item',
     },
     {
       label: '10% off all sessions',
-      benefitText: '10% off',
+      discountValue: '10',
       headline: '10% off all activities and sessions',
       description: 'Save 10% on any activity or session when you show your Better Off Local membership at reception. Valid every visit.',
       offerType: 'percentage_discount',
@@ -263,21 +264,21 @@ const CATEGORY_SUGGESTIONS: Record<string, OfferSuggestion[]> = {
   'food-drink': [
     {
       label: '10% off food and drink',
-      benefitText: '10% off',
+      discountValue: '10',
       headline: '10% off all food and drink',
       description: 'Better Off Local members save 10% on their entire order every visit. Just show your membership card when you order.',
       offerType: 'percentage_discount',
     },
     {
       label: 'Free side with any main',
-      benefitText: 'Free side dish',
+      discountValue: '',
       headline: 'Free side dish with any main course',
       description: 'Order any main course and choose a free side dish from our menu. Show your membership to the team when you order.',
       offerType: 'free_item',
     },
     {
       label: '£5 off your order',
-      benefitText: '£5 off',
+      discountValue: '5',
       headline: '£5 off orders over £15',
       description: 'Spend £15 or more and we\'ll take £5 off. Simply show your Better Off Local membership when you order.',
       offerType: 'fixed_discount',
@@ -352,7 +353,8 @@ function formatDateShort(iso: string): string {
 function OfferCardPreview({ fields }: { fields: FirstOfferFields }) {
   const urgencyBadges = getUrgencyBadges(fields);
   const typeConfig = OFFER_TYPE_CONFIG[fields.offerType];
-  const isEmpty = !fields.benefitText.trim() && !fields.headline.trim();
+  const badgeText = computeValueText(fields.offerType, fields.discountValue);
+  const isEmpty = !badgeText && !fields.headline.trim();
 
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_20px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]">
@@ -375,9 +377,9 @@ function OfferCardPreview({ fields }: { fields: FirstOfferFields }) {
           ))}
         </div>
 
-        {/* Benefit text — the big hook */}
+        {/* Badge text — auto-derived from offer type */}
         <p className="text-2xl font-extrabold leading-tight text-white">
-          {fields.benefitText.trim() || (
+          {badgeText || (
             <span className="opacity-40">{typeConfig.hint}</span>
           )}
         </p>
@@ -502,10 +504,10 @@ export function FirstOfferForm({
   function applySuggestion(s: OfferSuggestion) {
     setFields((prev) => ({
       ...prev,
-      benefitText: s.benefitText,
-      headline:    s.headline,
-      description: s.description,
-      offerType:   s.offerType,
+      discountValue: s.discountValue,
+      headline:      s.headline,
+      description:   s.description,
+      offerType:     s.offerType,
     }));
     setFieldErrors({});
     setContinueError(null);
@@ -576,24 +578,31 @@ export function FirstOfferForm({
             )}
           </div>
 
-          {/* Benefit text */}
-          <div>
-            <label htmlFor="benefitText" className="mb-1.5 block text-sm font-medium text-gray-700">
-              Benefit <span className="text-xs font-normal text-gray-400">the big hook, e.g. "10% off"</span>
-            </label>
-            <input
-              id="benefitText"
-              type="text"
-              value={fields.benefitText}
-              onChange={(e) => set('benefitText')(e.target.value)}
-              placeholder="e.g. 10% off, Free coffee, £5 off"
-              disabled={isPending}
-              className={inputCls(!!fieldErrors.benefitText)}
-            />
-            {fieldErrors.benefitText && (
-              <p className="mt-1 text-xs text-red-500" role="alert">{fieldErrors.benefitText}</p>
-            )}
-          </div>
+          {/* Discount value (percentage/fixed types only) */}
+          {(fields.offerType === 'percentage_discount' || fields.offerType === 'fixed_discount') && (
+            <div>
+              <label htmlFor="discountValue" className="mb-1.5 block text-sm font-medium text-gray-700">
+                {fields.offerType === 'percentage_discount' ? 'Discount percentage' : 'Discount amount (£)'}
+                <span className="ml-1 text-xs font-normal text-gray-400">
+                  {fields.offerType === 'percentage_discount' ? 'e.g. 10 for 10% off' : 'e.g. 5 for £5 off'}
+                </span>
+              </label>
+              <input
+                id="discountValue"
+                type="number"
+                value={fields.discountValue}
+                onChange={(e) => set('discountValue')(e.target.value)}
+                placeholder={fields.offerType === 'percentage_discount' ? '10' : '5'}
+                min={0.01}
+                step={fields.offerType === 'percentage_discount' ? 1 : 0.01}
+                disabled={isPending}
+                className={inputCls(!!fieldErrors.discountValue)}
+              />
+              {fieldErrors.discountValue && (
+                <p className="mt-1 text-xs text-red-500" role="alert">{fieldErrors.discountValue}</p>
+              )}
+            </div>
+          )}
 
           {/* Headline */}
           <div>

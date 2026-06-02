@@ -344,71 +344,7 @@ class _PassHeader extends StatelessWidget {
             ],
           ),
 
-          // Holographic shimmer overlay — renders above content, non-interactive.
-          const Positioned.fill(child: _HolographicLayer()),
         ],
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Holographic layer — slow diagonal shimmer at low opacity
-// ---------------------------------------------------------------------------
-
-class _HolographicLayer extends StatefulWidget {
-  const _HolographicLayer();
-
-  @override
-  State<_HolographicLayer> createState() => _HolographicLayerState();
-}
-
-class _HolographicLayerState extends State<_HolographicLayer>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 6),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: AnimatedBuilder(
-        animation: _ctrl,
-        builder: (_, __) {
-          // Sweep a narrow diagonal highlight from off-screen left to right.
-          final x = -2.0 + 4.0 * _ctrl.value;
-          return Opacity(
-            opacity: 0.07,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment(x - 1.2, -1.0),
-                  end: Alignment(x + 1.2, 1.0),
-                  colors: const [
-                    Colors.transparent,
-                    Colors.white,
-                    Colors.transparent,
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
-                ),
-              ),
-              child: const SizedBox.expand(),
-            ),
-          );
-        },
       ),
     );
   }
@@ -762,7 +698,7 @@ class _StatusChip extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Quick actions — three tiles below the card
+// Quick actions — 2-row × 3-column grid of shortcuts below the card
 // ---------------------------------------------------------------------------
 
 class _QuickActions extends StatelessWidget {
@@ -770,79 +706,107 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tiles = [
+      _TileData(
+        icon: Icons.favorite_border,
+        label: 'Favourites',
+        onTap: () => context.push(RouteNames.favourites),
+      ),
+      _TileData(
+        icon: Icons.map_outlined,
+        label: 'My Region',
+        onTap: () => context.push(RouteNames.regionProgress),
+      ),
+      _TileData(
+        icon: Icons.savings_outlined,
+        label: 'My Savings',
+        onTap: () => context.push(RouteNames.savings),
+      ),
+      _TileData(
+        icon: Icons.receipt_long_outlined,
+        label: 'History',
+        onTap: () => context.push(RouteNames.redemptionHistory),
+      ),
+      _TileData(
+        icon: Icons.share_outlined,
+        label: 'Refer a Friend',
+        onTap: () => context.push(RouteNames.referral),
+      ),
+      _TileData(
+        icon: Icons.manage_accounts_outlined,
+        label: 'Manage Plan',
+        onTap: () => context.go(RouteNames.account),
+      ),
+    ];
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
+      child: Column(
         children: [
-          _ActionTile(
-            icon: Icons.search_outlined,
-            label: 'Browse\noffers',
-            onTap: () => context.go(RouteNames.explore),
-          ),
-          const SizedBox(width: 12),
-          _ActionTile(
-            icon: Icons.receipt_long_outlined,
-            label: 'Redemption\nhistory',
-            onTap: () => context.push(RouteNames.redemptionHistory),
-          ),
-          const SizedBox(width: 12),
-          _ActionTile(
-            icon: Icons.manage_accounts_outlined,
-            label: 'Manage\nplan',
-            onTap: () => context.go(RouteNames.account),
-          ),
+          Row(children: _buildRow(tiles.sublist(0, 3))),
+          const SizedBox(height: 10),
+          Row(children: _buildRow(tiles.sublist(3, 6))),
         ],
       ),
     );
   }
+
+  List<Widget> _buildRow(List<_TileData> row) {
+    final widgets = <Widget>[];
+    for (var i = 0; i < row.length; i++) {
+      if (i > 0) widgets.add(const SizedBox(width: 10));
+      widgets.add(Expanded(child: _ActionTile(data: row[i])));
+    }
+    return widgets;
+  }
 }
 
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
+class _TileData {
+  const _TileData({required this.icon, required this.label, required this.onTap});
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+}
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({required this.data});
+  final _TileData data;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+    return GestureDetector(
+      onTap: data.onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(data.icon, color: AppColors.primary, size: 22),
+            const SizedBox(height: 6),
+            Text(
+              data.label,
+              style: AppTextStyles.labelSmall.copyWith(
+                fontSize: 10,
+                color: AppColors.textPrimary,
+                letterSpacing: 0,
+                height: 1.3,
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: AppColors.primary, size: 22),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                style: AppTextStyles.labelSmall.copyWith(
-                  fontSize: 10,
-                  color: AppColors.textPrimary,
-                  letterSpacing: 0,
-                  height: 1.4,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
@@ -882,23 +846,26 @@ class _PassSkeleton extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          // Action tiles placeholder
-          Row(
-            children: List.generate(3, (i) {
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(right: i < 2 ? 12 : 0),
-                  child: Container(
-                    height: 74,
-                    decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(14),
+          // Action tiles placeholder — 2 rows of 3
+          ...List.generate(2, (row) => Padding(
+            padding: EdgeInsets.only(top: row == 0 ? 0 : 10),
+            child: Row(
+              children: List.generate(3, (col) {
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: col < 2 ? 10 : 0),
+                    child: Container(
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
-                ),
-              );
-            }),
-          ),
+                );
+              }),
+            ),
+          )),
         ],
       ),
     );

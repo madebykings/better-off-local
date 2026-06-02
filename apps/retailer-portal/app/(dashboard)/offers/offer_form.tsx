@@ -8,6 +8,7 @@ import {
   submitOfferForApproval,
   togglePauseOffer,
   deleteDraftOffer,
+  archiveOffer,
   type OfferFields,
   type OfferActionResult,
   type CreateOfferResult,
@@ -17,6 +18,10 @@ import {
   OFFER_TYPES,
   type OfferType,
   EMPTY_OFFER,
+  computeValueText,
+  needsDiscountValue,
+  discountValueLabel,
+  discountValuePlaceholder,
 } from '@/lib/utils/first_offer';
 import { REDEMPTION_RULES, type RedemptionRule } from '@/lib/utils/redemption_rules';
 
@@ -237,6 +242,20 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
                 </button>
               </form>
             )}
+            {isLiveOrPaused && (
+              <form action={archiveOffer}>
+                <input type="hidden" name="offer_id" value={offerId} />
+                <button
+                  type="submit"
+                  onClick={(e) => {
+                    if (!confirm('Archive this offer? It will no longer be visible to members.')) e.preventDefault();
+                  }}
+                  className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50"
+                >
+                  Archive
+                </button>
+              </form>
+            )}
           </div>
         </div>
       )}
@@ -372,23 +391,42 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
           </Field>
         )}
 
-        {/* Benefit text */}
-        <Field
-          label="Benefit"
-          required
-          hint='The short value shown on the offer card, e.g. "10% off" or "Free coffee"'
-          error={errors.benefitText}
-        >
-          <input
-            type="text"
-            value={fields.benefitText}
-            onChange={set('benefitText')}
-            placeholder='e.g. 10% off'
-            maxLength={60}
-            className={inputCls(!!errors.benefitText)}
-            disabled={!canEdit || isPending}
-          />
-        </Field>
+        {/* Discount value (only for percentage / fixed types) */}
+        {needsDiscountValue(fields.offerType) && (
+          <Field
+            label={discountValueLabel(fields.offerType)}
+            required
+            hint={discountValuePlaceholder(fields.offerType)}
+            error={errors.discountValue}
+          >
+            <input
+              type="number"
+              value={fields.discountValue}
+              onChange={set('discountValue')}
+              placeholder={fields.offerType === 'percentage_discount' ? '10' : '5'}
+              min={0.01}
+              step={fields.offerType === 'percentage_discount' ? 1 : 0.01}
+              className={inputCls(!!errors.discountValue)}
+              disabled={!canEdit || isPending}
+            />
+          </Field>
+        )}
+
+        {/* Badge preview (auto-derived — not editable) */}
+        {fields.offerType && (
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span>Card badge:</span>
+            <span className={[
+              'inline-block rounded px-2 py-0.5 text-xs font-bold text-white',
+              fields.offerType === 'percentage_discount' ? 'bg-green-700' :
+              fields.offerType === 'fixed_discount' ? 'bg-blue-600' :
+              fields.offerType === 'buy_one_get_one' ? 'bg-purple-600' :
+              'bg-orange-500',
+            ].join(' ')}>
+              {computeValueText(fields.offerType, fields.discountValue) || '—'}
+            </span>
+          </div>
+        )}
 
         {/* Headline */}
         <Field label="Headline" required hint="Full offer title shown on the detail page" error={errors.headline}>

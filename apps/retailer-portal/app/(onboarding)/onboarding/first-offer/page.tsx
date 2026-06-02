@@ -11,6 +11,7 @@ import {
   type FirstOfferFields,
   type OfferType,
   OFFER_TYPES,
+  needsDiscountValue,
 } from '@/lib/utils/first_offer';
 
 // YYYY-MM-DDTHH:mm:ssZ  →  "YYYY-MM-DD" for <input type="date">
@@ -50,9 +51,15 @@ export default async function FirstOfferPage() {
         .eq('offer_id', offer.id)
         .maybeSingle();
 
+      function extractDiscountValue(vt: string | null, ot: OfferType): string {
+        if (!vt || !needsDiscountValue(ot)) return '';
+        const m = vt.match(/^(\d+(?:\.\d+)?)%/) ?? vt.match(/^£(\d+(?:\.\d+)?)/);
+        return m ? m[1] : '';
+      }
+
       initialFields = {
         headline:      offer.title ?? '',
-        benefitText:   offer.value_text ?? '',
+        discountValue: extractDiscountValue(offer.value_text, offerType),
         description:   offer.description ?? '',
         offerType,
         redemptionRule: rules

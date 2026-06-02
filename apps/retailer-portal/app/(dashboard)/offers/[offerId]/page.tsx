@@ -6,6 +6,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { ruleFromColumns, type RuleColumns } from '@/lib/utils/redemption_rules';
 import { OfferForm } from '../offer_form';
 import type { OfferFields } from '@/lib/actions/offers';
+import { type OfferType, needsDiscountValue } from '@/lib/utils/first_offer';
 
 export const metadata: Metadata = { title: 'Edit Offer – Retailer Portal' };
 
@@ -63,11 +64,23 @@ export default async function OfferDetailPage({ params }: Props) {
     (ol) => ol.retailer_location_id as string,
   );
 
+  // Parse stored value_text back to a numeric discountValue string for the form.
+  // e.g. "10% OFF" → "10",  "£5 OFF" → "5", "FREE ITEM" → ""
+  function extractDiscountValue(valueText: string | null, offerType: OfferType): string {
+    if (!valueText || !needsDiscountValue(offerType)) return '';
+    const pctMatch = valueText.match(/^(\d+(?:\.\d+)?)%/);
+    if (pctMatch) return pctMatch[1];
+    const gbpMatch = valueText.match(/^£(\d+(?:\.\d+)?)/);
+    if (gbpMatch) return gbpMatch[1];
+    return '';
+  }
+
+  const offerType = offer.offer_type as OfferFields['offerType'];
   const initialData: OfferFields = {
     headline: offer.title,
-    benefitText: offer.value_text ?? '',
+    discountValue: extractDiscountValue(offer.value_text, offerType),
     description: offer.description ?? '',
-    offerType: offer.offer_type as OfferFields['offerType'],
+    offerType,
     redemptionRule: ruleFromColumns(ruleCols),
     startDate: toDateString(offer.start_at),
     endDate: toDateString(offer.end_at),
