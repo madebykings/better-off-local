@@ -93,7 +93,7 @@ class Offer extends Equatable {
       return const Color(0xFF3B82F6); // blue
     }
     if (type == 'bundle' || type == 'buy_one_get_one' ||
-        text.contains('2 for') || text.contains('bogo')) {
+        text.contains('bogof') || text.contains('2 for') || text.contains('bogo')) {
       return const Color(0xFF8B5CF6); // purple
     }
     if (type == 'meal_deal' || text.contains('deal') || text.contains('meal')) {

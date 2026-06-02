@@ -87,7 +87,7 @@ class CategoriesSection extends ConsumerWidget {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                _categoryIconWidget(cat.name),
+                                _categoryIconWidget(cat.name, cat.icon),
                                 const SizedBox(height: 6),
                                 Text(
                                   _labelForCategory(cat.name),
@@ -128,14 +128,42 @@ class CategoriesSection extends ConsumerWidget {
   }
 }
 
-/// Returns a sized icon widget for the given category name.
-/// Named categories use a tinted Material icon; unrecognised categories
-/// show the Better Off Local icon mark so the tile still looks on-brand.
-Widget _categoryIconWidget(String name) {
+// Maps icon name strings (stored in categories.icon) to Flutter IconData.
+// These match the admin icon picker option values.
+const _iconByName = <String, IconData>{
+  'restaurant':    Icons.restaurant,
+  'coffee':        Icons.coffee,
+  'sports_bar':    Icons.sports_bar,
+  'shopping_bag':  Icons.shopping_bag_outlined,
+  'spa':           Icons.spa,
+  'fitness_center':Icons.fitness_center,
+  'favorite_border':Icons.favorite_border,
+  'local_activity':Icons.local_activity,
+  'child_care':    Icons.child_care,
+  'build':         Icons.build_outlined,
+  'pets':          Icons.pets,
+  'hotel':         Icons.hotel,
+  'local_pharmacy':Icons.local_pharmacy,
+  'school':        Icons.school,
+  'directions_car':Icons.directions_car,
+};
+
+/// Returns a sized icon widget for the given category.
+/// Prefers the DB [iconName] string over keyword-matching the [name].
+Widget _categoryIconWidget(String name, String? iconName) {
+  // 1. DB-stored icon name (standard, no emojis).
+  if (iconName != null && iconName.isNotEmpty) {
+    final data = _iconByName[iconName];
+    if (data != null) {
+      return Icon(data, color: AppColors.primary, size: 22);
+    }
+  }
+  // 2. Fallback: keyword-match on name.
   final icon = _iconForCategory(name);
   if (icon != null) {
     return Icon(icon, color: AppColors.primary, size: 22);
   }
+  // 3. Last resort: brand mark.
   return const BrandLogo(
     variant: BrandLogoVariant.icon,
     scheme: BrandLogoScheme.light,

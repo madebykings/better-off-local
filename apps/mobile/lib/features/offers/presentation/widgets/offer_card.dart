@@ -46,16 +46,17 @@ class OfferCard extends ConsumerWidget {
     final isAvailable = compact ? true : (availability?.isAvailable ?? true);
     final opacity = compact ? 1.0 : (availability?.cardOpacity ?? 1.0);
 
-    final double imageHeight = compact ? 96 : 130;
-    final double textBodyHeight = compact ? 72 : 90;
+    // Compact vs full sizing — only image height and font scale differ.
+    // Text body uses natural height to prevent RenderFlex overflow.
+    final double imageHeight = compact ? 100 : 130;
     final EdgeInsets bodyPadding = compact
-        ? const EdgeInsets.fromLTRB(10, 8, 10, 8)
-        : const EdgeInsets.fromLTRB(12, 10, 12, 10);
+        ? const EdgeInsets.fromLTRB(10, 9, 10, 10)
+        : const EdgeInsets.fromLTRB(12, 10, 12, 12);
     final double? titleFontSize = compact ? 13 : null;
     final double retailerFontSize = compact ? 11 : 12;
     final double redemptionFontSize = compact ? 10 : 11;
-    final double heartSize = compact ? 24 : 30;
-    final double heartIconSize = compact ? 12 : 16;
+    final double heartSize = compact ? 26 : 30;
+    final double heartIconSize = compact ? 13 : 16;
     final EdgeInsets badgePadding = compact
         ? const EdgeInsets.symmetric(horizontal: 6, vertical: 3)
         : const EdgeInsets.symmetric(horizontal: 8, vertical: 4);
@@ -64,6 +65,7 @@ class OfferCard extends ConsumerWidget {
     Widget card = Card(
       clipBehavior: Clip.antiAlias,
       elevation: 0,
+      margin: EdgeInsets.zero, // remove default Card margin to prevent overflow
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: AppColors.border),
@@ -72,6 +74,7 @@ class OfferCard extends ConsumerWidget {
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // collapse to content height
           children: [
             _OfferImageStack(
               offer: offer,
@@ -87,40 +90,34 @@ class OfferCard extends ConsumerWidget {
               badgePadding: badgePadding,
               badgeFontSize: badgeFontSize,
             ),
-            SizedBox(
-              height: textBodyHeight,
-              child: Padding(
-                padding: bodyPadding,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          offer.title,
-                          style: AppTextStyles.titleMedium
-                              .copyWith(fontSize: titleFontSize),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          offer.retailerName,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
-                            fontSize: retailerFontSize,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+            // Natural-height text body — no fixed SizedBox to avoid overflow.
+            Padding(
+              padding: bodyPadding,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    offer.title,
+                    style: AppTextStyles.titleMedium
+                        .copyWith(fontSize: titleFontSize),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    offer.retailerName,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
+                      fontSize: retailerFontSize,
                     ),
-                    _RedemptionLimitRow(
-                        offer: offer, fontSize: redemptionFontSize),
-                  ],
-                ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 7),
+                  _RedemptionLimitRow(
+                      offer: offer, fontSize: redemptionFontSize),
+                ],
               ),
             ),
           ],
@@ -128,7 +125,10 @@ class OfferCard extends ConsumerWidget {
       ),
     );
 
-    if (compact) card = SizedBox(width: 180, child: card);
+    // Compact cards have a fixed width; height is natural (no overflow risk).
+    if (compact) {
+      card = SizedBox(width: 176, child: card);
+    }
     if (opacity < 1.0) card = Opacity(opacity: opacity, child: card);
 
     return card;

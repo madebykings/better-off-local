@@ -94,6 +94,46 @@ function validateHours(hours: OpeningHoursData): OpeningHoursActionResult | null
  *
  * Returns null on success, { error } or { fieldErrors } on failure.
  */
+/**
+ * Dashboard variant — saves opening hours for a specific location without
+ * touching onboarding_step. Used from the venue edit page post-onboarding.
+ */
+export async function saveOpeningHoursForLocation(
+  locationId: string,
+  hours: OpeningHoursData,
+): Promise<OpeningHoursActionResult | null> {
+  const validationResult = validateHours(hours);
+  if (validationResult) return validationResult;
+
+  const userId = await getAuthUserId();
+  const retailerId = await getRetailerId(userId);
+  if (!retailerId) return { error: 'No retailer record found.' };
+
+  const service = createServiceClient();
+
+  // Verify ownership before writing.
+  const { data: location } = await service
+    .from('retailer_locations')
+    .select('id')
+    .eq('id', locationId)
+    .eq('retailer_id', retailerId)
+    .maybeSingle();
+
+  if (!location) return { error: 'Location not found.' };
+
+  const { error: updateError } = await service
+    .from('retailer_locations')
+    .update({ opening_hours_json: hours })
+    .eq('id', locationId);
+
+  if (updateError) {
+    console.error('[saveOpeningHoursForLocation] error:', updateError.message);
+    return { error: 'Failed to save opening hours. Please try again.' };
+  }
+
+  return null;
+}
+
 export async function saveOpeningHours(
   hours: OpeningHoursData,
 ): Promise<OpeningHoursActionResult | null> {

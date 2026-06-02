@@ -6,6 +6,9 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { VenueForm } from '../location_form';
 import type { VenueFields } from '@/lib/actions/location';
 import type { RegionOption } from '../location_form';
+import { OpeningHoursEditor } from '@/components/dashboard/opening_hours_editor';
+import { VenueImageUpload } from '@/components/dashboard/venue_image_upload';
+import { parseOpeningHours, DEFAULT_HOURS } from '@/lib/utils/opening_hours';
 
 export const metadata: Metadata = { title: 'Edit Location – Retailer Portal' };
 
@@ -21,7 +24,7 @@ export default async function LocationDetailPage({ params }: Props) {
   const [{ data: loc }, { data: regionRows }] = await Promise.all([
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, address_line_2, town, county, postcode, is_primary, is_active, region_id')
+      .select('id, name, address_line_1, address_line_2, town, county, postcode, is_primary, is_active, region_id, opening_hours_json, logo_url, cover_image_url')
       .eq('id', locationId)
       .eq('retailer_id', retailerId)
       .eq('is_active', true)
@@ -46,6 +49,8 @@ export default async function LocationDetailPage({ params }: Props) {
     postcode:     loc.postcode ?? '',
   };
 
+  const openingHours = parseOpeningHours((loc as any).opening_hours_json ?? null);
+
   return (
     <div>
       <div className="mb-6">
@@ -66,7 +71,41 @@ export default async function LocationDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <VenueForm locationId={locationId} initialData={initialData} regions={regions} />
+      <div className="space-y-8 max-w-xl">
+        <VenueForm locationId={locationId} initialData={initialData} regions={regions} />
+
+        <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
+            Venue images
+          </h2>
+          <p className="text-xs text-gray-400 mb-4">
+            Venue-specific images override your retailer-level images for this location.
+          </p>
+          <div className="space-y-5">
+            <VenueImageUpload
+              locationId={locationId}
+              slot="logo"
+              label="Venue logo"
+              hint="400 × 400 px minimum, square · max 5 MB"
+              currentUrl={(loc as any).logo_url ?? null}
+            />
+            <VenueImageUpload
+              locationId={locationId}
+              slot="cover"
+              label="Venue cover image"
+              hint="1600 × 600 px recommended · max 10 MB"
+              currentUrl={(loc as any).cover_image_url ?? null}
+            />
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
+            Opening hours
+          </h2>
+          <OpeningHoursEditor locationId={locationId} initialData={openingHours} />
+        </section>
+      </div>
     </div>
   );
 }

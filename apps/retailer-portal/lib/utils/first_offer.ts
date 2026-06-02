@@ -31,7 +31,7 @@ export function computeValueText(offerType: OfferType, discountValue: string): s
     case 'free_item':
       return 'FREE ITEM';
     case 'buy_one_get_one':
-      return 'BUY ONE GET ONE';
+      return 'BOGOF';
     case 'meal_deal':
       return 'MEAL DEAL';
     case 'other':

@@ -75,7 +75,10 @@ export default async function OfferDetailPage({ params }: Props) {
     return '';
   }
 
-  const offerType = offer.offer_type as OfferFields['offerType'];
+  // Map legacy 'bundle' type (DB enum value predating buy_one_get_one) to its
+  // current equivalent so the form renders correctly for older offers.
+  const rawType = offer.offer_type as string;
+  const offerType = (rawType === 'bundle' ? 'buy_one_get_one' : rawType) as OfferFields['offerType'];
   const initialData: OfferFields = {
     headline: offer.title,
     discountValue: extractDiscountValue(offer.value_text, offerType),

@@ -150,7 +150,7 @@ class _StatsBody extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Goal: ${region.memberThreshold}',
+                      'Next unlock at ${region.memberThreshold}',
                       style: const TextStyle(
                         color: Colors.white60,
                         fontSize: 12,
@@ -172,17 +172,17 @@ class _StatsBody extends StatelessWidget {
 
                 if (region.hasReachedThreshold)
                   const Text(
-                    'The community is growing — more local deals incoming.',
+                    'More local deals are unlocking for your community.',
                     style: TextStyle(color: Colors.white, fontSize: 12),
                   )
                 else
                   Text(
-                    '$remaining more members until stronger local deals begin unlocking.',
+                    '$remaining more members to unlock more local deals.',
                     style: const TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 const SizedBox(height: 4),
                 Text(
-                  '$pct% of the way there',
+                  '$pct% there',
                   style: const TextStyle(
                     color: Colors.white54,
                     fontSize: 11,

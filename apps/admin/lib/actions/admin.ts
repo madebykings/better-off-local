@@ -497,16 +497,17 @@ export async function updatePlatformConfig(formData: FormData): Promise<void> {
   await requireAdmin();
   const supabase = createServiceClient();
 
+  // upsert ensures the row is created if id=1 doesn't exist yet.
   await supabase
     .from('platform_config')
-    .update({
-      homepage_headline: (formData.get('homepage_headline') as string | null)?.trim() || undefined,
-      homepage_body:     (formData.get('homepage_body') as string | null)?.trim() || undefined,
-      homepage_cta_text: (formData.get('homepage_cta_text') as string | null)?.trim() || undefined,
-      homepage_cta_url:  (formData.get('homepage_cta_url') as string | null)?.trim() || undefined,
+    .upsert({
+      id:                1,
+      homepage_headline: (formData.get('homepage_headline') as string | null)?.trim() || '',
+      homepage_body:     (formData.get('homepage_body') as string | null)?.trim() || '',
+      homepage_cta_text: (formData.get('homepage_cta_text') as string | null)?.trim() || '',
+      homepage_cta_url:  (formData.get('homepage_cta_url') as string | null)?.trim() || '',
       updated_at:        new Date().toISOString(),
-    })
-    .eq('id', 1);
+    }, { onConflict: 'id' });
 
   revalidatePath('/content');
 }

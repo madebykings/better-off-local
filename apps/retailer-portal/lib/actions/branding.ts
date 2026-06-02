@@ -240,3 +240,87 @@ export async function removeRetailerImage(
 
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// uploadVenueImage — uploads to retailer_locations.logo_url / cover_image_url
+// ---------------------------------------------------------------------------
+
+/**
+ * Same flow as uploadRetailerImage but writes to retailer_locations columns
+ * so each venue can have its own logo and cover image.
+ * The consumer app prefers venue-level images over retailer-level fallbacks.
+ */
+export async function uploadVenueImage(
+  formData: FormData,
+  locationId: string,
+  slot: 'logo' | 'cover',
+): Promise<{ url: string } | { error: string }> {
+  const userId = await getAuthUserId();
+  if (!userId) return { error: 'Not authenticated.' };
+
+  const retailerId = await getRetailerId(userId);
+  if (!retailerId) return { error: 'No retailer record found.' };
+
+  const file = formData.get('file');
+  if (!(file instanceof File)) return { error: 'No file provided.' };
+
+  if (!ACCEPTED_TYPES.includes(file.type)) return { error: 'Please upload a JPG, PNG, or WebP file.' };
+
+  const maxBytes = slot === 'logo' ? LOGO_MAX_BYTES : COVER_MAX_BYTES;
+  const maxLabel = slot === 'logo' ? '5 MB' : '10 MB';
+  if (file.size > maxBytes) return { error: `File must be under ${maxLabel}.` };
+
+  const service = createServiceClient();
+  const urlColumn = slot === 'logo' ? 'logo_url' : 'cover_image_url';
+
+  // Verify ownership.
+  const { data: location } = await service
+    .from('retailer_locations')
+    .select('id, logo_url, cover_image_url')
+    .eq('id', locationId)
+    .eq('retailer_id', retailerId)
+    .maybeSingle();
+
+  if (!location) return { error: 'Location not found.' };
+
+  const previousUrl: string | null = (location as Record<string, unknown>)[urlColumn] as string | null ?? null;
+
+  let optimisedBuffer: Buffer;
+  try {
+    const raw = Buffer.from(await file.arrayBuffer());
+    optimisedBuffer = await optimise(raw, slot);
+  } catch {
+    return { error: 'Image processing failed. Please try a different file.' };
+  }
+
+  const uuid = crypto.randomUUID().slice(0, 8);
+  const storagePath = `${retailerId}/venue-${locationId}-${slot}-${uuid}.webp`;
+
+  const { error: uploadError } = await service.storage
+    .from(BUCKET)
+    .upload(storagePath, optimisedBuffer, { contentType: 'image/webp', upsert: false });
+
+  if (uploadError) {
+    console.error(`[uploadVenueImage] storage error (${slot}):`, uploadError.message);
+    return { error: 'Upload failed. Please try again.' };
+  }
+
+  const { data: { publicUrl } } = service.storage.from(BUCKET).getPublicUrl(storagePath);
+
+  const { error: dbError } = await service
+    .from('retailer_locations')
+    .update({ [urlColumn]: publicUrl })
+    .eq('id', locationId);
+
+  if (dbError) {
+    await service.storage.from(BUCKET).remove([storagePath]);
+    return { error: 'Upload failed. Please try again.' };
+  }
+
+  if (previousUrl) {
+    const prev = storagePathFromUrl(previousUrl);
+    if (prev) await service.storage.from(BUCKET).remove([prev]);
+  }
+
+  return { url: publicUrl };
+}
