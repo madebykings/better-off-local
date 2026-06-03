@@ -18,6 +18,7 @@ class Profile extends Equatable {
     this.phone,
     this.avatarUrl,
     this.regionId,
+    this.paypalEmail,
   });
 
   final String id;
@@ -28,6 +29,7 @@ class Profile extends Equatable {
   final String? phone;
   final String? avatarUrl;
   final String? regionId;
+  final String? paypalEmail;
 
   bool get isComplete => fullName != null && fullName!.trim().isNotEmpty;
   bool get hasRegion => regionId != null;
@@ -42,6 +44,7 @@ class Profile extends Equatable {
       phone: map['phone'] as String?,
       avatarUrl: map['avatar_url'] as String?,
       regionId: map['region_id'] as String?,
+      paypalEmail: map['paypal_email'] as String?,
     );
   }
 
@@ -50,6 +53,8 @@ class Profile extends Equatable {
     String? phone,
     String? avatarUrl,
     String? regionId,
+    String? paypalEmail,
+    bool clearPaypalEmail = false,
   }) {
     return Profile(
       id: id,
@@ -60,9 +65,10 @@ class Profile extends Equatable {
       phone: phone ?? this.phone,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       regionId: regionId ?? this.regionId,
+      paypalEmail: clearPaypalEmail ? null : (paypalEmail ?? this.paypalEmail),
     );
   }
 
   @override
-  List<Object?> get props => [id, role, isActive, fullName, email, phone, avatarUrl, regionId];
+  List<Object?> get props => [id, role, isActive, fullName, email, phone, avatarUrl, regionId, paypalEmail];
 }

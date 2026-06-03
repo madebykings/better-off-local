@@ -4,27 +4,37 @@ class ReferralStats {
     required this.referralUrl,
     required this.invitedCount,
     required this.convertedCount,
-    required this.pendingMonths,
-    required this.confirmedRewards,
-    required this.freeMonthsEarned,
-    required this.totalRewardPence,
+    required this.pendingAmountPence,
+    required this.eligibleAmountPence,
+    required this.paidAmountPence,
+    this.paypalEmail,
   });
 
   final String code;
   final String referralUrl;
   final int invitedCount;
   final int convertedCount;
-  final int pendingMonths;
-  final int confirmedRewards;
-  final int freeMonthsEarned;
-  final int totalRewardPence;
 
-  String get membershipValueDisplay {
-    if (totalRewardPence == 0) return '£0';
-    final pounds = totalRewardPence / 100;
+  /// Rewards pending the 30-day qualification window.
+  final int pendingAmountPence;
+
+  /// Rewards past the 30-day window, ready for PayPal payout.
+  final int eligibleAmountPence;
+
+  /// Rewards already paid out.
+  final int paidAmountPence;
+
+  /// Member's PayPal email for receiving payouts.
+  final String? paypalEmail;
+
+  String _fmt(int pence) {
+    if (pence == 0) return '£0';
+    final pounds = pence / 100;
     return '£${pounds.toStringAsFixed(pounds.truncateToDouble() == pounds ? 0 : 2)}';
   }
 
-  String get freeMonthsDisplay =>
-      freeMonthsEarned == 1 ? '1 month' : '$freeMonthsEarned months';
+  String get pendingDisplay   => _fmt(pendingAmountPence);
+  String get eligibleDisplay  => _fmt(eligibleAmountPence);
+  String get paidDisplay      => _fmt(paidAmountPence);
+  String get totalEarnedDisplay => _fmt(eligibleAmountPence + paidAmountPence);
 }

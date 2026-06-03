@@ -17,11 +17,13 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? fullName,
     String? phone,
     String? avatarUrl,
+    String? paypalEmail,
   }) =>
       _dataSource.updateProfile(
         userId: userId,
         fullName: fullName,
         phone: phone,
         avatarUrl: avatarUrl,
+        paypalEmail: paypalEmail,
       );
 }

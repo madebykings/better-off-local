@@ -23,11 +23,13 @@ class ProfileRemoteDataSource {
     String? fullName,
     String? phone,
     String? avatarUrl,
+    String? paypalEmail,
   }) async {
     final updates = <String, dynamic>{};
     if (fullName != null) updates['full_name'] = fullName;
     if (phone != null) updates['phone'] = phone;
     if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+    if (paypalEmail != null) updates['paypal_email'] = paypalEmail;
 
     if (updates.isEmpty) return;
 

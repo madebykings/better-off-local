@@ -55,6 +55,7 @@ class ProfileController extends StateNotifier<ProfileUpdateState> {
     String? fullName,
     String? phone,
     String? avatarUrl,
+    String? paypalEmail,
   }) async {
     state = const ProfileUpdateLoading();
     try {
@@ -69,6 +70,7 @@ class ProfileController extends StateNotifier<ProfileUpdateState> {
             fullName: fullName,
             phone: phone,
             avatarUrl: avatarUrl,
+            paypalEmail: paypalEmail,
           );
 
       _ref.invalidate(profileProvider);

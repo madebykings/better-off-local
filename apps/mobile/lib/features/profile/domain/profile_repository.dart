@@ -11,5 +11,6 @@ abstract interface class ProfileRepository {
     String? fullName,
     String? phone,
     String? avatarUrl,
+    String? paypalEmail,
   });
 }
