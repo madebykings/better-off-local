@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
-import '../../../../core/widgets/brand_logo.dart';
+import '../../../../core/utils/material_icon_map.dart';
 import '../../../../core/widgets/section_header.dart';
 import '../../../offers/providers/category_follows_providers.dart';
 import '../../../offers/providers/offers_providers.dart';
@@ -128,47 +128,15 @@ class CategoriesSection extends ConsumerWidget {
   }
 }
 
-// Maps icon name strings (stored in categories.icon) to Flutter IconData.
-// These match the admin icon picker option values.
-const _iconByName = <String, IconData>{
-  'restaurant':    Icons.restaurant,
-  'coffee':        Icons.coffee,
-  'sports_bar':    Icons.sports_bar,
-  'shopping_bag':  Icons.shopping_bag_outlined,
-  'spa':           Icons.spa,
-  'fitness_center':Icons.fitness_center,
-  'favorite_border':Icons.favorite_border,
-  'local_activity':Icons.local_activity,
-  'child_care':    Icons.child_care,
-  'build':         Icons.build_outlined,
-  'pets':          Icons.pets,
-  'hotel':         Icons.hotel,
-  'local_pharmacy':Icons.local_pharmacy,
-  'school':        Icons.school,
-  'directions_car':Icons.directions_car,
-};
-
 /// Returns a sized icon widget for the given category.
-/// Prefers the DB [iconName] string over keyword-matching the [name].
+/// Tier 1: DB-stored [iconName] key via [iconDataForKey] (280+ icons, safe fallback).
+/// Tier 2: keyword-match on [name] for categories with no icon set in DB.
 Widget _categoryIconWidget(String name, String? iconName) {
-  // 1. DB-stored icon name (standard, no emojis).
   if (iconName != null && iconName.isNotEmpty) {
-    final data = _iconByName[iconName];
-    if (data != null) {
-      return Icon(data, color: AppColors.primary, size: 22);
-    }
+    return Icon(iconDataForKey(iconName), color: AppColors.primary, size: 22);
   }
-  // 2. Fallback: keyword-match on name.
   final icon = _iconForCategory(name);
-  if (icon != null) {
-    return Icon(icon, color: AppColors.primary, size: 22);
-  }
-  // 3. Last resort: brand mark.
-  return const BrandLogo(
-    variant: BrandLogoVariant.icon,
-    scheme: BrandLogoScheme.light,
-    height: 22,
-  );
+  return Icon(icon ?? kFallbackCategoryIcon, color: AppColors.primary, size: 22);
 }
 
 IconData? _iconForCategory(String name) {
@@ -213,7 +181,7 @@ IconData? _iconForCategory(String name) {
   if (n.contains('pet')) {
     return Icons.pets;
   }
-  return null; // unrecognised → BrandLogo icon mark
+  return null;
 }
 
 /// Shorten long category names for the tile label.
