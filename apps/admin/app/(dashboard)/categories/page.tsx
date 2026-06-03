@@ -80,9 +80,7 @@ export default async function CategoriesPage() {
               >
                 <option value="">None</option>
                 {ICON_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.emoji} {o.label}
-                  </option>
+                  <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
             </div>
@@ -115,27 +113,32 @@ export default async function CategoriesPage() {
                 <td className="px-4 py-3 font-medium text-gray-800">{c.name}</td>
                 <td className="px-4 py-3 text-gray-500 font-mono text-xs">{c.slug}</td>
                 <td className="px-4 py-3">
-                  <form action={updateCategoryIcon} className="flex items-center gap-2">
-                    <input type="hidden" name="id" value={c.id} />
-                    <select
-                      name="icon"
-                      defaultValue={c.icon ?? ''}
-                      className="rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-700"
-                    >
-                      <option value="">None</option>
-                      {ICON_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.emoji} {o.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="submit"
-                      className="text-xs text-green-700 hover:text-green-900 underline"
-                    >
-                      Save
-                    </button>
-                  </form>
+                  <div className="flex items-center gap-3">
+                    {c.icon ? (
+                      <span className="material-icons text-gray-600" style={{ fontSize: '20px' }}>{c.icon}</span>
+                    ) : (
+                      <span className="w-5 h-5 rounded border border-gray-200 bg-gray-50 inline-block" />
+                    )}
+                    <form action={updateCategoryIcon} className="flex items-center gap-2">
+                      <input type="hidden" name="id" value={c.id} />
+                      <select
+                        name="icon"
+                        defaultValue={c.icon ?? ''}
+                        className="rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-700"
+                      >
+                        <option value="">None</option>
+                        {ICON_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        className="text-xs text-green-700 hover:text-green-900 underline"
+                      >
+                        Save
+                      </button>
+                    </form>
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-gray-500">{c.sort_order}</td>
                 <td className="px-4 py-3">

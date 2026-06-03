@@ -134,7 +134,7 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
       created_by_profile_id: ctx.userId,
       image_url: fields.imageUrl.trim() || null,
       estimated_saving_pence: fields.estimatedSavingPence.trim()
-        ? parseInt(fields.estimatedSavingPence, 10)
+        ? Math.round(parseFloat(fields.estimatedSavingPence) * 100)
         : null,
     })
     .select('id')
@@ -219,7 +219,7 @@ export async function updateOffer(
       end_at: fields.endDate ? new Date(fields.endDate).toISOString() : null,
       image_url: fields.imageUrl.trim() || null,
       estimated_saving_pence: fields.estimatedSavingPence.trim()
-        ? parseInt(fields.estimatedSavingPence, 10)
+        ? Math.round(parseFloat(fields.estimatedSavingPence) * 100)
         : null,
       ...(statusChanged ? { status: newStatus } : {}),
       updated_at: new Date().toISOString(),

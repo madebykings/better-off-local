@@ -118,7 +118,9 @@ export default async function OfferDetailPage({ params }: Props) {
     newCustomersOnly:     rules?.new_customers_only ?? false,
     venueScope:           ((o as any).venue_scope as 'all' | 'specific') ?? 'all',
     selectedLocationIds:  offerLocations.map((l: any) => l.retailer_location_id as string),
-    estimatedSavingPence: (o as any).estimated_saving_pence?.toString() ?? '',
+    estimatedSavingPence: (o as any).estimated_saving_pence != null
+      ? ((o as any).estimated_saving_pence as number / 100).toFixed(2)
+      : '',
   };
 
   function formatDate(iso: string | null) {

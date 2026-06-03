@@ -30,12 +30,12 @@ import { REDEMPTION_RULES, type RedemptionRule } from '@/lib/utils/redemption_ru
 // ---------------------------------------------------------------------------
 
 const OFFER_TYPE_CONFIG: Record<OfferType, { label: string; hint: string; icon: string; savingHint: string }> = {
-  percentage_discount: { label: 'Percentage off',    hint: 'e.g. 10% off',                icon: '%',  savingHint: 'e.g. 50 for typical 10% off a £5 coffee' },
-  fixed_discount:      { label: 'Fixed amount off',  hint: 'e.g. £5 off',                 icon: '£',  savingHint: 'e.g. 500 for £5 off' },
-  free_item:           { label: 'Free item',          hint: 'e.g. Free coffee',            icon: '🎁', savingHint: 'e.g. 350 for a £3.50 item' },
-  buy_one_get_one:     { label: 'Buy one get one',   hint: 'e.g. BOGOF main course',       icon: '2️⃣', savingHint: 'e.g. 800 for half the cost of a £16 item' },
-  meal_deal:           { label: 'Meal deal',          hint: 'e.g. Lunch meal deal',        icon: '🍱', savingHint: 'e.g. 400 if the deal saves ~£4 vs buying separately' },
-  other:               { label: 'Special deal',       hint: 'e.g. Members-only event',    icon: '⭐', savingHint: 'Estimated pence saved per use, if applicable' },
+  percentage_discount: { label: 'Percentage off',    hint: 'e.g. 10% off',                icon: '%',  savingHint: 'e.g. 0.50 for typical 10% off a £5 coffee' },
+  fixed_discount:      { label: 'Fixed amount off',  hint: 'e.g. £5 off',                 icon: '£',  savingHint: 'e.g. 5.00 for £5 off' },
+  free_item:           { label: 'Free item',          hint: 'e.g. Free coffee',            icon: '🎁', savingHint: 'e.g. 3.50 for a £3.50 item' },
+  buy_one_get_one:     { label: 'Buy one get one',   hint: 'e.g. BOGOF main course',       icon: '2️⃣', savingHint: 'e.g. 8.00 for half the cost of a £16 item' },
+  meal_deal:           { label: 'Meal deal',          hint: 'e.g. Lunch meal deal',        icon: '🍱', savingHint: 'e.g. 4.00 if the deal saves ~£4 vs buying separately' },
+  other:               { label: 'Special deal',       hint: 'e.g. Members-only event',    icon: '⭐', savingHint: 'Estimated pounds saved per use, if applicable' },
 };
 
 const RULE_LABELS: Record<RedemptionRule, string> = {
@@ -574,18 +574,19 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
 
         {/* Estimated saving */}
         <Field
-          label="Estimated customer saving (optional)"
-          hint={`Amount saved per redemption in pence. ${OFFER_TYPE_CONFIG[fields.offerType].savingHint}. Used in the savings screen and analytics.`}
+          label="Estimated customer saving (£)"
+          hint={`Amount saved per redemption in pounds. ${OFFER_TYPE_CONFIG[fields.offerType].savingHint}. Used in the savings screen and analytics.`}
           error={errors.estimatedSavingPence}
         >
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">p</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">£</span>
             <input
               type="number"
               value={fields.estimatedSavingPence}
               onChange={set('estimatedSavingPence')}
-              placeholder="e.g. 350 (= £3.50)"
-              min={1}
+              placeholder="e.g. 3.50"
+              min={0.01}
+              step={0.01}
               className={[inputCls(!!errors.estimatedSavingPence), 'pl-7'].join(' ')}
               disabled={!canEdit || isPending}
             />

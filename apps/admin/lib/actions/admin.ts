@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
 import { DAY_KEYS, type OpeningHoursData } from '@/lib/utils/opening_hours';
@@ -748,8 +749,7 @@ export async function updatePlatformConfig(formData: FormData): Promise<void> {
   await requireAdmin();
   const supabase = createServiceClient();
 
-  // upsert ensures the row is created if id=1 doesn't exist yet.
-  await supabase
+  const { error } = await supabase
     .from('platform_config')
     .upsert({
       id:                1,
@@ -760,5 +760,11 @@ export async function updatePlatformConfig(formData: FormData): Promise<void> {
       updated_at:        new Date().toISOString(),
     }, { onConflict: 'id' });
 
+  if (error) {
+    console.error('[updatePlatformConfig] error:', error.message);
+    redirect('/content?error=1');
+  }
+
   revalidatePath('/content');
+  redirect('/content?saved=1');
 }

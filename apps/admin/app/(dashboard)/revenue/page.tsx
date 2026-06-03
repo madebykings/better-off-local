@@ -123,6 +123,8 @@ export default async function RevenuePage() {
     },
   ];
 
+  const payingMembers = monthlyActive + annualActive;
+
   return (
     <div>
       <div className="mb-6">
@@ -130,6 +132,30 @@ export default async function RevenuePage() {
         <p className="mt-1 text-sm text-gray-500">
           Estimated figures based on plan counts and configured prices. Verify exact amounts in Stripe.
         </p>
+      </div>
+
+      {/* ── Stat cards ─────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">MRR</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">{fmt(totalMRR)}</p>
+          <p className="text-xs text-gray-400 mt-1">Monthly recurring revenue</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">ARR</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">{fmtK(totalARR)}</p>
+          <p className="text-xs text-gray-400 mt-1">MRR × 12</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Paying members</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">{payingMembers}</p>
+          <p className="text-xs text-gray-400 mt-1">{monthlyActive} monthly · {annualActive} annual</p>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Paying retailers</p>
+          <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">{paidRetailers}</p>
+          <p className="text-xs text-gray-400 mt-1">Active subscriptions</p>
+        </div>
       </div>
 
       <div className="space-y-4">

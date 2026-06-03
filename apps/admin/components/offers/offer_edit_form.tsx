@@ -335,18 +335,19 @@ export function AdminOfferEditForm({ offerId, initialFields, currentImageUrl, lo
 
       {/* Estimated saving */}
       <Field
-        label="Estimated customer saving (pence)"
-        hint="Amount saved per redemption in pence. e.g. 350 = £3.50. Used in analytics."
+        label="Estimated customer saving (£)"
+        hint="Amount saved per redemption in pounds. e.g. 3.50. Used in analytics."
         error={errors.estimatedSavingPence}
       >
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">p</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">£</span>
           <input
             type="number"
             value={fields.estimatedSavingPence}
             onChange={set('estimatedSavingPence')}
-            placeholder="e.g. 350"
-            min={1}
+            placeholder="e.g. 3.50"
+            min={0.01}
+            step={0.01}
             className={[inputCls(!!errors.estimatedSavingPence), 'pl-7'].join(' ')}
             disabled={isPending}
           />

@@ -93,7 +93,7 @@ export default async function OfferDetailPage({ params }: Props) {
     selectedLocationIds,
     imageUrl: (offer as any).image_url ?? '',
     estimatedSavingPence: (offer as any).estimated_saving_pence != null
-      ? String((offer as any).estimated_saving_pence)
+      ? ((offer as any).estimated_saving_pence as number / 100).toFixed(2)
       : '',
   };
 

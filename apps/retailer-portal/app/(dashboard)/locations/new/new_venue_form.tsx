@@ -134,7 +134,7 @@ export function NewVenueForm({
         return;
       }
       if ('locationId' in result) {
-        router.push('/locations');
+        router.push(`/locations/${result.locationId}`);
       }
     });
   }

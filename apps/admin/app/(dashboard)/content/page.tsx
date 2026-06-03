@@ -5,7 +5,12 @@ import { updatePlatformConfig } from '@/lib/actions/admin';
 
 export const metadata: Metadata = { title: 'Content – Admin' };
 
-export default async function ContentPage() {
+interface Props {
+  searchParams: Promise<{ saved?: string; error?: string }>;
+}
+
+export default async function ContentPage({ searchParams }: Props) {
+  const { saved, error: saveError } = await searchParams;
   await requireAdmin();
   const supabase = createServiceClient();
 
@@ -31,6 +36,17 @@ export default async function ContentPage() {
           {updatedAt && <span className="ml-1 text-gray-400">Last updated {updatedAt}.</span>}
         </p>
       </div>
+
+      {saved === '1' && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+          Changes saved successfully.
+        </div>
+      )}
+      {saveError === '1' && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Failed to save changes. Please try again.
+        </div>
+      )}
 
       <div className="bg-white rounded-lg border border-gray-200 max-w-2xl">
         <div className="px-4 py-3 border-b border-gray-100">

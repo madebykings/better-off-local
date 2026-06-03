@@ -5,7 +5,6 @@ import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
 import { ReviewActionPanel, StatusBadge } from '@/components/review/review_action_panel';
 import { ReviewTimeline } from '@/components/review/review_timeline';
-import { RetailerListingCard, type ListingCardData } from '@/components/review/retailer_listing_card';
 import {
   approveRetailer,
   rejectRetailer,
@@ -187,27 +186,10 @@ export default async function RetailerDetailPage({ params }: Props) {
     offerRules = rules ?? null;
   }
 
-  // ── Build listing card data ──────────────────────────────────────────────
+  // ── Categories for quality score ────────────────────────────────────────
   const categories = (categoryRows ?? [])
     .map((row) => (row.categories as unknown) as { name: string; slug: string } | null)
     .filter((c): c is { name: string; slug: string } => Boolean(c));
-
-  const listingData: ListingCardData = {
-    retailer: {
-      name:            retailer.name            ?? null,
-      tagline:         retailer.tagline         ?? null,
-      description:     retailer.description     ?? null,
-      logo_url:        retailer.logo_url        ?? null,
-      cover_image_url: retailer.cover_image_url ?? null,
-      phone:           retailer.phone           ?? null,
-      email:           retailer.email           ?? null,
-    },
-    categories,
-    location: location ?? null,
-    links:    links    ?? [],
-    offer:    offer    ?? null,
-    offerRules,
-  };
 
   // ── Compute quality score ──────────────────────────────────────────────
   const hasAddr = Boolean(location?.address_line_1?.trim() && location?.postcode?.trim());
@@ -279,26 +261,16 @@ export default async function RetailerDetailPage({ params }: Props) {
         </p>
       )}
 
-      {/* ── Main grid ───────────────────────────────────────────────────── */}
+      {/* ── Review actions + timeline ───────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
-        {/* Left: listing preview */}
-        <div>
-          <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-gray-400">
-            Consumer listing preview
-          </p>
-          <RetailerListingCard data={listingData} />
-        </div>
-
-        {/* Right: actions + timeline */}
-        <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <ReviewActionPanel
-            retailerId={retailerId}
-            currentStatus={retailer.approval_status}
-            approveAction={approve}
-            rejectAction={reject}
-            requestChangesAction={requestChanges}
-          />
-          <ReviewTimeline
+        <ReviewActionPanel
+          retailerId={retailerId}
+          currentStatus={retailer.approval_status}
+          approveAction={approve}
+          rejectAction={reject}
+          requestChangesAction={requestChanges}
+        />
+        <ReviewTimeline
           entries={(auditRows ?? []).map((a) => ({
             id:          a.id,
             action_type: a.action_type,
@@ -309,7 +281,6 @@ export default async function RetailerDetailPage({ params }: Props) {
               : (a.profiles ?? null),
           }))}
         />
-        </aside>
       </div>
 
       {/* ── Venues ──────────────────────────────────────────────────────── */}
@@ -586,6 +557,52 @@ export default async function RetailerDetailPage({ params }: Props) {
                               hint="JPG, PNG, or WebP · max 10 MB · displayed at 1600×600"
                               currentUrl={(v.cover_image_url as string | null) ?? null}
                             />
+                          </div>
+                        </details>
+
+                        {/* Collapsible consumer listing preview */}
+                        <details className="border-t border-gray-100 group">
+                          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 select-none">
+                            <span className="transition-transform group-open:rotate-90">▶</span>
+                            Consumer listing preview
+                          </summary>
+                          <div className="px-4 py-4 bg-white">
+                            <div className="max-w-xs rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                              {(v.cover_image_url || retailer.cover_image_url) && (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={(v.cover_image_url || retailer.cover_image_url) as string}
+                                  alt=""
+                                  className="w-full h-28 object-cover"
+                                />
+                              )}
+                              <div className="p-3 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  {(v.logo_url || retailer.logo_url) && (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                    <img
+                                      src={(v.logo_url || retailer.logo_url) as string}
+                                      alt=""
+                                      className="w-8 h-8 rounded object-cover border border-gray-100 shrink-0"
+                                    />
+                                  )}
+                                  <p className="text-sm font-semibold text-gray-900 truncate">
+                                    {v.name ?? retailer.name}
+                                  </p>
+                                </div>
+                                {(v as any).short_description && (
+                                  <p className="text-xs text-gray-500 line-clamp-2">{(v as any).short_description}</p>
+                                )}
+                                {categories.length > 0 && (
+                                  <p className="text-xs text-gray-400">
+                                    {categories.map((c) => c.name).join(' · ')}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-400">
+                                  {[v.address_line_1, v.town, v.postcode].filter(Boolean).join(', ')}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </details>
 

@@ -44,6 +44,13 @@ export default async function RetailersPage({ searchParams }: Props) {
   const { status, q, activation } = await searchParams;
   const supabase = createServiceClient();
 
+  const { data: categoryOptions } = await supabase
+    .from('categories')
+    .select('id, name')
+    .eq('is_active', true)
+    .order('sort_order')
+    .order('name');
+
   let query = supabase
     .from('retailers')
     .select('id, name, slug, approval_status, visibility_status, is_active, created_at')
@@ -111,13 +118,16 @@ export default async function RetailersPage({ searchParams }: Props) {
           </div>
           <div>
             <label htmlFor="r-type" className="block text-xs text-gray-500 mb-1">Business type</label>
-            <input
+            <select
               id="r-type"
               name="business_type"
-              type="text"
-              placeholder="e.g. Food & Drink"
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 w-44"
-            />
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 w-44 cursor-pointer"
+            >
+              <option value="">Select type…</option>
+              {(categoryOptions ?? []).map((c) => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
           </div>
           <button
             type="submit"

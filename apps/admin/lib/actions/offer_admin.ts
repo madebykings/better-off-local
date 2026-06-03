@@ -128,7 +128,7 @@ export async function adminUpdateOffer(
       start_at:                fields.startDate ? new Date(fields.startDate).toISOString() : null,
       end_at:                  fields.endDate   ? new Date(fields.endDate).toISOString()   : null,
       estimated_saving_pence:  fields.estimatedSavingPence.trim()
-        ? parseInt(fields.estimatedSavingPence, 10)
+        ? Math.round(parseFloat(fields.estimatedSavingPence) * 100)
         : null,
       updated_at: new Date().toISOString(),
     })
