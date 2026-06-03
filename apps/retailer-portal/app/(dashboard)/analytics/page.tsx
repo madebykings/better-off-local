@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
+import { MetricCard } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Analytics – Retailer Portal' };
 
@@ -256,17 +257,7 @@ export default async function AnalyticsPage() {
       {/* Headline cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 mb-8">
         {headlineCards.map((card) => (
-          <div
-            key={card.label}
-            className="bg-white rounded-lg border border-gray-200 p-4"
-          >
-            <div className="text-2xl font-bold text-gray-900">
-              {card.value}
-            </div>
-            <div className="text-xs text-gray-500 mt-1 leading-tight">
-              {card.label}
-            </div>
-          </div>
+          <MetricCard key={card.label} label={card.label} value={card.value} />
         ))}
       </div>
 

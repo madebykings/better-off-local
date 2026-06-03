@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
 import { ActivationStatusCard } from '@/components/dashboard/activation_status_card';
+import { MetricCard } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Dashboard – Retailer Portal' };
 
@@ -92,11 +93,42 @@ export default async function DashboardPage() {
   const totalSaves = savesResult.count ?? 0;
   const recentRedemptions = (recentResult.data ?? []) as unknown as RecentRedemption[];
 
+  function TagIcon() {
+    return (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
+      </svg>
+    );
+  }
+  function CheckBadgeIcon() {
+    return (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+      </svg>
+    );
+  }
+  function EyeIcon() {
+    return (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+      </svg>
+    );
+  }
+  function BookmarkIcon() {
+    return (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+      </svg>
+    );
+  }
+
   const metrics = [
-    { label: 'Live offers', value: liveOffers, icon: '🏷️' },
-    { label: 'Total redemptions', value: totalRedemptions, icon: '✅' },
-    { label: 'Offer views', value: totalViews, icon: '👁️' },
-    { label: 'Saves', value: totalSaves, icon: '❤️' },
+    { label: 'Live offers', value: liveOffers, icon: <TagIcon /> },
+    { label: 'Total redemptions', value: totalRedemptions, icon: <CheckBadgeIcon /> },
+    { label: 'Offer views', value: totalViews, icon: <EyeIcon /> },
+    { label: 'Saves', value: totalSaves, icon: <BookmarkIcon /> },
   ];
 
   return (
@@ -126,14 +158,7 @@ export default async function DashboardPage() {
       {/* Metrics */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-8">
         {metrics.map((m) => (
-          <div
-            key={m.label}
-            className="bg-white rounded-lg border border-gray-200 p-4"
-          >
-            <div className="text-2xl mb-1">{m.icon}</div>
-            <div className="text-2xl font-bold text-gray-900">{m.value}</div>
-            <div className="text-xs text-gray-500 mt-1">{m.label}</div>
-          </div>
+          <MetricCard key={m.label} label={m.label} value={m.value} icon={m.icon} />
         ))}
       </div>
 
@@ -150,10 +175,10 @@ export default async function DashboardPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Offer</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Member</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">When</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Offer</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Member</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">When</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

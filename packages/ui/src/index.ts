@@ -12,3 +12,4 @@
 // export { ConfirmDialog } from './confirm-dialog';
 
 export { Logo } from './logo';
+export { MetricCard } from './metric_card';

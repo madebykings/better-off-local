@@ -146,23 +146,23 @@ function CoverHeader({ retailer }: { retailer: ListingRetailer }) {
         <img
           src={retailer.cover_image_url}
           alt={`${retailer.name ?? 'Business'} cover`}
-          className="h-40 w-full object-cover"
+          className="w-full object-cover aspect-[16/9]"
         />
       ) : (
-        <div className="flex h-40 w-full items-center justify-center bg-gradient-to-br from-gray-200 to-gray-300">
-          <p className="text-xs text-gray-400">No cover image</p>
+        <div className="flex w-full items-end justify-start bg-gradient-to-br from-[#1B4332] to-[#2D6A4F] aspect-[16/9] px-4 pb-4">
+          <span className="text-[11px] font-medium text-white/40">No cover image</span>
         </div>
       )}
-      <div className="absolute -bottom-6 left-4">
+      <div className="absolute -bottom-5 left-4">
         {retailer.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={retailer.logo_url}
             alt="Logo"
-            className="h-12 w-12 rounded-xl border-2 border-white bg-white object-contain shadow-sm"
+            className="h-14 w-14 rounded-xl border-2 border-white bg-white object-contain shadow-md"
           />
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-white bg-gray-100 shadow-sm">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl border-2 border-white bg-gray-100 shadow-md">
             <span className="text-[9px] font-medium text-gray-400">Logo</span>
           </div>
         )}
@@ -173,7 +173,7 @@ function CoverHeader({ retailer }: { retailer: ListingRetailer }) {
 
 function NameBlock({ retailer, categories }: { retailer: ListingRetailer; categories: ListingCategory[] }) {
   return (
-    <div className="px-4 pt-8">
+    <div className="px-4 pt-9">
       <h2 className="text-lg font-bold text-gray-900">
         {retailer.name ?? <span className="text-gray-400">Business name</span>}
       </h2>
@@ -323,11 +323,14 @@ export function RetailerListingCard({ data }: { data: ListingCardData }) {
   const hasHours = Boolean(data.location?.opening_hours_json);
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_20px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]">
-      {/* Simulated platform chrome */}
-      <div className="flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
-        <span className="text-sm font-semibold text-green-700">Better Off Local</span>
-        <div className="h-6 w-6 rounded-full bg-gray-200" />
+    <div className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_20px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04] max-w-sm mx-auto">
+      {/* Simulated app nav bar */}
+      <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-3">
+        <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+        </svg>
+        <span className="text-sm font-semibold text-[#1B4332] flex-1">Better Off Local</span>
+        <div className="h-7 w-7 rounded-full bg-gray-100 border border-gray-200" />
       </div>
 
       <CoverHeader retailer={data.retailer} />
