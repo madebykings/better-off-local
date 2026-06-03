@@ -9,6 +9,7 @@ const navItems = [
   { href: '/review',        label: 'Review',        icon: '🔍' },
   { href: '/crm',           label: 'Growth CRM',    icon: '📈' },
   { href: '/retailers',     label: 'Retailers',     icon: '🏪' },
+  { href: '/venues',        label: 'Venues',        icon: '📍' },
   { href: '/offers',        label: 'Offers',        icon: '🏷️' },
   { href: '/members',       label: 'Members',       icon: '👥' },
   { href: '/redemptions',   label: 'Redemptions',   icon: '✅' },

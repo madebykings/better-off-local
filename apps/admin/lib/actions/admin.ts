@@ -234,7 +234,9 @@ export async function setVenueRegion(formData: FormData): Promise<void> {
     metadata_json: { region_id: regionId },
   });
 
-  revalidatePath(`/retailers`);
+  revalidatePath('/retailers');
+  revalidatePath('/venues');
+  revalidatePath(`/venues/${locationId}`);
 }
 
 export async function setVenueBillingStatus(formData: FormData): Promise<void> {
@@ -377,6 +379,7 @@ export async function deactivateRetailerVenue(formData: FormData): Promise<void>
   });
 
   revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/venues');
 }
 
 // ---------------------------------------------------------------------------
@@ -423,6 +426,8 @@ export async function approveVenue(formData: FormData): Promise<void> {
   });
 
   revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/venues');
+  revalidatePath(`/venues/${locationId}`);
   revalidatePath('/featured');
 }
 
@@ -469,6 +474,8 @@ export async function rejectVenue(formData: FormData): Promise<void> {
   });
 
   revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/venues');
+  revalidatePath(`/venues/${locationId}`);
   revalidatePath('/featured');
 }
 
@@ -516,6 +523,8 @@ export async function toggleVenueFeatured(formData: FormData): Promise<void> {
   });
 
   revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/venues');
+  revalidatePath(`/venues/${locationId}`);
   revalidatePath('/featured');
 }
 
@@ -644,6 +653,8 @@ export async function updateVenueDetails(formData: FormData): Promise<void> {
   });
 
   revalidatePath(`/retailers/${retailerId}`);
+  revalidatePath('/venues');
+  revalidatePath(`/venues/${locationId}`);
 }
 
 export async function updateAdminVenueOpeningHours(
@@ -686,6 +697,8 @@ export async function updateAdminVenueOpeningHours(
       metadata_json:    { retailer_id: loc.retailer_id },
     });
     revalidatePath(`/retailers/${loc.retailer_id}`);
+    revalidatePath('/venues');
+    revalidatePath(`/venues/${locationId}`);
   }
 
   return null;

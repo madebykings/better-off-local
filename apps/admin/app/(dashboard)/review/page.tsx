@@ -9,59 +9,11 @@ interface Props {
   searchParams: Promise<{ tab?: string }>;
 }
 
-// ---------------------------------------------------------------------------
-// Quality score (same weights as retailer portal listing_preview.tsx)
-// ---------------------------------------------------------------------------
-
-function computeQualityScore(params: {
-  name: string | null;
-  description: string | null;
-  tagline: string | null;
-  cover_image_url: string | null;
-  logo_url: string | null;
-  phone: string | null;
-  email: string | null;
-  categoryCount: number;
-  hasAddress: boolean;
-  hasOpenDay: boolean;
-  hasContact: boolean;
-  hasOffer: boolean;
-}): number {
-  let score = 0;
-  if (params.name?.trim())                                 score += 10;
-  if (params.description?.trim() || params.tagline?.trim()) score += 10;
-  if (params.cover_image_url)                              score += 15;
-  if (params.logo_url)                                     score += 5;
-  if (params.categoryCount > 0)                           score += 10;
-  if (params.hasAddress)                                   score += 10;
-  if (params.hasOpenDay)                                   score += 10;
-  if (params.hasContact)                                   score += 15;
-  if (params.hasOffer)                                     score += 15;
-  return score;
-}
-
-// ---------------------------------------------------------------------------
-// Quality score badge — 95–100 green, 75–94 amber, <75 red
-// ---------------------------------------------------------------------------
-
-function QualityBadge({ score }: { score: number }) {
-  const cls =
-    score >= 95
-      ? 'bg-green-100 text-green-700 border-green-200'
-      : score >= 75
-        ? 'bg-amber-100 text-amber-700 border-amber-200'
-        : 'bg-red-100 text-red-700 border-red-200';
-
-  return (
-    <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-semibold tabular-nums ${cls}`}>
-      {score}/100
-    </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Opening hours helper (inlined)
-// ---------------------------------------------------------------------------
+const TABS = [
+  { id: 'pending',  label: 'Pending' },
+  { id: 'rejected', label: 'Rejected' },
+  { id: 'all',      label: 'All submitted' },
+] as const;
 
 const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
 
@@ -74,15 +26,45 @@ function hasOpenDay(raw: unknown): boolean {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
+function computeVenueQuality(params: {
+  name: string | null;
+  description: string | null;
+  short_description: string | null;
+  cover_image_url: string | null;
+  logo_url: string | null;
+  phone: string | null;
+  website_url: string | null;
+  hasAddress: boolean;
+  hasOpenDay: boolean;
+  hasCategory: boolean;
+  hasOffer: boolean;
+}): number {
+  let score = 0;
+  if (params.name?.trim())                                             score += 10;
+  if (params.description?.trim() || params.short_description?.trim()) score += 10;
+  if (params.cover_image_url)                                          score += 20;
+  if (params.logo_url)                                                 score += 5;
+  if (params.hasAddress)                                               score += 15;
+  if (params.hasOpenDay)                                               score += 10;
+  if (params.phone?.trim() || params.website_url?.trim())              score += 15;
+  if (params.hasCategory)                                              score += 5;
+  if (params.hasOffer)                                                 score += 10;
+  return score;
+}
 
-const TABS = [
-  { id: 'pending',           label: 'Pending' },
-  { id: 'changes_requested', label: 'Changes requested' },
-  { id: 'all',               label: 'All submitted' },
-] as const;
+function QualityBadge({ score }: { score: number }) {
+  const cls =
+    score >= 80
+      ? 'bg-green-100 text-green-700 border-green-200'
+      : score >= 55
+        ? 'bg-amber-100 text-amber-700 border-amber-200'
+        : 'bg-red-100 text-red-700 border-red-200';
+  return (
+    <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-semibold tabular-nums ${cls}`}>
+      {score}/100
+    </span>
+  );
+}
 
 function formatDate(iso: string | null) {
   if (!iso) return '—';
@@ -95,215 +77,173 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
   const activeTab = tab ?? 'pending';
   const supabase = createServiceClient();
 
-  // ── Fetch retailers in the review queue ────────────────────────────────────
   let query = supabase
-    .from('retailers')
+    .from('retailer_locations')
     .select(
-      'id, name, tagline, description, logo_url, cover_image_url, phone, email, approval_status, submitted_at, updated_at',
+      'id, name, address_line_1, postcode, cover_image_url, logo_url, phone, website_url, short_description, description, opening_hours_json, review_status, submitted_at, updated_at, retailer_id, retailers(id, name)',
     )
-    .eq('onboarding_step', 'submitted')
     .order('submitted_at', { ascending: true, nullsFirst: false });
 
   if (activeTab === 'pending') {
-    query = query.eq('approval_status', 'pending');
-  } else if (activeTab === 'changes_requested') {
-    query = query.eq('approval_status', 'changes_requested');
+    query = query.eq('review_status', 'pending');
+  } else if (activeTab === 'rejected') {
+    query = query.eq('review_status', 'rejected');
   } else {
-    query = query.in('approval_status', ['pending', 'approved', 'rejected', 'changes_requested']);
+    query = query.in('review_status', ['pending', 'approved', 'rejected']);
   }
 
-  const { data: retailers } = await query;
-  const ids = (retailers ?? []).map((r) => r.id);
+  const { data: venueRows } = await query;
+  const venues = (venueRows ?? []) as Array<{
+    id: string;
+    name: string | null;
+    address_line_1: string | null;
+    postcode: string | null;
+    cover_image_url: string | null;
+    logo_url: string | null;
+    phone: string | null;
+    website_url: string | null;
+    short_description: string | null;
+    description: string | null;
+    opening_hours_json: unknown;
+    review_status: string;
+    submitted_at: string | null;
+    updated_at: string | null;
+    retailer_id: string;
+    retailers: { id: string; name: string } | { id: string; name: string }[] | null;
+  }>;
 
-  if (ids.length === 0) {
+  if (venues.length === 0) {
     return (
       <QueueLayout activeTab={activeTab}>
         <div className="flex flex-col items-center justify-center rounded-lg border border-gray-200 py-20 text-center">
           <p className="text-3xl">✅</p>
           <p className="mt-3 font-medium text-gray-600">Queue is clear</p>
-          <p className="mt-1 text-sm text-gray-400">No retailers awaiting review.</p>
+          <p className="mt-1 text-sm text-gray-400">No venues awaiting review.</p>
         </div>
       </QueueLayout>
     );
   }
 
-  // ── Batch-fetch enrichment data ────────────────────────────────────────────
+  const retailerIds = [...new Set(venues.map((v) => v.retailer_id))];
+
   const [
     { data: categoryRows },
-    { data: locationRows },
     { data: offerRows },
-    { data: linkRows },
   ] = await Promise.all([
     supabase
       .from('retailer_categories')
       .select('retailer_id')
-      .in('retailer_id', ids),
-    supabase
-      .from('retailer_locations')
-      .select('retailer_id, address_line_1, postcode, opening_hours_json')
-      .in('retailer_id', ids)
-      .eq('is_primary', true),
+      .in('retailer_id', retailerIds),
     supabase
       .from('offers')
-      .select('retailer_id, title, value_text')
-      .in('retailer_id', ids)
-      .eq('onboarding_source', 'first-offer'),
-    supabase
-      .from('retailer_links')
       .select('retailer_id')
-      .in('retailer_id', ids),
+      .in('retailer_id', retailerIds)
+      .eq('status', 'live'),
   ]);
 
-  // Build lookup maps by retailer_id.
-  const catCounts = new Map<string, number>();
-  for (const row of categoryRows ?? []) {
-    catCounts.set(row.retailer_id, (catCounts.get(row.retailer_id) ?? 0) + 1);
-  }
+  const categoryRetailers = new Set((categoryRows ?? []).map((r) => r.retailer_id));
+  const offerRetailers    = new Set((offerRows ?? []).map((r) => r.retailer_id));
 
-  const locationMap = new Map<string, { address_line_1: string | null; postcode: string | null; opening_hours_json: unknown }>();
-  for (const row of locationRows ?? []) {
-    locationMap.set(row.retailer_id, row);
-  }
-
-  const offerMap = new Map<string, { title: string | null; value_text: string | null }>();
-  for (const row of offerRows ?? []) {
-    offerMap.set(row.retailer_id, row);
-  }
-
-  const linkCounts = new Map<string, number>();
-  for (const row of linkRows ?? []) {
-    linkCounts.set(row.retailer_id, (linkCounts.get(row.retailer_id) ?? 0) + 1);
-  }
-
-  // ── Build enriched rows ────────────────────────────────────────────────────
-  const rows = (retailers ?? []).map((r) => {
-    const loc      = locationMap.get(r.id);
-    const offer    = offerMap.get(r.id);
-    const catCount = catCounts.get(r.id) ?? 0;
-    const linkCount = linkCounts.get(r.id) ?? 0;
-
-    const hasAddress  = Boolean(loc?.address_line_1?.trim() && loc?.postcode?.trim());
-    const hasHours    = hasOpenDay(loc?.opening_hours_json);
-    const hasContact  = Boolean(r.phone?.trim()) || Boolean(r.email?.trim()) || linkCount > 0;
-    const hasOffer    = Boolean(offer?.title?.trim() && offer?.value_text?.trim());
-
-    const score = computeQualityScore({
-      name:            r.name,
-      description:     r.description,
-      tagline:         r.tagline,
-      cover_image_url: r.cover_image_url,
-      logo_url:        r.logo_url,
-      phone:           r.phone,
-      email:           r.email,
-      categoryCount:   catCount,
+  const rows = venues.map((v) => {
+    const retailer = Array.isArray(v.retailers) ? v.retailers[0] : v.retailers;
+    const hasAddress = Boolean(v.address_line_1?.trim() && v.postcode?.trim());
+    const hasHours   = hasOpenDay(v.opening_hours_json);
+    const score = computeVenueQuality({
+      name:              v.name,
+      description:       v.description,
+      short_description: v.short_description,
+      cover_image_url:   v.cover_image_url,
+      logo_url:          v.logo_url,
+      phone:             v.phone,
+      website_url:       v.website_url,
       hasAddress,
-      hasOpenDay:      hasHours,
-      hasContact,
-      hasOffer,
+      hasOpenDay:        hasHours,
+      hasCategory:       categoryRetailers.has(v.retailer_id),
+      hasOffer:          offerRetailers.has(v.retailer_id),
     });
-
-    return { ...r, offer, catCount, score };
+    return { ...v, retailer, score };
   });
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <QueueLayout activeTab={activeTab}>
       <div className="overflow-hidden rounded-lg border border-gray-200">
         <table className="w-full text-sm">
           <thead className="border-b border-gray-200 bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Retailer
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                First offer
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Submitted
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Quality
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Status
-              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Venue</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Retailer</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Submitted</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Quality</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.map((r) => (
-              <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                {/* Retailer cell: cover thumb + logo + name */}
+            {rows.map((v) => (
+              <tr key={v.id} className="hover:bg-gray-50 transition-colors">
+                {/* Venue cell */}
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="relative shrink-0">
-                      {r.cover_image_url ? (
+                      {v.cover_image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={r.cover_image_url}
-                          alt=""
-                          className="h-12 w-20 rounded-md object-cover"
-                        />
+                        <img src={v.cover_image_url} alt="" className="h-12 w-20 rounded-md object-cover" />
                       ) : (
                         <div className="h-12 w-20 rounded-md bg-gray-200" />
                       )}
-                      {r.logo_url ? (
+                      {v.logo_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={r.logo_url}
-                          alt=""
-                          className="absolute -bottom-1.5 -right-1.5 h-7 w-7 rounded-md border border-white bg-white object-contain shadow-sm"
-                        />
+                        <img src={v.logo_url} alt="" className="absolute -bottom-1.5 -right-1.5 h-7 w-7 rounded-md border border-white bg-white object-contain shadow-sm" />
                       ) : (
                         <div className="absolute -bottom-1.5 -right-1.5 h-7 w-7 rounded-md border border-white bg-gray-100 shadow-sm" />
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{r.name ?? '—'}</p>
-                      <p className="text-xs text-gray-400">{r.catCount} categor{r.catCount === 1 ? 'y' : 'ies'}</p>
+                      <p className="font-medium text-gray-900">{v.name ?? v.address_line_1 ?? 'Unnamed venue'}</p>
+                      {v.address_line_1 && (
+                        <p className="text-xs text-gray-400">{[v.address_line_1, v.postcode].filter(Boolean).join(', ')}</p>
+                      )}
                     </div>
                   </div>
                 </td>
 
-                {/* First offer */}
+                {/* Retailer */}
                 <td className="px-4 py-3">
-                  {r.offer ? (
-                    <div>
-                      <p className="font-medium text-gray-800">{r.offer.value_text}</p>
-                      <p className="text-xs text-gray-500">{r.offer.title}</p>
-                    </div>
+                  {v.retailer ? (
+                    <Link href={`/retailers/${v.retailer.id}`} className="font-medium text-gray-800 hover:text-green-700">
+                      {v.retailer.name}
+                    </Link>
                   ) : (
-                    <span className="text-xs text-gray-400">No offer</span>
+                    <span className="text-gray-400">—</span>
                   )}
                 </td>
 
                 {/* Submitted date */}
                 <td className="px-4 py-3 whitespace-nowrap text-gray-500">
-                  {formatDate(r.submitted_at ?? r.updated_at)}
+                  {formatDate(v.submitted_at ?? v.updated_at)}
                 </td>
 
                 {/* Quality score */}
                 <td className="px-4 py-3">
-                  <QualityBadge score={r.score} />
+                  <QualityBadge score={v.score} />
                 </td>
 
-                {/* Approval status */}
+                {/* Review status */}
                 <td className="px-4 py-3">
                   <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium capitalize ${
-                    r.approval_status === 'pending'           ? 'border-amber-200 bg-amber-100 text-amber-800' :
-                    r.approval_status === 'approved'          ? 'border-green-200 bg-green-100 text-green-800' :
-                    r.approval_status === 'rejected'          ? 'border-red-200 bg-red-100 text-red-800' :
-                    r.approval_status === 'changes_requested' ? 'border-orange-200 bg-orange-100 text-orange-800' :
+                    v.review_status === 'pending'  ? 'border-amber-200 bg-amber-100 text-amber-800' :
+                    v.review_status === 'approved' ? 'border-green-200 bg-green-100 text-green-800' :
+                    v.review_status === 'rejected' ? 'border-red-200 bg-red-100 text-red-800' :
                     'border-gray-200 bg-gray-100 text-gray-600'
                   }`}>
-                    {r.approval_status.replace('_', ' ')}
+                    {v.review_status}
                   </span>
                 </td>
 
                 {/* Review link */}
                 <td className="px-4 py-3 text-right">
                   <Link
-                    href={`/retailers/${r.id}`}
+                    href={`/venues/${v.id}`}
                     className="font-medium text-green-700 hover:text-green-900"
                   >
                     Review →
@@ -318,36 +258,23 @@ export default async function ReviewQueuePage({ searchParams }: Props) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Layout wrapper (shared between empty state and table view)
-// ---------------------------------------------------------------------------
-
-function QueueLayout({
-  activeTab,
-  children,
-}: {
-  activeTab: string;
-  children: React.ReactNode;
-}) {
+function QueueLayout({ activeTab, children }: { activeTab: string; children: React.ReactNode }) {
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Review queue</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Retailers that have submitted for approval. Oldest submissions first.
+          Venues awaiting review. Oldest submissions first. Approve or reject from the venue page.
         </p>
       </div>
 
-      {/* Tabs */}
       <div className="mb-4 flex gap-1 rounded-lg bg-gray-100 p-1 w-fit">
         {TABS.map((t) => (
           <Link
             key={t.id}
             href={`/review${t.id === 'pending' ? '' : `?tab=${t.id}`}`}
             className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-              activeTab === t.id
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
+              activeTab === t.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             {t.label}

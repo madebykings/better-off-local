@@ -3,97 +3,39 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
-import { ReviewActionPanel, StatusBadge } from '@/components/review/review_action_panel';
-import { ReviewTimeline } from '@/components/review/review_timeline';
 import {
-  approveRetailer,
-  rejectRetailer,
-  requestRetailerChanges,
-} from '@/lib/actions/moderation';
-import {
-  setVenueAllowanceOverride,
-  deactivateRetailerVenue,
-  setVenueRegion,
-  setVenueBillingStatus,
-  toggleVenueFeatured,
-  approveVenue,
-  rejectVenue,
   updateRetailerDetails,
-  updateVenueDetails,
-  updateAdminVenueOpeningHours,
+  setVenueAllowanceOverride,
+  deactivateRetailer,
 } from '@/lib/actions/admin';
-import { AdminOpeningHoursEditor } from '@/components/venue/opening_hours_editor';
-import { parseOpeningHours } from '@/lib/utils/opening_hours';
-import { AdminVenueImageSlot } from '@/components/venue/venue_image_upload';
 
-export const metadata: Metadata = { title: 'Retailer review – Admin' };
+export const metadata: Metadata = { title: 'Retailer – Admin' };
 
 interface Props {
   params: Promise<{ retailerId: string }>;
 }
 
-// ---------------------------------------------------------------------------
-// Quality score (same weights as review queue + retailer portal)
-// ---------------------------------------------------------------------------
-
-const DAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
-
-function hasOpenDay(raw: unknown): boolean {
-  if (!raw || typeof raw !== 'object') return false;
-  return DAY_KEYS.some((day) => {
-    const entry = (raw as Record<string, unknown>)[day];
-    if (!entry || typeof entry !== 'object') return false;
-    return (entry as Record<string, unknown>).open === true;
-  });
-}
-
-function computeQualityScore(params: {
-  name: string | null;
-  description: string | null;
-  tagline: string | null;
-  cover_image_url: string | null;
-  logo_url: string | null;
-  phone: string | null;
-  email: string | null;
-  categoryCount: number;
-  hasAddress: boolean;
-  hasOpenDay: boolean;
-  hasContact: boolean;
-  hasOffer: boolean;
-}): number {
-  let score = 0;
-  if (params.name?.trim())                                   score += 10;
-  if (params.description?.trim() || params.tagline?.trim()) score += 10;
-  if (params.cover_image_url)                               score += 15;
-  if (params.logo_url)                                      score += 5;
-  if (params.categoryCount > 0)                            score += 10;
-  if (params.hasAddress)                                    score += 10;
-  if (params.hasOpenDay)                                    score += 10;
-  if (params.hasContact)                                    score += 15;
-  if (params.hasOffer)                                      score += 15;
-  return score;
-}
-
-function QualityBadge({ score }: { score: number }) {
-  const cls =
-    score >= 95
-      ? 'bg-green-100 text-green-700 border-green-200'
-      : score >= 75
-        ? 'bg-amber-100 text-amber-700 border-amber-200'
-        : 'bg-red-100 text-red-700 border-red-200';
+function AccountStatusBadge({ isActive, approvalStatus }: { isActive: boolean; approvalStatus: string }) {
+  if (!isActive || approvalStatus === 'suspended') {
+    return (
+      <span className="inline-flex items-center rounded border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+        {approvalStatus === 'suspended' ? 'Suspended' : 'Inactive'}
+      </span>
+    );
+  }
   return (
-    <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-semibold tabular-nums ${cls}`}>
-      {score}/100
+    <span className="inline-flex items-center rounded border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+      Active
     </span>
   );
 }
 
 function VenueReviewBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    draft:    { label: 'Draft',          cls: 'bg-gray-100 text-gray-600 border-gray-200' },
-    pending:  { label: 'Pending review', cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-    approved: { label: 'Approved',       cls: 'bg-green-100 text-green-700 border-green-200' },
-    rejected: { label: 'Rejected',       cls: 'bg-red-100 text-red-700 border-red-200' },
+    draft:    { label: 'Draft',    cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+    pending:  { label: 'Pending',  cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+    approved: { label: 'Approved', cls: 'bg-green-100 text-green-700 border-green-200' },
+    rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-700 border-red-200' },
   };
   const { label, cls } = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-600 border-gray-200' };
   return (
@@ -103,10 +45,6 @@ function VenueReviewBadge({ status }: { status: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
-
 export default async function RetailerDetailPage({ params }: Props) {
   await requireAdmin();
   const { retailerId } = await params;
@@ -114,716 +52,214 @@ export default async function RetailerDetailPage({ params }: Props) {
 
   const [
     { data: retailer },
-    { data: categoryRows },
-    { data: location },
-    { data: links },
-    { data: offer },
-    { data: auditRows },
-    { data: venues, error: venuesError },
+    { data: venues },
     { data: subData },
-    { data: activeRegions },
   ] = await Promise.all([
     supabase
       .from('retailers')
-      .select('*, name, tagline, description, logo_url, cover_image_url, phone, email, approval_status, onboarding_step, submitted_at, updated_at, slug')
+      .select('id, name, slug, tagline, short_description, description, contact_name, phone, email, business_type, approval_status, visibility_status, is_active, created_at, updated_at')
       .eq('id', retailerId)
       .single(),
     supabase
-      .from('retailer_categories')
-      .select('categories(name, slug)')
-      .eq('retailer_id', retailerId),
-    supabase
       .from('retailer_locations')
-      .select('address_line_1, address_line_2, town, county, postcode, opening_hours_json')
-      .eq('retailer_id', retailerId)
-      .eq('is_primary', true)
-      .maybeSingle(),
-    supabase
-      .from('retailer_links')
-      .select('type, url')
-      .eq('retailer_id', retailerId),
-    supabase
-      .from('offers')
-      .select('id, title, value_text, description, offer_type, start_at, end_at')
-      .eq('retailer_id', retailerId)
-      .eq('onboarding_source', 'first-offer')
-      .maybeSingle(),
-    supabase
-      .from('admin_actions')
-      .select('id, action_type, reason, created_at, profiles(full_name)')
-      .eq('target_table', 'retailers')
-      .eq('target_id', retailerId)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('retailer_locations')
-      .select('id, name, address_line_1, address_line_2, town, county, postcode, latitude, longitude, is_primary, is_active, is_featured, region_id, billing_status, grace_period_ends_at, opening_hours_json, logo_url, cover_image_url, phone, website_url, short_description, description, review_status, review_notes, submitted_at')
+      .select('id, name, address_line_1, town, postcode, is_primary, is_active, is_featured, review_status, billing_status')
       .eq('retailer_id', retailerId)
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true }),
     supabase
       .from('retailer_subscriptions')
-      .select('extra_venues_quantity, venue_allowance_override')
+      .select('status, current_period_end, extra_venues_quantity, venue_allowance_override')
       .eq('retailer_id', retailerId)
-      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle(),
-    supabase
-      .from('regions')
-      .select('id, name, member_threshold, is_active')
-      .eq('is_active', true)
-      .order('name'),
   ]);
 
   if (!retailer) notFound();
 
-  // Offer rules (sequential — depends on offer.id).
-  let offerRules = null;
-  if (offer?.id) {
-    const { data: rules } = await supabase
-      .from('offer_rules')
-      .select('max_redemptions_per_user, max_redemptions_per_day, cooldown_hours, max_redemptions_total')
-      .eq('offer_id', offer.id)
-      .maybeSingle();
-    offerRules = rules ?? null;
-  }
+  const allVenues   = venues ?? [];
+  const activeVenues = allVenues.filter((v) => v.is_active);
+  const extraQty    = subData?.extra_venues_quantity ?? 0;
+  const computed    = 1 + extraQty;
+  const override    = subData?.venue_allowance_override ?? null;
+  const allowance   = override ?? computed;
 
-  // ── Categories for quality score ────────────────────────────────────────
-  const categories = (categoryRows ?? [])
-    .map((row) => (row.categories as unknown) as { name: string; slug: string } | null)
-    .filter((c): c is { name: string; slug: string } => Boolean(c));
+  const subStatus   = subData?.status ?? null;
+  const subEnd      = subData?.current_period_end ?? null;
 
-  // ── Compute quality score ──────────────────────────────────────────────
-  const hasAddr = Boolean(location?.address_line_1?.trim() && location?.postcode?.trim());
-  const hasHrs  = hasOpenDay(location?.opening_hours_json);
-  const hasCtc  = Boolean(retailer.phone?.trim()) || Boolean(retailer.email?.trim()) || (links ?? []).length > 0;
-  const hasOff  = Boolean(offer?.title?.trim() && offer?.value_text?.trim());
+  const BILLING_BADGES: Record<string, string> = {
+    free_growth_region: 'bg-blue-50 text-blue-700 border-blue-200',
+    paid_required:      'bg-amber-50 text-amber-700 border-amber-200',
+    paid:               'bg-green-50 text-green-700 border-green-200',
+    admin_waived:       'bg-purple-50 text-purple-700 border-purple-200',
+    inactive:           'bg-gray-50 text-gray-500 border-gray-200',
+  };
 
-  const score = computeQualityScore({
-    name:            retailer.name,
-    description:     retailer.description,
-    tagline:         retailer.tagline,
-    cover_image_url: retailer.cover_image_url,
-    logo_url:        retailer.logo_url,
-    phone:           retailer.phone,
-    email:           retailer.email,
-    categoryCount:   categories.length,
-    hasAddress:      hasAddr,
-    hasOpenDay:      hasHrs,
-    hasContact:      hasCtc,
-    hasOffer:        hasOff,
-  });
-
-  // ── Server action wrappers (bind retailer ID) ──────────────────────────
-  async function approve() {
-    'use server';
-    await approveRetailer(retailerId);
-  }
-  async function reject(_: string, note: string) {
-    'use server';
-    await rejectRetailer(retailerId, note);
-  }
-  async function requestChanges(_: string, note: string) {
-    'use server';
-    await requestRetailerChanges(retailerId, note);
-  }
-
-  const submittedAt = retailer.submitted_at
-    ? new Date(retailer.submitted_at).toLocaleDateString('en-GB', {
-        day: 'numeric', month: 'short', year: 'numeric',
-      })
-    : null;
+  const BILLING_LABELS: Record<string, string> = {
+    free_growth_region: 'Free',
+    paid_required:      'Payment req.',
+    paid:               'Paid',
+    admin_waived:       'Waived',
+    inactive:           'Inactive',
+  };
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-3xl">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link href="/review" className="text-sm text-gray-500 hover:text-gray-700">
-            ← Review queue
+      <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link href="/retailers" className="text-sm text-gray-500 hover:text-gray-700">
+            ← Retailers
           </Link>
           <span className="text-gray-300">/</span>
           <h1 className="text-2xl font-semibold">{retailer.name}</h1>
-          <StatusBadge status={retailer.approval_status} />
-          <QualityBadge score={score} />
+          <AccountStatusBadge isActive={retailer.is_active} approvalStatus={retailer.approval_status} />
         </div>
-        <Link
-          href={`/retailers/${retailerId}/preview`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-        >
-          Preview as customer ↗
-        </Link>
       </div>
 
-      {submittedAt && (
-        <p className="mb-5 text-sm text-gray-500">
-          Submitted {submittedAt}
-        </p>
-      )}
+      {/* ── Subscription summary ────────────────────────────────────────── */}
+      <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 mb-6 flex items-center gap-6 text-sm flex-wrap">
+        <div>
+          <span className="text-xs text-gray-400 block">Subscription</span>
+          <span className={`font-medium ${subStatus === 'active' ? 'text-green-700' : 'text-gray-500'}`}>
+            {subStatus ? subStatus.replace('_', ' ') : 'None'}
+          </span>
+        </div>
+        {subEnd && (
+          <div>
+            <span className="text-xs text-gray-400 block">Current period ends</span>
+            <span className="font-medium text-gray-700">
+              {new Date(subEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+        )}
+        <div>
+          <span className="text-xs text-gray-400 block">Venue allowance</span>
+          <span className="font-medium text-gray-700">
+            {activeVenues.length} / {allowance} used
+          </span>
+        </div>
+        <div>
+          <span className="text-xs text-gray-400 block">Visibility</span>
+          <span className="font-medium text-gray-700">{retailer.visibility_status}</span>
+        </div>
+      </div>
 
-      {/* ── Review actions + timeline ───────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
-        <ReviewActionPanel
-          retailerId={retailerId}
-          currentStatus={retailer.approval_status}
-          approveAction={approve}
-          rejectAction={reject}
-          requestChangesAction={requestChanges}
-        />
-        <ReviewTimeline
-          entries={(auditRows ?? []).map((a) => ({
-            id:          a.id,
-            action_type: a.action_type,
-            reason:      a.reason ?? null,
-            created_at:  a.created_at,
-            profiles: Array.isArray(a.profiles)
-              ? (a.profiles[0] ?? null)
-              : (a.profiles ?? null),
-          }))}
-        />
+      {/* ── Account activation ──────────────────────────────────────────── */}
+      <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 mb-6">
+        <p className="text-sm font-semibold text-gray-700 mb-2">Account activation</p>
+        <form action={deactivateRetailer} className="flex items-center gap-3">
+          <input type="hidden" name="id" value={retailerId} />
+          <input type="hidden" name="is_active" value={String(retailer.is_active)} />
+          <button
+            type="submit"
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+              retailer.is_active
+                ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
+                : 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+            }`}
+          >
+            {retailer.is_active ? 'Deactivate account' : 'Reactivate account'}
+          </button>
+          <span className="text-xs text-gray-400">
+            {retailer.is_active
+              ? 'Hides all venues and prevents login to the portal.'
+              : 'Reactivates the account and restores portal access.'}
+          </span>
+        </form>
       </div>
 
       {/* ── Venues ──────────────────────────────────────────────────────── */}
-      <div className="mt-8 max-w-2xl">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">Venues</h2>
-        {(() => {
-          const extraQty    = subData?.extra_venues_quantity ?? 0;
-          const computed    = 1 + extraQty;
-          const override    = subData?.venue_allowance_override ?? null;
-          const allowance   = override ?? computed;
-          const allVenues   = venues ?? [];
-          const activeVenues = allVenues.filter((v: any) => v.is_active);
-          const regions = activeRegions ?? [];
+      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden mb-6">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-700">
+            Venues ({allVenues.length})
+          </h2>
+          <Link href={`/venues?q=${encodeURIComponent(retailer.name)}`} className="text-xs text-green-700 hover:text-green-900">
+            View in Venues ↗
+          </Link>
+        </div>
 
-          const BILLING_BADGES: Record<string, string> = {
-            free_growth_region: 'bg-blue-50 text-blue-700 border-blue-200',
-            paid_required:      'bg-amber-50 text-amber-700 border-amber-200',
-            paid:               'bg-green-50 text-green-700 border-green-200',
-            admin_waived:       'bg-purple-50 text-purple-700 border-purple-200',
-            inactive:           'bg-gray-50 text-gray-500 border-gray-200',
-          };
-
-          return (
-            <div className="space-y-4">
-              {venuesError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  <p className="font-medium">Venue data failed to load</p>
-                  <p className="text-xs mt-1 font-mono">{venuesError.message}</p>
-                  <p className="text-xs mt-1 text-red-600">
-                    Migration 078 or 079 may not have been applied. Run the pending migrations in Supabase SQL Editor.
-                  </p>
-                </div>
-              )}
-
-              {/* Allowance summary */}
-              <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm space-y-1">
-                <p className="font-medium text-gray-700">
-                  {allVenues.length} venue{allVenues.length !== 1 ? 's' : ''} total
-                  {' · '}
-                  {activeVenues.length} active
-                </p>
-                <p className="text-xs text-gray-400">
-                  Billing slots: {activeVenues.length} of {allowance} used
-                  {' · '}Base: 1 · Extra purchased: {extraQty}
-                  {override !== null ? ` · Override: ${override}` : ''}
-                </p>
-              </div>
-
-              {/* Venue list — shows all venues including inactive */}
-              {allVenues.length === 0 ? (
-                <p className="text-sm text-gray-400">No venues.</p>
-              ) : (
-                <div className="space-y-3">
-                  {allVenues.map((v: any) => {
-                    const billingCls = BILLING_BADGES[v.billing_status as string] ?? BILLING_BADGES.inactive;
-                    const regionName = regions.find((r: any) => r.id === v.region_id)?.name ?? null;
-
-                    return (
-                      <div
-                        key={v.id}
-                        className={`rounded-lg border bg-white overflow-hidden ${
-                          v.is_active ? 'border-gray-200' : 'border-gray-200 opacity-60'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between px-4 py-3 gap-4">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-sm font-medium text-gray-800 truncate">
-                                {v.name ?? v.address_line_1 ?? 'Unnamed'}
-                              </p>
-                              {v.is_primary && (
-                                <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
-                                  Primary
-                                </span>
-                              )}
-                              {!v.is_active && (
-                                <span className="shrink-0 rounded border border-gray-300 bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-500">
-                                  Inactive
-                                </span>
-                              )}
-                              <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${billingCls}`}>
-                                {{
-                                free_growth_region: 'Free — growth region',
-                                paid_required:      'Payment required',
-                                paid:               'Paid',
-                                admin_waived:       'Waived',
-                                inactive:           'Inactive',
-                              }[(v.billing_status as string)] ?? (v.billing_status as string).replace(/_/g, ' ')}
-                              </span>
-                              <VenueReviewBadge status={v.review_status ?? 'draft'} />
-                            </div>
-                            {v.name && (
-                              <p className="text-xs text-gray-400 truncate mt-0.5">
-                                {[v.address_line_1, v.town, v.postcode].filter(Boolean).join(', ')}
-                              </p>
-                            )}
-                            {regionName && (
-                              <p className="text-xs text-gray-400 mt-0.5">Region: {regionName}</p>
-                            )}
-                            {v.grace_period_ends_at && (
-                              <p className="text-xs text-amber-600 mt-0.5">
-                                Grace ends: {new Date(v.grace_period_ends_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                              </p>
-                            )}
-                            {(v.review_status === 'rejected') && v.review_notes && (
-                              <p className="text-xs text-red-600 mt-0.5">Rejected: {v.review_notes}</p>
-                            )}
-                          </div>
-                          {activeVenues.length > 1 && !v.is_primary && v.is_active && (
-                            <form action={deactivateRetailerVenue}>
-                              <input type="hidden" name="location_id" value={v.id} />
-                              <input type="hidden" name="retailer_id" value={retailerId} />
-                              <button
-                                type="submit"
-                                onClick={(e) => {
-                                  if (!confirm('Deactivate this venue?')) e.preventDefault();
-                                }}
-                                className="text-xs text-red-500 hover:text-red-700 font-medium shrink-0"
-                              >
-                                Deactivate
-                              </button>
-                            </form>
-                          )}
-                        </div>
-
-                        {/* Region + billing status + featured controls */}
-                        <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex flex-col gap-3">
-                          {/* Venue review controls */}
-                          <div className="flex items-center gap-2 w-full mb-2 pb-2 border-b border-gray-200">
-                            {v.review_status !== 'approved' && (
-                              <form action={approveVenue}>
-                                <input type="hidden" name="location_id" value={v.id} />
-                                <input type="hidden" name="retailer_id" value={retailerId} />
-                                <button
-                                  type="submit"
-                                  className="text-xs font-semibold rounded border border-green-300 bg-green-50 px-2.5 py-1 text-green-800 hover:bg-green-100 transition-colors"
-                                >
-                                  Approve venue
-                                </button>
-                              </form>
-                            )}
-                            {v.review_status === 'approved' && (
-                              <span className="text-xs text-green-700 font-medium">Venue approved</span>
-                            )}
-                            {v.review_status !== 'rejected' && (
-                              <form action={rejectVenue} className="flex items-center gap-1.5 flex-1">
-                                <input type="hidden" name="location_id" value={v.id} />
-                                <input type="hidden" name="retailer_id" value={retailerId} />
-                                <input
-                                  type="text"
-                                  name="review_notes"
-                                  placeholder="Rejection reason (required)"
-                                  className="flex-1 text-xs rounded border border-gray-200 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-red-400 focus:border-red-300"
-                                />
-                                <button
-                                  type="submit"
-                                  className="text-xs font-medium rounded border border-red-200 bg-red-50 px-2.5 py-1 text-red-700 hover:bg-red-100 transition-colors whitespace-nowrap"
-                                >
-                                  Reject
-                                </button>
-                              </form>
-                            )}
-                            {v.review_status === 'rejected' && (
-                              <form action={approveVenue}>
-                                <input type="hidden" name="location_id" value={v.id} />
-                                <input type="hidden" name="retailer_id" value={retailerId} />
-                                <button
-                                  type="submit"
-                                  className="text-xs font-semibold rounded border border-green-300 bg-green-50 px-2.5 py-1 text-green-800 hover:bg-green-100 transition-colors"
-                                >
-                                  Approve venue
-                                </button>
-                              </form>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-3">
-                          {/* Featured toggle */}
-                          <form action={toggleVenueFeatured} className="flex items-center gap-2">
-                            <input type="hidden" name="location_id" value={v.id} />
-                            <input type="hidden" name="retailer_id" value={retailerId} />
-                            <input type="hidden" name="is_featured" value={String(v.is_featured ?? false)} />
-                            <button
-                              type="submit"
-                              className={`text-xs font-medium rounded border px-2 py-1 transition-colors ${
-                                v.is_featured
-                                  ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-                                  : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-                              }`}
-                            >
-                              {v.is_featured ? '⭐ Featured' : 'Set featured'}
-                            </button>
-                          </form>
-
-                          {/* Set region */}
-                          <form action={setVenueRegion} className="flex items-center gap-2">
-                            <input type="hidden" name="location_id" value={v.id} />
-                            <select
-                              name="region_id"
-                              defaultValue={v.region_id ?? ''}
-                              className="text-xs rounded border border-gray-200 px-2 py-1 bg-white
-                                         focus:outline-none focus:ring-1 focus:ring-green-700"
-                            >
-                              <option value="">No region</option>
-                              {regions.map((r: any) => (
-                                <option key={r.id} value={r.id}>{r.name}</option>
-                              ))}
-                            </select>
-                            <button
-                              type="submit"
-                              className="text-xs font-medium text-gray-600 border border-gray-200 rounded px-2 py-1 hover:bg-white transition-colors"
-                            >
-                              Set region
-                            </button>
-                          </form>
-
-                          {/* Set billing status */}
-                          <form action={setVenueBillingStatus} className="flex items-center gap-2">
-                            <input type="hidden" name="location_id" value={v.id} />
-                            <input type="hidden" name="retailer_id" value={retailerId} />
-                            <select
-                              name="billing_status"
-                              defaultValue={v.billing_status}
-                              className="text-xs rounded border border-gray-200 px-2 py-1 bg-white
-                                         focus:outline-none focus:ring-1 focus:ring-green-700"
-                            >
-                              <option value="free_growth_region">Free — growth region</option>
-                              <option value="paid_required">Payment required</option>
-                              <option value="paid">Paid</option>
-                              <option value="admin_waived">Waived by admin</option>
-                            </select>
-                            <button
-                              type="submit"
-                              className="text-xs font-medium text-gray-600 border border-gray-200 rounded px-2 py-1 hover:bg-white transition-colors"
-                            >
-                              Set status
-                            </button>
-                          </form>
-                          </div>
-                        </div>
-
-                        {/* Collapsible opening hours editor */}
-                        <details className="border-t border-gray-100 group">
-                          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 select-none">
-                            <span className="transition-transform group-open:rotate-90">▶</span>
-                            Edit opening hours
-                          </summary>
-                          <div className="px-4 py-4 bg-white">
-                            <AdminOpeningHoursEditor
-                              locationId={v.id}
-                              initialData={parseOpeningHours(v.opening_hours_json)}
-                              saveAction={updateAdminVenueOpeningHours}
-                            />
-                          </div>
-                        </details>
-
-                        {/* Collapsible venue images panel */}
-                        <details className="border-t border-gray-100 group">
-                          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 select-none">
-                            <span className="transition-transform group-open:rotate-90">▶</span>
-                            Edit venue images
-                          </summary>
-                          <div className="px-4 py-4 bg-white space-y-5">
-                            <AdminVenueImageSlot
-                              locationId={v.id}
-                              slot="logo"
-                              label="Venue logo"
-                              hint="JPG, PNG, or WebP · max 5 MB · displayed at 400×400"
-                              currentUrl={(v.logo_url as string | null) ?? null}
-                            />
-                            <AdminVenueImageSlot
-                              locationId={v.id}
-                              slot="cover"
-                              label="Cover image"
-                              hint="JPG, PNG, or WebP · max 10 MB · displayed at 1600×600"
-                              currentUrl={(v.cover_image_url as string | null) ?? null}
-                            />
-                          </div>
-                        </details>
-
-                        {/* Collapsible consumer listing preview */}
-                        <details className="border-t border-gray-100 group">
-                          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 select-none">
-                            <span className="transition-transform group-open:rotate-90">▶</span>
-                            Consumer listing preview
-                          </summary>
-                          <div className="px-4 py-4 bg-white">
-                            <div className="max-w-xs rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                              {(v.cover_image_url || retailer.cover_image_url) && (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img
-                                  src={(v.cover_image_url || retailer.cover_image_url) as string}
-                                  alt=""
-                                  className="w-full h-28 object-cover"
-                                />
-                              )}
-                              <div className="p-3 space-y-1">
-                                <div className="flex items-center gap-2">
-                                  {(v.logo_url || retailer.logo_url) && (
-                                    /* eslint-disable-next-line @next/next/no-img-element */
-                                    <img
-                                      src={(v.logo_url || retailer.logo_url) as string}
-                                      alt=""
-                                      className="w-8 h-8 rounded object-cover border border-gray-100 shrink-0"
-                                    />
-                                  )}
-                                  <p className="text-sm font-semibold text-gray-900 truncate">
-                                    {v.name ?? retailer.name}
-                                  </p>
-                                </div>
-                                {(v as any).short_description && (
-                                  <p className="text-xs text-gray-500 line-clamp-2">{(v as any).short_description}</p>
-                                )}
-                                {categories.length > 0 && (
-                                  <p className="text-xs text-gray-400">
-                                    {categories.map((c) => c.name).join(' · ')}
-                                  </p>
-                                )}
-                                <p className="text-xs text-gray-400">
-                                  {[v.address_line_1, v.town, v.postcode].filter(Boolean).join(', ')}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </details>
-
-                        {/* Collapsible venue details edit form */}
-                        <details className="border-t border-gray-100 group">
-                          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-2 text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 select-none">
-                            <span className="transition-transform group-open:rotate-90">▶</span>
-                            Edit venue details
-                          </summary>
-                          <form action={updateVenueDetails} className="px-4 py-4 bg-white space-y-3">
-                            <input type="hidden" name="location_id" value={v.id} />
-                            <input type="hidden" name="retailer_id" value={retailerId} />
-
-                            {/* Name */}
-                            <div>
-                              <label className="block text-xs text-gray-500 mb-1">Venue name</label>
-                              <input
-                                type="text"
-                                name="name"
-                                defaultValue={v.name ?? ''}
-                                placeholder="e.g. Main Street"
-                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-                              />
-                            </div>
-
-                            {/* Address */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs text-gray-500 mb-1">Address line 1</label>
-                                <input
-                                  type="text"
-                                  name="address_line_1"
-                                  defaultValue={v.address_line_1 ?? ''}
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs text-gray-500 mb-1">Address line 2</label>
-                                <input
-                                  type="text"
-                                  name="address_line_2"
-                                  defaultValue={v.address_line_2 ?? ''}
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs text-gray-500 mb-1">Town / City</label>
-                                <input
-                                  type="text"
-                                  name="town"
-                                  defaultValue={v.town ?? ''}
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs text-gray-500 mb-1">County</label>
-                                <input
-                                  type="text"
-                                  name="county"
-                                  defaultValue={v.county ?? ''}
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs text-gray-500 mb-1">Postcode</label>
-                                <input
-                                  type="text"
-                                  name="postcode"
-                                  defaultValue={v.postcode ?? ''}
-                                  placeholder="FK10 1AA"
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Coordinates */}
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs text-gray-500 mb-1">Latitude</label>
-                                <input
-                                  type="number"
-                                  name="latitude"
-                                  step="any"
-                                  defaultValue={v.latitude ?? ''}
-                                  placeholder="56.1152"
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs text-gray-500 mb-1">Longitude</label>
-                                <input
-                                  type="number"
-                                  name="longitude"
-                                  step="any"
-                                  defaultValue={v.longitude ?? ''}
-                                  placeholder="-3.7683"
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Active state */}
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                id={`is_active_${v.id}`}
-                                name="is_active"
-                                defaultChecked={v.is_active ?? true}
-                                disabled={v.is_primary}
-                                className="h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-green-700 disabled:opacity-50"
-                              />
-                              <label htmlFor={`is_active_${v.id}`} className="text-xs text-gray-600">
-                                Active (visible on platform)
-                                {v.is_primary && <span className="ml-1 text-gray-400">(cannot deactivate primary venue)</span>}
-                              </label>
-                            </div>
-
-                            {/* Venue public content */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-gray-100">
-                              <div>
-                                <label className="block text-xs text-gray-500 mb-1">Venue phone</label>
-                                <input
-                                  type="text"
-                                  name="phone"
-                                  defaultValue={(v as any).phone ?? ''}
-                                  placeholder="e.g. 01259 123456"
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs text-gray-500 mb-1">Venue website</label>
-                                <input
-                                  type="text"
-                                  name="website_url"
-                                  defaultValue={(v as any).website_url ?? ''}
-                                  placeholder="https://yoursite.com"
-                                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-xs text-gray-500 mb-1">Venue short description</label>
-                              <textarea
-                                name="short_description"
-                                defaultValue={(v as any).short_description ?? ''}
-                                rows={2}
-                                placeholder="Brief description shown on the listing card."
-                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 resize-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-gray-500 mb-1">Venue description</label>
-                              <textarea
-                                name="description"
-                                defaultValue={(v as any).description ?? ''}
-                                rows={3}
-                                placeholder="Full marketing copy shown on the venue detail page."
-                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 resize-none"
-                              />
-                            </div>
-                            <div className="pt-1">
-                              <button
-                                type="submit"
-                                className="rounded-lg bg-green-800 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                              >
-                                Save venue
-                              </button>
-                            </div>
-                          </form>
-                        </details>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Allowance override */}
-              <div className="rounded-lg border border-gray-200 bg-white px-4 py-4">
-                <p className="text-sm font-medium text-gray-700 mb-3">Override venue allowance</p>
-                <form action={setVenueAllowanceOverride} className="flex items-center gap-3 flex-wrap">
-                  <input type="hidden" name="retailer_id" value={retailerId} />
-                  <input
-                    type="number"
-                    name="override"
-                    min={1}
-                    defaultValue={override ?? ''}
-                    placeholder={`Computed: ${computed}`}
-                    className="w-28 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900
-                               focus:outline-none focus:ring-2 focus:ring-green-700/20 focus:border-green-700"
-                  />
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors"
+        {allVenues.length === 0 ? (
+          <p className="px-4 py-4 text-sm text-gray-400">No venues yet.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {allVenues.map((v) => {
+              const billingCls = BILLING_BADGES[v.billing_status as string] ?? BILLING_BADGES.inactive;
+              const billingLabel = BILLING_LABELS[v.billing_status as string] ?? (v.billing_status as string).replace(/_/g, ' ');
+              const address = [v.address_line_1, v.town, v.postcode].filter(Boolean).join(', ');
+              return (
+                <div key={v.id} className={`flex items-center justify-between px-4 py-3 gap-4 ${!v.is_active ? 'opacity-60' : ''}`}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-gray-800 truncate">
+                        {v.name ?? v.address_line_1 ?? 'Unnamed'}
+                      </span>
+                      {v.is_primary && (
+                        <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">Primary</span>
+                      )}
+                      {!v.is_active && (
+                        <span className="shrink-0 rounded border border-gray-300 bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-500">Inactive</span>
+                      )}
+                      <VenueReviewBadge status={v.review_status ?? 'draft'} />
+                      <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${billingCls}`}>
+                        {billingLabel}
+                      </span>
+                    </div>
+                    {address && <p className="text-xs text-gray-400 mt-0.5 truncate">{address}</p>}
+                  </div>
+                  <Link
+                    href={`/venues/${v.id}`}
+                    className="shrink-0 text-xs font-medium text-green-700 hover:text-green-900"
                   >
-                    Set override
-                  </button>
-                  {override !== null && (
-                    <form action={setVenueAllowanceOverride}>
-                      <input type="hidden" name="retailer_id" value={retailerId} />
-                      <input type="hidden" name="override" value="" />
-                      <button type="submit" className="text-sm text-gray-400 hover:text-gray-600">
-                        Clear
-                      </button>
-                    </form>
-                  )}
-                </form>
-                <p className="mt-2 text-xs text-gray-400">
-                  Leave blank or clear to revert to the computed value (1 + purchased extras).
-                </p>
-              </div>
-            </div>
-          );
-        })()}
+                    Manage →
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Allowance override */}
+        <div className="border-t border-gray-100 px-4 py-4 bg-gray-50">
+          <p className="text-xs text-gray-500 mb-2">
+            Venue allowance: {activeVenues.length} active · {allowance} allowed (base 1 + {extraQty} purchased{override !== null ? ` · override: ${override}` : ''})
+          </p>
+          <form action={setVenueAllowanceOverride} className="flex items-center gap-3 flex-wrap">
+            <input type="hidden" name="retailer_id" value={retailerId} />
+            <input
+              type="number"
+              name="override"
+              min={1}
+              defaultValue={override ?? ''}
+              placeholder={`Computed: ${computed}`}
+              className="w-28 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-green-700"
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-gray-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 transition-colors"
+            >
+              Set override
+            </button>
+            {override !== null && (
+              <form action={setVenueAllowanceOverride}>
+                <input type="hidden" name="retailer_id" value={retailerId} />
+                <input type="hidden" name="override" value="" />
+                <button type="submit" className="text-sm text-gray-400 hover:text-gray-600">
+                  Clear
+                </button>
+              </form>
+            )}
+          </form>
+        </div>
       </div>
 
-      {/* Edit retailer details */}
-      <div className="mt-6 bg-white rounded-lg border border-gray-200">
-        <div className="px-4 py-3 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">Edit retailer details</h2>
+      {/* ── Edit account details ─────────────────────────────────────────── */}
+      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+          <h2 className="text-sm font-semibold text-gray-700">Account details</h2>
         </div>
-        <form action={updateRetailerDetails} className="p-4 space-y-4 max-w-2xl">
+        <form action={updateRetailerDetails} className="p-4 space-y-4">
           <input type="hidden" name="retailer_id" value={retailerId} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -894,7 +330,7 @@ export default async function RetailerDetailPage({ params }: Props) {
               />
             </div>
           </div>
-          <div className="pt-2">
+          <div>
             <button
               type="submit"
               className="rounded-lg bg-green-800 px-5 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
