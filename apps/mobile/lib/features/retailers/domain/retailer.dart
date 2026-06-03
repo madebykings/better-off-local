@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../offers/domain/offer_summary.dart';
 
@@ -24,16 +25,35 @@ bool _parseBool(dynamic v) {
 // ---------------------------------------------------------------------------
 
 /// A single day's opening hours.
+///
+/// The DB JSON shape (written by admin/retailer portals) is:
+///   { "open": bool, "all_day": bool, "start": "HH:MM"|null, "end": "HH:MM"|null }
+///
+/// Field mapping:
+///   closed  ← !map['open']      (DB 'open' is a boolean: is this day open?)
+///   allDay  ← map['all_day']    (true = open 24 hours; open/close ignored)
+///   open    ← map['start']      (open time string e.g. "09:00")
+///   close   ← map['end']        (close time string e.g. "17:00")
 class DayHours {
-  const DayHours({required this.open, required this.close, required this.closed});
-  final String open;   // e.g. "09:00"
-  final String close;  // e.g. "17:00"
-  final bool closed;
+  const DayHours({
+    required this.open,
+    required this.close,
+    required this.closed,
+    this.allDay = false,
+  });
+
+  final String open;    // open time e.g. "09:00"; empty when closed or all_day
+  final String close;   // close time e.g. "17:00"; empty when closed or all_day
+  final bool closed;    // true when DB open == false
+  final bool allDay;    // true when DB all_day == true (open 24 hours)
 
   factory DayHours.fromMap(Map<String, dynamic> map) => DayHours(
-        open: _parseString(map['open']) ?? '',
-        close: _parseString(map['close']) ?? '',
-        closed: _parseBool(map['closed']),
+        // DB 'open' is the is-open boolean — negate to get 'closed'.
+        closed: !_parseBool(map['open']),
+        allDay: _parseBool(map['all_day']),
+        // DB uses 'start'/'end', not 'open'/'close'.
+        open:  _parseString(map['start']) ?? '',
+        close: _parseString(map['end'])   ?? '',
       );
 }
 
@@ -43,14 +63,23 @@ class OpeningHours {
   final Map<String, DayHours> days;
 
   factory OpeningHours.fromJson(Map<String, dynamic> json) {
-    return OpeningHours({
+    final result = OpeningHours({
       for (final entry in json.entries)
         if (entry.value is Map<String, dynamic>)
           entry.key: DayHours.fromMap(entry.value as Map<String, dynamic>),
     });
+    if (kDebugMode) {
+      final todayKey = _dayKey(DateTime.now().weekday);
+      final today = result.days[todayKey];
+      debugPrint('[OpeningHours] parsed days: ${result.days.map((k, v) => MapEntry(k, v.closed ? 'closed' : v.allDay ? '24h' : '${v.open}–${v.close}'))}');
+      debugPrint('[OpeningHours] today=$todayKey: ${today == null ? 'null' : 'closed=${today.closed} allDay=${today.allDay} open="${today.open}" close="${today.close}"'}');
+      debugPrint('[OpeningHours] isOpenNow=${result.isOpenNow} statusLabel="${result.statusLabel}"');
+    }
+    return result;
   }
 
-  /// Returns "Open now · Closes at HH:MM" or "Closed · Opens {next}" or null.
+  /// Returns "Open now · Closes at HH:MM" / "Open 24 hours" /
+  /// "Closed · Opens {next}" or null when hours are unavailable.
   String? get statusLabel {
     final now = DateTime.now();
     final dayKey = _dayKey(now.weekday);
@@ -62,6 +91,8 @@ class OpeningHours {
       if (next == null) return 'Closed';
       return 'Closed · Opens $next';
     }
+
+    if (today.allDay) return 'Open 24 hours';
 
     final openTime = _parseTime(today.open, now);
     final closeTime = _parseTime(today.close, now);
@@ -81,6 +112,7 @@ class OpeningHours {
     final now = DateTime.now();
     final today = days[_dayKey(now.weekday)];
     if (today == null || today.closed) return false;
+    if (today.allDay) return true;
     final openTime = _parseTime(today.open, now);
     final closeTime = _parseTime(today.close, now);
     if (openTime == null || closeTime == null) return false;
@@ -91,7 +123,8 @@ class OpeningHours {
   bool isClosingSoon({int minutesThreshold = 30}) {
     final now = DateTime.now();
     final today = days[_dayKey(now.weekday)];
-    if (today == null || today.closed) return false;
+    // 24-hour venues never "close soon".
+    if (today == null || today.closed || today.allDay) return false;
     final closeTime = _parseTime(today.close, now);
     if (closeTime == null) return false;
     return now.isBefore(closeTime) &&
@@ -103,10 +136,10 @@ class OpeningHours {
       final next = from.add(Duration(days: i));
       final key = _dayKey(next.weekday);
       final h = days[key];
-      if (h != null && !h.closed && h.open.isNotEmpty) {
-        if (i == 1) return 'tomorrow at ${h.open}';
-        return '${_capitalize(key)} at ${h.open}';
-      }
+      if (h == null || h.closed) continue;
+      final when = i == 1 ? 'tomorrow' : _capitalize(key);
+      if (h.allDay) return when;
+      if (h.open.isNotEmpty) return '$when at ${h.open}';
     }
     return null;
   }
@@ -221,6 +254,9 @@ class Retailer extends Equatable {
 
     OpeningHours? openingHours;
     final ohJson = map['opening_hours_json'];
+    if (kDebugMode) {
+      debugPrint('[Retailer] "${map['name']}": raw opening_hours_json=$ohJson');
+    }
     if (ohJson is Map<String, dynamic>) {
       openingHours = OpeningHours.fromJson(ohJson);
     }

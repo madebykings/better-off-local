@@ -592,9 +592,14 @@ class _DayRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isClosed = dayHours == null || dayHours!.closed;
-    final timeText = isClosed
-        ? 'Closed'
-        : '${dayHours!.open} – ${dayHours!.close}';
+    final String timeText;
+    if (isClosed) {
+      timeText = 'Closed';
+    } else if (dayHours!.allDay) {
+      timeText = 'Open 24 hours';
+    } else {
+      timeText = '${dayHours!.open} – ${dayHours!.close}';
+    }
     final timeColor = isClosed
         ? AppColors.textDisabled
         : (isToday ? AppColors.textPrimary : AppColors.textSecondary);
