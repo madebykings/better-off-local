@@ -35,6 +35,7 @@ class OfferCard extends ConsumerWidget {
     this.compact = false,
     this.isOpenNow = false,
     this.isClosingSoon = false,
+    this.isClosed = false,
   });
 
   final Offer offer;
@@ -42,12 +43,14 @@ class OfferCard extends ConsumerWidget {
   final VoidCallback? onTap;
   final bool compact;
 
-  /// Shows a green "Open now" status badge top-left.
+  /// Shows a green "Open now" badge. Ignored when [isClosingSoon] is true.
   final bool isOpenNow;
 
-  /// Shows an orange "Closing soon" status badge top-left.
-  /// Takes precedence over isOpenNow if both are true.
+  /// Shows an orange "Closing soon" badge. Takes precedence over [isOpenNow].
   final bool isClosingSoon;
+
+  /// Shows a gray "Closed" badge. Only shown when neither open nor closing soon.
+  final bool isClosed;
 
   // Body height is fixed so Spacer() can anchor the redemption rule to bottom.
   static const double _compactBodyHeight = 72.0;
@@ -87,6 +90,7 @@ class OfferCard extends ConsumerWidget {
               isAvailable: isAvailable,
               isOpenNow: isOpenNow,
               isClosingSoon: isClosingSoon,
+              isClosed: isClosed,
               availabilityBadgeLabel:
                   isAvailable ? null : availability?.state.badgeLabel,
               onFavouriteTap: () =>
@@ -128,6 +132,7 @@ class _OfferImageStack extends StatelessWidget {
     required this.isAvailable,
     required this.isOpenNow,
     required this.isClosingSoon,
+    required this.isClosed,
     required this.availabilityBadgeLabel,
     required this.onFavouriteTap,
     required this.imageHeight,
@@ -139,6 +144,7 @@ class _OfferImageStack extends StatelessWidget {
   final bool isAvailable;
   final bool isOpenNow;
   final bool isClosingSoon;
+  final bool isClosed;
   final String? availabilityBadgeLabel;
   final VoidCallback onFavouriteTap;
   final double imageHeight;
@@ -148,7 +154,7 @@ class _OfferImageStack extends StatelessWidget {
   Widget build(BuildContext context) {
     final double heartSize = compact ? 28 : 34;
     final double heartIconSize = compact ? 14 : 16;
-    final bool showStatus = isOpenNow || isClosingSoon;
+    final bool showStatus = isOpenNow || isClosingSoon || isClosed;
 
     return Stack(
       children: [
@@ -165,13 +171,15 @@ class _OfferImageStack extends StatelessWidget {
               : _CoverPlaceholder(),
         ),
 
-        // Status badge — top-left (Open now / Closing soon)
+        // Status badge — top-left (Open now / Closing soon / Closed)
         if (showStatus)
           Positioned(
             top: 8,
             left: 8,
             child: _OfferStatusBadge(
+              isOpenNow: isOpenNow,
               isClosingSoon: isClosingSoon,
+              isClosed: isClosed,
               compact: compact,
             ),
           ),
@@ -250,19 +258,31 @@ class _OfferImageStack extends StatelessWidget {
 
 class _OfferStatusBadge extends StatelessWidget {
   const _OfferStatusBadge({
+    required this.isOpenNow,
     required this.isClosingSoon,
+    required this.isClosed,
     required this.compact,
   });
 
+  final bool isOpenNow;
   final bool isClosingSoon;
+  final bool isClosed;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final Color dotColor = isClosingSoon
-        ? const Color(0xFFF97316)
-        : const Color(0xFF22C55E);
-    final String label = isClosingSoon ? 'Closing soon' : 'Open now';
+    final Color dotColor;
+    final String label;
+    if (isClosingSoon) {
+      dotColor = const Color(0xFFF97316);
+      label = 'Closing soon';
+    } else if (isOpenNow) {
+      dotColor = const Color(0xFF22C55E);
+      label = 'Open now';
+    } else {
+      dotColor = AppColors.textDisabled;
+      label = 'Closed';
+    }
 
     return Container(
       padding: EdgeInsets.symmetric(

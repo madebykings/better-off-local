@@ -373,12 +373,10 @@ class _BusinessInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtitle = retailer.tagline ??
-        retailer.shortDescription ??
-        (retailer.categories.isNotEmpty
-            ? retailer.categories.take(2).join(' · ')
-            : null);
-
+    final categoryLabel = retailer.categories.isNotEmpty
+        ? retailer.categories.take(2).join(' · ')
+        : null;
+    final subtitle = retailer.tagline ?? retailer.shortDescription;
     final distanceText = retailer.distanceKm != null
         ? _formatDistance(retailer.distanceKm!)
         : retailer.town;
@@ -397,6 +395,19 @@ class _BusinessInfo extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        if (categoryLabel != null) ...[
+          const SizedBox(height: 2),
+          Text(
+            categoryLabel,
+            style: TextStyle(
+              color: AppColors.primary,
+              fontSize: compact ? 10.0 : 11.0,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
         if (subtitle != null) ...[
           const SizedBox(height: 2),
           Text(

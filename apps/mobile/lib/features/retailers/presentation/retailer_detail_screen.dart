@@ -160,10 +160,10 @@ class RetailerDetailScreen extends ConsumerWidget {
                         ),
                       ],
                       const SizedBox(height: 16),
-                      if (retailer.openingHours != null)
-                        _OpeningHoursRow(hours: retailer.openingHours!),
-                      if (retailer.openingHours != null)
-                        const SizedBox(height: 12),
+                      if (retailer.openingHours != null) ...[
+                        _OpeningHoursSection(hours: retailer.openingHours!),
+                        const SizedBox(height: 16),
+                      ],
                       _ContactRow(retailer: retailer),
                       const SizedBox(height: 28),
                       Text('Offers',
@@ -486,38 +486,145 @@ class _OfferPickerSheet extends StatelessWidget {
       );
 }
 
-// ── Opening hours row ───────────────────────────────────────────────────────
+// ── Opening hours section (status + weekly schedule) ───────────────────────
 
-class _OpeningHoursRow extends StatelessWidget {
-  const _OpeningHoursRow({required this.hours});
+class _OpeningHoursSection extends StatelessWidget {
+  const _OpeningHoursSection({required this.hours});
   final OpeningHours hours;
+
+  static const _dayKeys = [
+    'monday', 'tuesday', 'wednesday', 'thursday', 'friday',
+    'saturday', 'sunday',
+  ];
+  static const _dayLabels = {
+    'monday': 'Mon', 'tuesday': 'Tue', 'wednesday': 'Wed',
+    'thursday': 'Thu', 'friday': 'Fri', 'saturday': 'Sat', 'sunday': 'Sun',
+  };
 
   @override
   Widget build(BuildContext context) {
-    final label = hours.statusLabel;
-    if (label == null) return const SizedBox.shrink();
-
+    final isClosingSoon = hours.isClosingSoon();
     final isOpen = hours.isOpenNow;
-    return Row(
+    final statusLabel = hours.statusLabel;
+
+    final Color dotColor;
+    final Color labelColor;
+    if (isClosingSoon) {
+      dotColor = const Color(0xFFF97316);
+      labelColor = const Color(0xFFF97316);
+    } else if (isOpen) {
+      dotColor = AppColors.success;
+      labelColor = AppColors.success;
+    } else {
+      dotColor = AppColors.textDisabled;
+      labelColor = AppColors.textSecondary;
+    }
+
+    final todayKey = _dayKeys[DateTime.now().weekday - 1];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: isOpen ? AppColors.success : AppColors.textDisabled,
-            shape: BoxShape.circle,
+        // Status line
+        if (statusLabel != null)
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: dotColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  statusLabel,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: labelColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: isOpen ? AppColors.success : AppColors.textSecondary,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
+        const SizedBox(height: 10),
+        // Weekly schedule
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              for (var i = 0; i < _dayKeys.length; i++)
+                _DayRow(
+                  dayLabel: _dayLabels[_dayKeys[i]]!,
+                  dayHours: hours.days[_dayKeys[i]],
+                  isToday: _dayKeys[i] == todayKey,
+                  isLast: i == _dayKeys.length - 1,
+                ),
+            ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _DayRow extends StatelessWidget {
+  const _DayRow({
+    required this.dayLabel,
+    required this.dayHours,
+    required this.isToday,
+    required this.isLast,
+  });
+
+  final String dayLabel;
+  final DayHours? dayHours;
+  final bool isToday;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final isClosed = dayHours == null || dayHours!.closed;
+    final timeText = isClosed
+        ? 'Closed'
+        : '${dayHours!.open} – ${dayHours!.close}';
+    final timeColor = isClosed
+        ? AppColors.textDisabled
+        : (isToday ? AppColors.textPrimary : AppColors.textSecondary);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 36,
+            child: Text(
+              dayLabel,
+              style: TextStyle(
+                fontSize: 13,
+                color: isToday ? AppColors.textPrimary : AppColors.textSecondary,
+                fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            timeText,
+            style: TextStyle(
+              fontSize: 13,
+              color: timeColor,
+              fontWeight: isToday ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

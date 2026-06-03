@@ -7,6 +7,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/providers/analytics_provider.dart';
 import '../../../core/providers/session_provider.dart';
+import '../../home/home_providers.dart';
 import '../domain/offer.dart';
 import '../providers/offers_providers.dart';
 import 'widgets/category_chip_list.dart';
@@ -52,6 +53,27 @@ class _OfferListScreenState extends ConsumerState<OfferListScreen> {
   @override
   Widget build(BuildContext context) {
     final offersAsync = ref.watch(liveOffersProvider);
+    final retailersAsync = ref.watch(homeRetailersProvider);
+
+    // Build mutually-exclusive open/closing-soon/closed sets.
+    // homeRetailersProvider loads all live retailers; reuses data already
+    // fetched for the home screen with no extra network request.
+    final openNowIds = <String>{};
+    final closingSoonIds = <String>{};
+    final closedIds = <String>{};
+    if (retailersAsync.valueOrNull != null) {
+      for (final r in retailersAsync.valueOrNull!) {
+        final hours = r.openingHours;
+        if (hours == null) continue;
+        if (hours.isClosingSoon()) {
+          closingSoonIds.add(r.id);
+        } else if (hours.isOpenNow) {
+          openNowIds.add(r.id);
+        } else {
+          closedIds.add(r.id);
+        }
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -137,10 +159,16 @@ class _OfferListScreenState extends ConsumerState<OfferListScreen> {
               itemCount: filtered.length,
               itemBuilder: (context, i) {
                 final offer = filtered[i];
+                final isOpenNow = openNowIds.contains(offer.retailerId);
+                final isClosingSoon = closingSoonIds.contains(offer.retailerId);
+                final isClosed = closedIds.contains(offer.retailerId);
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: OfferCard(
                     offer: offer,
+                    isOpenNow: isOpenNow,
+                    isClosingSoon: isClosingSoon,
+                    isClosed: isClosed,
                     onTap: () => context.push(
                       RouteNames.offerDetail
                           .replaceAll(':offerId', offer.id),

@@ -18,17 +18,24 @@ class NearbyOffersSection extends ConsumerWidget {
     final offersAsync = ref.watch(homeOffersProvider);
     final retailersAsync = ref.watch(homeRetailersProvider);
 
-    // Build open-now / closing-soon sets from the already-loaded retailer data.
-    // homeRetailersProvider is watched by FeaturedRetailersSection on the same
-    // screen so this adds no extra network requests.
+    // Build mutually-exclusive open/closing-soon/closed sets from the already-loaded
+    // retailer data. homeRetailersProvider is watched by FeaturedRetailersSection on
+    // the same screen so this adds no extra network requests.
+    // Priority: closing soon > open now > closed (requires hours to be present).
     final openNowIds = <String>{};
     final closingSoonIds = <String>{};
+    final closedIds = <String>{};
     if (retailersAsync.valueOrNull != null) {
       for (final r in retailersAsync.valueOrNull!) {
         final hours = r.openingHours;
         if (hours == null) continue;
-        if (hours.isOpenNow) openNowIds.add(r.id);
-        if (hours.isClosingSoon()) closingSoonIds.add(r.id);
+        if (hours.isClosingSoon()) {
+          closingSoonIds.add(r.id);
+        } else if (hours.isOpenNow) {
+          openNowIds.add(r.id);
+        } else {
+          closedIds.add(r.id);
+        }
       }
     }
 
@@ -71,8 +78,8 @@ class NearbyOffersSection extends ConsumerWidget {
                 itemBuilder: (context, i) {
                   final offer = offers[i];
                   final isOpenNow = openNowIds.contains(offer.retailerId);
-                  final isClosingSoon = !isOpenNow &&
-                      closingSoonIds.contains(offer.retailerId);
+                  final isClosingSoon = closingSoonIds.contains(offer.retailerId);
+                  final isClosed = closedIds.contains(offer.retailerId);
                   return Padding(
                     padding: const EdgeInsets.only(right: 12),
                     child: OfferCard(
@@ -80,6 +87,7 @@ class NearbyOffersSection extends ConsumerWidget {
                       compact: true,
                       isOpenNow: isOpenNow,
                       isClosingSoon: isClosingSoon,
+                      isClosed: isClosed,
                       onTap: () => context.push(
                         RouteNames.offerDetail.replaceAll(':offerId', offer.id),
                       ),
