@@ -2,33 +2,9 @@ import type { Metadata } from 'next';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
 import { toggleCategoryActive, createCategory, updateCategoryIcon } from '@/lib/actions/admin';
+import { MaterialIconPicker } from '@/components/material_icon_picker';
 
 export const metadata: Metadata = { title: 'Categories – Admin' };
-
-// Icon options that match the mobile app's _iconForCategory mapping.
-// Value = icon name string stored in DB; emoji shown for visual reference.
-const ICON_OPTIONS = [
-  { value: 'restaurant', emoji: '🍽️', label: 'Restaurant / Food' },
-  { value: 'coffee', emoji: '☕', label: 'Coffee / Café' },
-  { value: 'sports_bar', emoji: '🍺', label: 'Bar / Pub / Drinks' },
-  { value: 'shopping_bag', emoji: '🛍️', label: 'Shopping / Retail' },
-  { value: 'spa', emoji: '💆', label: 'Beauty / Spa / Salon' },
-  { value: 'fitness_center', emoji: '💪', label: 'Fitness / Gym' },
-  { value: 'favorite_border', emoji: '❤️', label: 'Health / Wellness' },
-  { value: 'local_activity', emoji: '🎭', label: 'Entertainment / Activities' },
-  { value: 'child_care', emoji: '👶', label: 'Family / Kids' },
-  { value: 'build', emoji: '🔧', label: 'Services / Trades' },
-  { value: 'pets', emoji: '🐾', label: 'Pets' },
-  { value: 'hotel', emoji: '🏨', label: 'Hospitality / Tourism' },
-  { value: 'local_pharmacy', emoji: '💊', label: 'Pharmacy / Health' },
-  { value: 'school', emoji: '🎓', label: 'Education' },
-  { value: 'directions_car', emoji: '🚗', label: 'Automotive' },
-] as const;
-
-function iconEmoji(iconValue: string | null): string {
-  if (!iconValue) return '—';
-  return ICON_OPTIONS.find((o) => o.value === iconValue)?.emoji ?? iconValue;
-}
 
 export default async function CategoriesPage() {
   await requireAdmin();
@@ -50,7 +26,7 @@ export default async function CategoriesPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Categories</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Platform category taxonomy. Icons must match the mobile app icon family.
+          Platform category taxonomy. Icons must match the mobile app icon family (Material Icons).
           Slug is immutable after creation.
         </p>
       </div>
@@ -72,17 +48,8 @@ export default async function CategoriesPage() {
               />
             </div>
             <div>
-              <label htmlFor="cat-icon" className="block text-xs text-gray-500 mb-1">Icon</label>
-              <select
-                id="cat-icon"
-                name="icon"
-                className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
-              >
-                <option value="">None</option>
-                {ICON_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+              <p className="block text-xs text-gray-500 mb-1">Icon</p>
+              <MaterialIconPicker name="icon" />
             </div>
             <button
               type="submit"
@@ -113,32 +80,18 @@ export default async function CategoriesPage() {
                 <td className="px-4 py-3 font-medium text-gray-800">{c.name}</td>
                 <td className="px-4 py-3 text-gray-500 font-mono text-xs">{c.slug}</td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    {c.icon ? (
-                      <span className="material-icons text-gray-600" style={{ fontSize: '20px' }}>{c.icon}</span>
-                    ) : (
-                      <span className="w-5 h-5 rounded border border-gray-200 bg-gray-50 inline-block" />
-                    )}
-                    <form action={updateCategoryIcon} className="flex items-center gap-2">
-                      <input type="hidden" name="id" value={c.id} />
-                      <select
-                        name="icon"
-                        defaultValue={c.icon ?? ''}
-                        className="rounded border border-gray-200 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-700"
-                      >
-                        <option value="">None</option>
-                        {ICON_OPTIONS.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
+                  <form action={updateCategoryIcon}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <div className="flex flex-col gap-2">
+                      <MaterialIconPicker name="icon" defaultValue={c.icon} />
                       <button
                         type="submit"
-                        className="text-xs text-green-700 hover:text-green-900 underline"
+                        className="self-start text-xs text-green-700 hover:text-green-900 underline"
                       >
                         Save
                       </button>
-                    </form>
-                  </div>
+                    </div>
+                  </form>
                 </td>
                 <td className="px-4 py-3 text-gray-500">{c.sort_order}</td>
                 <td className="px-4 py-3">
