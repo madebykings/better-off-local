@@ -7,6 +7,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/providers/location_provider.dart';
 import '../../../core/widgets/brand_logo.dart';
+import '../providers/platform_config_provider.dart';
 import 'widgets/categories_section.dart';
 import 'widgets/featured_retailers_section.dart';
 import 'widgets/nearby_offers_section.dart';
@@ -21,25 +22,32 @@ class HomeScreen extends ConsumerWidget {
     // If permission is already granted, this sets locationProvider so
     // homeRetailersProvider can compute distances without prompting the user.
     ref.watch(locationInitProvider);
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: AppColors.cream,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _HomeHeader(),
-              _SearchRow(),
-              SizedBox(height: 14),
-              NearbyOffersSection(),
-              SizedBox(height: 28),
-              CategoriesSection(),
-              SizedBox(height: 28),
-              FeaturedRetailersSection(),
-              SizedBox(height: 28),
-              SavingsSummaryCard(),
-              SizedBox(height: 32),
-            ],
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(platformConfigProvider);
+            await ref.read(platformConfigProvider.future);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _HomeHeader(),
+                _SearchRow(),
+                SizedBox(height: 14),
+                NearbyOffersSection(),
+                SizedBox(height: 28),
+                CategoriesSection(),
+                SizedBox(height: 28),
+                FeaturedRetailersSection(),
+                SizedBox(height: 28),
+                SavingsSummaryCard(),
+                SizedBox(height: 32),
+              ],
+            ),
           ),
         ),
       ),

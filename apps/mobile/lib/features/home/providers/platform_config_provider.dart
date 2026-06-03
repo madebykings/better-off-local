@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/supabase_provider.dart';
@@ -23,22 +24,33 @@ class PlatformConfig {
   );
 
   factory PlatformConfig.fromMap(Map<String, dynamic> map) {
+    final headline = map['homepage_headline'] as String? ?? '';
+    final body     = map['homepage_body']     as String? ?? '';
+    final ctaText  = map['homepage_cta_text'] as String? ?? '';
+    final ctaUrl   = map['homepage_cta_url']  as String? ?? '';
+
+    if (kDebugMode) {
+      debugPrint('[PlatformConfig] fetched: '
+          'headline="${headline.isEmpty ? "(empty)" : headline}" '
+          'body="${body.isEmpty ? "(empty)" : body.substring(0, body.length.clamp(0, 40))}…" '
+          'ctaText="${ctaText.isEmpty ? "(empty)" : ctaText}" '
+          'ctaUrl="${ctaUrl.isEmpty ? "(empty)" : ctaUrl}"');
+    }
+
     return PlatformConfig(
-      headline: (map['homepage_headline'] as String? ?? '').isNotEmpty
-          ? map['homepage_headline'] as String
-          : PlatformConfig.defaults.headline,
-      body: (map['homepage_body'] as String? ?? '').isNotEmpty
-          ? map['homepage_body'] as String
-          : PlatformConfig.defaults.body,
-      ctaText: (map['homepage_cta_text'] as String? ?? '').isNotEmpty
-          ? map['homepage_cta_text'] as String
-          : PlatformConfig.defaults.ctaText,
-      ctaUrl: map['homepage_cta_url'] as String? ?? '',
+      headline: headline.isNotEmpty ? headline : PlatformConfig.defaults.headline,
+      body:     body.isNotEmpty     ? body     : PlatformConfig.defaults.body,
+      ctaText:  ctaText.isNotEmpty  ? ctaText  : PlatformConfig.defaults.ctaText,
+      ctaUrl:   ctaUrl,
     );
   }
 }
 
-/// Fetches platform_config row id=1. Falls back to defaults on any error.
+/// Fetches platform_config row id=1 from the admin-editable table.
+/// Falls back to [PlatformConfig.defaults] only when the DB fetch fails or a
+/// field is empty — it does NOT fall back when the row contains real values.
+///
+/// Invalidate this provider to force a re-fetch (e.g. on pull-to-refresh).
 final platformConfigProvider = FutureProvider<PlatformConfig>((ref) async {
   try {
     final client = ref.read(supabaseClientProvider);
@@ -48,9 +60,13 @@ final platformConfigProvider = FutureProvider<PlatformConfig>((ref) async {
         .eq('id', 1)
         .maybeSingle();
 
-    if (row == null) return PlatformConfig.defaults;
+    if (row == null) {
+      debugPrint('[PlatformConfig] no row returned — using defaults');
+      return PlatformConfig.defaults;
+    }
     return PlatformConfig.fromMap(row);
-  } catch (_) {
+  } catch (e, st) {
+    debugPrint('[PlatformConfig] fetch error — using defaults\n$e\n$st');
     return PlatformConfig.defaults;
   }
 });
