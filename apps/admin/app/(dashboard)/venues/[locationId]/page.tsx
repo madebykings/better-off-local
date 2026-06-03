@@ -37,7 +37,7 @@ function hasOpenDay(raw: unknown): boolean {
 function ReviewBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     draft:    { label: 'Draft',    cls: 'bg-gray-100 text-gray-600 border-gray-200' },
-    pending:  { label: 'Pending',  cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+    pending:  { label: 'Pending',  cls: 'bg-amber-100 text-amber-800 border-amber-200' },
     approved: { label: 'Approved', cls: 'bg-green-100 text-green-700 border-green-200' },
     rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-700 border-red-200' },
   };
@@ -274,7 +274,7 @@ export default async function VenueDetailPage({ params }: Props) {
                 name="review_notes"
                 placeholder="Rejection reason (required)"
                 required
-                className="flex-1 min-w-48 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-red-400 focus:border-red-300"
+                className="flex-1 min-w-48 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
               />
               <button
                 type="submit"

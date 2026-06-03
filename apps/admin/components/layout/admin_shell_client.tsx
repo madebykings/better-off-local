@@ -23,7 +23,7 @@ export function AdminShellClient({ children, reviewBadge, email, name }: AdminSh
   const [isNavOpen, setIsNavOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100">
+    <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* Mobile overlay */}
       {isNavOpen && (
         <div

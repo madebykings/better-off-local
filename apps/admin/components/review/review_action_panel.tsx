@@ -127,7 +127,7 @@ export function ReviewActionPanel({
             }
             rows={3}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
-                       focus:outline-none focus:ring-1 focus:ring-green-600"
+                       focus:outline-none focus:ring-1 focus:ring-green-700"
             autoFocus
           />
           {noteError && (

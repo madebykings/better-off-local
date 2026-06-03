@@ -80,7 +80,7 @@ export default async function AuditPage({ searchParams }: Props) {
           <input
             type="search" name="q" defaultValue={q ?? ''}
             placeholder="Search action, reason, admin…"
-            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-600 w-64"
+            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-700 w-64"
           />
         </form>
         <span className="text-xs text-gray-400 ml-auto">Showing last 200 actions</span>

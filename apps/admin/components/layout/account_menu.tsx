@@ -41,7 +41,7 @@ export function AccountMenu({ email, name }: AccountMenuProps) {
         aria-expanded={open}
         className="w-8 h-8 rounded-full bg-green-800 text-white text-xs font-semibold
                    flex items-center justify-center hover:bg-green-700 transition-colors
-                   focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2"
+                   focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-offset-2"
       >
         {initials}
       </button>

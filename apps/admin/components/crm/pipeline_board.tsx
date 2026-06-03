@@ -228,12 +228,12 @@ export function PipelineBoard({ businesses }: { businesses: CrmBizRow[] }) {
           placeholder="Search businesses…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-600 w-56"
+          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-700 w-56"
         />
         <select
           value={stageFilter}
           onChange={(e) => setStageFilter(e.target.value)}
-          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-600"
+          className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-700"
         >
           <option value="all">All stages</option>
           {STAGES.map((s) => (

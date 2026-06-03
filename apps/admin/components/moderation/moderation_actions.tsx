@@ -44,7 +44,7 @@ function ActionButton({ label, action, variant, requireReason, confirmMessage }:
             placeholder="Reason (optional)"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="w-full text-sm border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-600"
+            className="w-full text-sm border border-gray-300 rounded px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-700"
             autoFocus
           />
         </div>

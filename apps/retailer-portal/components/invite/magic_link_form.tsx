@@ -50,7 +50,7 @@ export function MagicLinkForm({ token }: { token: string }) {
           disabled={isPending}
           className="w-full rounded-lg border border-gray-300 px-3 py-3 text-base
                      placeholder:text-gray-400 focus:border-green-600 focus:outline-none
-                     focus:ring-1 focus:ring-green-600 disabled:bg-gray-50"
+                     focus:ring-1 focus:ring-green-700 disabled:bg-gray-50"
           placeholder="you@example.com"
         />
       </div>

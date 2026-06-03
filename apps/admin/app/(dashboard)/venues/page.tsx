@@ -18,7 +18,7 @@ const TABS = [
 
 const REVIEW_BADGES: Record<string, string> = {
   draft:    'bg-gray-100 text-gray-600 border-gray-200',
-  pending:  'bg-yellow-100 text-yellow-800 border-yellow-200',
+  pending:  'bg-amber-100 text-amber-800 border-amber-200',
   approved: 'bg-green-100 text-green-700 border-green-200',
   rejected: 'bg-red-100 text-red-700 border-red-200',
 };
@@ -129,7 +129,7 @@ export default async function VenuesPage({ searchParams }: Props) {
             name="q"
             defaultValue={q ?? ''}
             placeholder="Search venue, retailer, address…"
-            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-600 w-64"
+            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-700 w-64"
           />
         </form>
       </div>
@@ -168,10 +168,10 @@ export default async function VenuesPage({ searchParams }: Props) {
                       <div className="font-medium text-gray-900">
                         {v.name ?? v.address_line_1 ?? 'Unnamed venue'}
                         {v.is_primary && (
-                          <span className="ml-1.5 rounded border border-green-200 bg-green-50 px-1 py-0.5 text-[10px] font-medium text-green-700">Primary</span>
+                          <span className="ml-1.5 rounded border border-green-200 bg-green-50 px-1 py-0.5 text-xs font-medium text-green-700">Primary</span>
                         )}
                         {!v.is_active && (
-                          <span className="ml-1.5 rounded border border-gray-300 bg-gray-100 px-1 py-0.5 text-[10px] font-medium text-gray-500">Inactive</span>
+                          <span className="ml-1.5 rounded border border-gray-300 bg-gray-100 px-1 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
                         )}
                       </div>
                       {address && <div className="text-xs text-gray-400 mt-0.5">{address}</div>}

@@ -327,15 +327,15 @@ export default async function BusinessDetailPage({ params }: Props) {
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-medium text-gray-800">{e.subject}</p>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                           e.delivery_status === 'delivered' ? 'bg-green-100 text-green-700' :
                           e.delivery_status === 'failed' ? 'bg-red-100 text-red-700' :
                           'bg-gray-100 text-gray-500'
                         }`}>
                           {e.delivery_status}
                         </span>
-                        {e.opened_at && <span className="text-[10px] text-gray-400">👁 opened</span>}
-                        {e.clicked_at && <span className="text-[10px] text-gray-400">🖱 clicked</span>}
+                        {e.opened_at && <span className="text-xs text-gray-400">👁 opened</span>}
+                        {e.clicked_at && <span className="text-xs text-gray-400">🖱 clicked</span>}
                       </div>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">{fmtTime(e.sent_at)} → {e.sent_to}</p>

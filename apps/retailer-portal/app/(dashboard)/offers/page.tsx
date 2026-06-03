@@ -18,7 +18,7 @@ type OfferRow = {
 const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
   live: { label: 'Live', classes: 'bg-green-100 text-green-800 border-green-200' },
   draft: { label: 'Draft', classes: 'bg-gray-100 text-gray-700 border-gray-200' },
-  pending: { label: 'Pending approval', classes: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  pending: { label: 'Pending approval', classes: 'bg-amber-100 text-amber-800 border-amber-200' },
   paused: { label: 'Paused', classes: 'bg-orange-100 text-orange-800 border-orange-200' },
   expired: { label: 'Expired', classes: 'bg-red-100 text-red-800 border-red-200' },
   rejected: { label: 'Rejected', classes: 'bg-red-100 text-red-800 border-red-200' },

@@ -71,7 +71,7 @@ export default async function OffersPage({ searchParams }: Props) {
           <input
             type="search" name="q" defaultValue={q ?? ''}
             placeholder="Search by title…"
-            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-600"
+            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-green-700"
           />
         </form>
       </div>

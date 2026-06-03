@@ -93,12 +93,12 @@ export default async function ProfilePage() {
                         {v.name ?? 'Unnamed venue'}
                       </span>
                       {v.is_primary && (
-                        <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
+                        <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700">
                           Primary
                         </span>
                       )}
                       {!v.is_active && (
-                        <span className="shrink-0 rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] font-medium text-gray-500">
+                        <span className="shrink-0 rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-xs font-medium text-gray-500">
                           Inactive
                         </span>
                       )}

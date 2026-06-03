@@ -183,7 +183,7 @@ export function ProfileForm({
               />
               <span
                 className={[
-                  'pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums transition-colors',
+                  'pointer-events-none absolute bottom-2.5 right-3 text-xs tabular-nums transition-colors',
                   shortDescCount > 130 ? 'text-amber-500' : 'text-gray-300',
                 ].join(' ')}
               >

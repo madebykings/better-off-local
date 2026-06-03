@@ -30,7 +30,7 @@ export function SignUpForm() {
           disabled={isPending}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
                      placeholder:text-gray-400 focus:border-green-600 focus:outline-none
-                     focus:ring-1 focus:ring-green-600 disabled:bg-gray-50 disabled:text-gray-500"
+                     focus:ring-1 focus:ring-green-700 disabled:bg-gray-50 disabled:text-gray-500"
           placeholder="you@yourbusiness.com"
         />
       </div>
@@ -49,7 +49,7 @@ export function SignUpForm() {
           disabled={isPending}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
                      placeholder:text-gray-400 focus:border-green-600 focus:outline-none
-                     focus:ring-1 focus:ring-green-600 disabled:bg-gray-50 disabled:text-gray-500"
+                     focus:ring-1 focus:ring-green-700 disabled:bg-gray-50 disabled:text-gray-500"
           placeholder="At least 8 characters"
         />
       </div>
@@ -67,7 +67,7 @@ export function SignUpForm() {
           disabled={isPending}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
                      placeholder:text-gray-400 focus:border-green-600 focus:outline-none
-                     focus:ring-1 focus:ring-green-600 disabled:bg-gray-50 disabled:text-gray-500"
+                     focus:ring-1 focus:ring-green-700 disabled:bg-gray-50 disabled:text-gray-500"
           placeholder="Repeat your password"
         />
       </div>
@@ -77,7 +77,7 @@ export function SignUpForm() {
         disabled={isPending}
         className="w-full rounded-lg bg-green-800 px-4 py-2.5 text-sm font-semibold
                    text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2
-                   focus:ring-green-600 focus:ring-offset-2 disabled:opacity-60
+                   focus:ring-green-700 focus:ring-offset-2 disabled:opacity-60
                    disabled:cursor-not-allowed transition-colors"
       >
         {isPending ? 'Creating account…' : 'Create account'}

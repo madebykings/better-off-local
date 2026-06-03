@@ -9,7 +9,7 @@ const STATUS_CLASSES: Record<string, { label: string; cls: string }> = {
   success:           { label: 'Success',            cls: 'bg-green-100 text-green-800 border-green-200' },
   rejected:          { label: 'Rejected',           cls: 'bg-red-100 text-red-800 border-red-200' },
   expired:           { label: 'Expired',            cls: 'bg-gray-100 text-gray-700 border-gray-200' },
-  rule_blocked:      { label: 'Rule blocked',       cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  rule_blocked:      { label: 'Rule blocked',       cls: 'bg-amber-100 text-amber-800 border-amber-200' },
   membership_invalid:{ label: 'Membership invalid', cls: 'bg-red-100 text-red-800 border-red-200' },
 };
 

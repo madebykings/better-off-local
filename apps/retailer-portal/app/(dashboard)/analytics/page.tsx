@@ -26,7 +26,7 @@ const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
   success: { label: 'Redeemed', classes: 'bg-green-100 text-green-800 border-green-200' },
   rejected: { label: 'Rejected', classes: 'bg-red-100 text-red-800 border-red-200' },
   expired: { label: 'Expired', classes: 'bg-gray-100 text-gray-700 border-gray-200' },
-  rule_blocked: { label: 'Blocked', classes: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  rule_blocked: { label: 'Blocked', classes: 'bg-amber-100 text-amber-800 border-amber-200' },
   membership_invalid: { label: 'Membership issue', classes: 'bg-red-100 text-red-800 border-red-200' },
 };
 
@@ -274,21 +274,22 @@ export default async function AnalyticsPage() {
       <div className="mb-8">
         <h2 className="text-lg font-semibold mb-3">Per offer</h2>
         {offerBreakdown.length === 0 ? (
-          <p className="text-sm text-gray-400 py-6 text-center border border-gray-200 rounded-lg">
-            No offers yet.
-          </p>
+          <div className="border border-gray-200 rounded-lg py-12 text-center">
+            <p className="font-medium text-gray-600">No offers yet</p>
+            <p className="text-sm text-gray-400 mt-1">Your offers will appear here once created.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Offer</th>
-                  <th className="text-right px-3 py-3 font-medium text-gray-600">Views</th>
-                  <th className="text-right px-3 py-3 font-medium text-gray-600">Saved</th>
-                  <th className="text-right px-3 py-3 font-medium text-gray-600">QR</th>
-                  <th className="text-right px-3 py-3 font-medium text-gray-600">Redeemed</th>
-                  <th className="text-right px-3 py-3 font-medium text-gray-600">Save %</th>
-                  <th className="text-right px-4 py-3 font-medium text-gray-600">Redeem %</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Offer</th>
+                  <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Views</th>
+                  <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Saved</th>
+                  <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">QR</th>
+                  <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Redeemed</th>
+                  <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Save %</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Redeem %</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -316,19 +317,20 @@ export default async function AnalyticsPage() {
       <div>
         <h2 className="text-lg font-semibold mb-3">Recent scans</h2>
         {recentScans.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 border border-gray-200 rounded-lg">
-            <p className="text-sm">No scans yet.</p>
+          <div className="border border-gray-200 rounded-lg py-12 text-center">
+            <p className="font-medium text-gray-600">No scans yet</p>
+            <p className="text-sm text-gray-400 mt-1">Redemption scans will appear here.</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Time</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Offer</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Result</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Member</th>
-                  <th className="text-left px-4 py-3 font-medium text-gray-600">Scanned by</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Time</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Offer</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Result</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Member</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Scanned by</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

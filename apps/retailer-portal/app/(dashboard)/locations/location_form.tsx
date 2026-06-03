@@ -285,7 +285,7 @@ export function VenueForm({
               className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-green-700/30 focus:border-green-700 pb-6"
             />
             <span className={[
-              'pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums',
+              'pointer-events-none absolute bottom-2.5 right-3 text-xs tabular-nums',
               descCount > 450 ? 'text-amber-500' : 'text-gray-300',
             ].join(' ')}>
               {descCount}/{DESC_MAX}

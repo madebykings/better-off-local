@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
   success: { label: 'Redeemed', classes: 'bg-green-100 text-green-800 border-green-200' },
   rejected: { label: 'Rejected', classes: 'bg-red-100 text-red-800 border-red-200' },
   expired: { label: 'Expired', classes: 'bg-gray-100 text-gray-700 border-gray-200' },
-  rule_blocked: { label: 'Blocked', classes: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  rule_blocked: { label: 'Blocked', classes: 'bg-amber-100 text-amber-800 border-amber-200' },
   membership_invalid: { label: 'Membership issue', classes: 'bg-red-100 text-red-800 border-red-200' },
 };
 
@@ -59,7 +59,7 @@ export default async function RedemptionsPage() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="border border-gray-200 rounded-lg py-16 text-center text-gray-400">
           <p className="text-4xl mb-3">🎫</p>
           <p className="font-medium text-gray-600">No redemptions yet</p>
           <p className="text-sm mt-1">Redeemed offers will appear here.</p>
@@ -69,11 +69,11 @@ export default async function RedemptionsPage() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Offer</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Member</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Note</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Offer</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Member</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Note</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

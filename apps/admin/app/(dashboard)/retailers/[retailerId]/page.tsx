@@ -33,13 +33,13 @@ function AccountStatusBadge({ isActive, approvalStatus }: { isActive: boolean; a
 function VenueReviewBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     draft:    { label: 'Draft',    cls: 'bg-gray-100 text-gray-600 border-gray-200' },
-    pending:  { label: 'Pending',  cls: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+    pending:  { label: 'Pending',  cls: 'bg-amber-100 text-amber-800 border-amber-200' },
     approved: { label: 'Approved', cls: 'bg-green-100 text-green-700 border-green-200' },
     rejected: { label: 'Rejected', cls: 'bg-red-100 text-red-700 border-red-200' },
   };
   const { label, cls } = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-600 border-gray-200' };
   return (
-    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>
+    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-xs font-medium ${cls}`}>
       {label}
     </span>
   );
@@ -196,13 +196,13 @@ export default async function RetailerDetailPage({ params }: Props) {
                         {v.name ?? v.address_line_1 ?? 'Unnamed'}
                       </span>
                       {v.is_primary && (
-                        <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">Primary</span>
+                        <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700">Primary</span>
                       )}
                       {!v.is_active && (
-                        <span className="shrink-0 rounded border border-gray-300 bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-500">Inactive</span>
+                        <span className="shrink-0 rounded border border-gray-300 bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
                       )}
                       <VenueReviewBadge status={v.review_status ?? 'draft'} />
-                      <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${billingCls}`}>
+                      <span className={`shrink-0 rounded border px-1.5 py-0.5 text-xs font-medium ${billingCls}`}>
                         {billingLabel}
                       </span>
                     </div>

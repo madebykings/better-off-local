@@ -34,7 +34,7 @@ export function AccountMenu({ email, logoUrl, retailerName }: AccountMenuProps) 
         aria-expanded={open}
         className="w-8 h-8 rounded-full overflow-hidden bg-green-800 text-white text-xs font-semibold
                    flex items-center justify-center hover:ring-2 hover:ring-green-600 hover:ring-offset-1
-                   transition-all focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2"
+                   transition-all focus:outline-none focus:ring-2 focus:ring-green-700 focus:ring-offset-2"
       >
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

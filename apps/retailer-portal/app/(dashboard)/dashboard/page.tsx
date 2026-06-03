@@ -17,7 +17,7 @@ const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
   success: { label: 'Redeemed', classes: 'bg-green-100 text-green-800 border-green-200' },
   rejected: { label: 'Rejected', classes: 'bg-red-100 text-red-800 border-red-200' },
   expired: { label: 'Expired', classes: 'bg-gray-100 text-gray-700 border-gray-200' },
-  rule_blocked: { label: 'Blocked', classes: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  rule_blocked: { label: 'Blocked', classes: 'bg-amber-100 text-amber-800 border-amber-200' },
   membership_invalid: { label: 'Membership issue', classes: 'bg-red-100 text-red-800 border-red-200' },
 };
 

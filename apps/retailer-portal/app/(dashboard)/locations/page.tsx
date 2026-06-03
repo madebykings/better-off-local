@@ -222,12 +222,12 @@ export default async function LocationsPage() {
                     {loc.name ?? formatAddress(loc) ?? 'Unnamed venue'}
                   </p>
                   {loc.is_primary && (
-                    <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[11px] font-medium text-green-700">
+                    <span className="shrink-0 rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-xs font-medium text-green-700">
                       Primary
                     </span>
                   )}
                   {(loc as any).billing_status && (
-                    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium ${BILLING_BADGES[(loc as any).billing_status] ?? ''}`}>
+                    <span className={`shrink-0 rounded border px-1.5 py-0.5 text-xs font-medium ${BILLING_BADGES[(loc as any).billing_status] ?? ''}`}>
                       {((loc as any).billing_status as string).replace(/_/g, ' ')}
                     </span>
                   )}
@@ -254,7 +254,7 @@ export default async function LocationsPage() {
                           e.preventDefault();
                         }
                       }}
-                      className="text-sm text-gray-400 hover:text-red-600 transition-colors"
+                      className="text-sm text-red-500 hover:text-red-700 transition-colors"
                     >
                       Deactivate
                     </button>

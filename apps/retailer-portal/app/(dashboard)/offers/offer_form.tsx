@@ -460,7 +460,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
             />
             <span
               className={[
-                'pointer-events-none absolute bottom-2.5 right-3 text-[11px] tabular-nums',
+                'pointer-events-none absolute bottom-2.5 right-3 text-xs tabular-nums',
                 descCount > 450 ? 'text-amber-500' : 'text-gray-300',
               ].join(' ')}
             >
