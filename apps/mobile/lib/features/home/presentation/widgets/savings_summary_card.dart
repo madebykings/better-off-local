@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../app/router/route_names.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_text_styles.dart';
+import '../../../../core/config/env.dart';
 import '../../providers/platform_config_provider.dart';
 
 /// Community/CTA banner on the home screen.
@@ -66,6 +68,31 @@ class SavingsSummaryCard extends ConsumerWidget {
                     fontWeight: FontWeight.w600, fontSize: 14),
               ),
             ),
+            if (kDebugMode) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: DefaultTextStyle(
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 9, fontFamily: 'monospace'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('── DEBUG: platform_config ──',
+                          style: TextStyle(color: Colors.yellow, fontWeight: FontWeight.bold)),
+                      Text('supabase: ${Env.supabaseUrl}'),
+                      Text('db updated_at: ${config.updatedAt?.toUtc().toIso8601String() ?? "(null — using defaults)"}'),
+                      Text('fetched_at:  ${config.fetchedAt?.toLocal().toIso8601String() ?? "(null — using defaults)"}'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
