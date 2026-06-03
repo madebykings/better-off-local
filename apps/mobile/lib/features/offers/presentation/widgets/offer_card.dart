@@ -380,16 +380,17 @@ class _OfferCardBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          offer.title,
-          style: AppTextStyles.titleMedium.copyWith(
-            fontSize: compact ? 14.0 : 16.0,
-            fontWeight: FontWeight.w700,
+        Expanded(
+          child: Text(
+            offer.title,
+            style: AppTextStyles.titleMedium.copyWith(
+              fontSize: compact ? 14.0 : 16.0,
+              fontWeight: FontWeight.w700,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
         ),
-        const Spacer(),
         _RedemptionRow(offer: offer, compact: compact),
       ],
     );
