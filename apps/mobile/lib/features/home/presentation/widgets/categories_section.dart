@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -29,7 +30,10 @@ class CategoriesSection extends ConsumerWidget {
           height: 82,
           child: categoriesAsync.when(
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (err, stack) {
+              debugPrint('[CategoriesSection] fetch error: $err');
+              return const SizedBox.shrink();
+            },
             data: (categories) {
               final followedIds = ref.watch(followedCategoryIdsProvider).valueOrNull ?? {};
               return ListView.builder(
@@ -133,7 +137,18 @@ class CategoriesSection extends ConsumerWidget {
 /// Tier 2: keyword-match on [name] for categories with no icon set in DB.
 Widget _categoryIconWidget(String name, String? iconName) {
   if (iconName != null && iconName.isNotEmpty) {
-    return Icon(iconDataForKey(iconName), color: AppColors.primary, size: 22);
+    final data = iconDataForKey(iconName);
+    if (kDebugMode) {
+      final inMap = kMaterialIconMap.containsKey(iconName);
+      debugPrint(
+        '[CategoryIcon] "$name" icon="$iconName" '
+        '${inMap ? "→ mapped" : "→ FALLBACK (key not in map)"}',
+      );
+    }
+    return Icon(data, color: AppColors.primary, size: 22);
+  }
+  if (kDebugMode) {
+    debugPrint('[CategoryIcon] "$name" icon=null → keyword/fallback tier');
   }
   final icon = _iconForCategory(name);
   return Icon(icon ?? kFallbackCategoryIcon, color: AppColors.primary, size: 22);
