@@ -87,13 +87,10 @@ alter table referral_rewards
 
 -- ── 5. Helpful indexes ────────────────────────────────────────────────────────
 
-create index if not exists referral_rewards_eligible_status_idx
-  on referral_rewards(referrer_profile_id, eligible_at)
-  where status = 'eligible';
-
-create index if not exists referral_rewards_paid_idx
-  on referral_rewards(paid_at desc)
-  where status = 'paid';
+-- NOTE: partial indexes that filter on status = 'eligible' or status = 'paid'
+-- cannot be created in this migration because ALTER TYPE ADD VALUE is also in
+-- this transaction and the new enum values are not visible within the same
+-- transaction in PostgreSQL.  Those indexes live in migration 082.
 
 -- ── 6. RLS for new columns ────────────────────────────────────────────────────
 
