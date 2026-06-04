@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/providers/session_provider.dart';
 import '../../features/profile/providers/profile_providers.dart';
 
+import '../../features/follow/presentation/following_screen.dart';
 import '../../features/loyalty/presentation/my_loyalty_cards_screen.dart';
 import '../../features/referral/presentation/referral_screen.dart';
 import '../../features/venue_referral/presentation/my_referral_rewards_screen.dart';
@@ -237,6 +238,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'venue-referral-rewards',
                 builder: (context, state) => const MyReferralRewardsScreen(),
+              ),
+              GoRoute(
+                path: 'following',
+                builder: (context, state) => const FollowingScreen(),
               ),
             ],
           ),

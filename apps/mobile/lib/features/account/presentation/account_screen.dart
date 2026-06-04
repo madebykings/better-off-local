@@ -92,6 +92,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               ),
               const _Divider(),
               _NavTile(
+                icon: Icons.notifications_outlined,
+                label: 'Following',
+                onTap: () => context.push(RouteNames.following),
+              ),
+              const _Divider(),
+              _NavTile(
                 icon: Icons.map_outlined,
                 label: 'My region',
                 onTap: () => context.push(RouteNames.regionProgress),

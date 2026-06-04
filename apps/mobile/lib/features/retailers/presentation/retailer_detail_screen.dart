@@ -7,6 +7,7 @@ import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../favourites/providers/favourites_providers.dart';
+import '../../follow/providers/retailer_follows_providers.dart';
 import '../../offers/domain/offer.dart';
 import '../../offers/domain/offer_availability.dart';
 import '../../offers/presentation/widgets/offer_card.dart';
@@ -25,6 +26,7 @@ class RetailerDetailScreen extends ConsumerWidget {
     final availabilityAsync =
         ref.watch(retailerOffersAvailabilityProvider(retailerId));
     final favouriteIds = ref.watch(favouriteRetailerIdsProvider);
+    final followedIds = ref.watch(followedRetailerIdsProvider);
 
     return retailerAsync.when(
       loading: () =>
@@ -35,6 +37,7 @@ class RetailerDetailScreen extends ConsumerWidget {
       ),
       data: (retailer) {
         final isFavourited = favouriteIds.contains(retailer.id);
+        final isFollowing = followedIds.contains(retailer.id);
 
         // Combine offers + availability into a sorted, filtered list.
         // We show the list regardless of availability load state (graceful degrade).
@@ -57,6 +60,17 @@ class RetailerDetailScreen extends ConsumerWidget {
                 expandedHeight: retailer.coverImageUrl != null ? 200 : 0,
                 pinned: true,
                 actions: [
+                  IconButton(
+                    tooltip: isFollowing ? 'Unfollow' : 'Follow for notifications',
+                    icon: Icon(
+                      isFollowing
+                          ? Icons.notifications_active
+                          : Icons.notifications_outlined,
+                      color: isFollowing ? AppColors.primary : null,
+                    ),
+                    onPressed: () => toggleRetailerFollow(
+                        ref, retailer.id, isFollowing, context),
+                  ),
                   IconButton(
                     icon: Icon(
                       isFavourited ? Icons.favorite : Icons.favorite_border,

@@ -49,4 +49,7 @@ abstract class RouteNames {
 
   // Venue referral rewards
   static const venueReferralRewards = '/account/venue-referral-rewards';
+
+  // Following
+  static const following = '/account/following';
 }
