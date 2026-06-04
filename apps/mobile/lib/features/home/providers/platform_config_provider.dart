@@ -83,7 +83,10 @@ class PlatformConfig {
 // JWT helper — extracts the 'ref' claim to confirm project identity
 // ---------------------------------------------------------------------------
 
-String _jwtRef(String jwt) {
+/// Decodes the Supabase project ref from a JWT (anon key or any Supabase token).
+/// Returns a human-readable string in all failure cases so the overlay always
+/// shows something actionable.
+String jwtProjectRef(String jwt) {
   try {
     final parts = jwt.split('.');
     if (parts.length != 3) return '(malformed jwt)';
@@ -109,10 +112,14 @@ String _jwtRef(String jwt) {
 /// Invalidate this provider to force a re-fetch (e.g. on pull-to-refresh).
 final platformConfigProvider = FutureProvider<PlatformConfig>((ref) async {
   final client = ref.read(supabaseClientProvider);
-  final jwtRef = kDebugMode ? _jwtRef(Env.supabaseAnonKey) : null;
+  final jwtRef = kDebugMode ? jwtProjectRef(Env.supabaseAnonKey) : null;
 
   // ── Debug diagnostic ──────────────────────────────────────────────────────
   Map<String, dynamic>? diagRawRow;
+  // Tracks the outcome of the broad diagnostic select for the error message.
+  // Values: '0_rows' | 'N_rows' | 'pg_error:<code>:<message>' | 'error:<msg>'
+  String diagSelectResult = 'not_run';
+
   if (kDebugMode) {
     debugPrint('[PlatformConfig][diag] ─────────────────────────────────');
     debugPrint('[PlatformConfig][diag] URL      : ${Env.supabaseUrl}');
@@ -131,16 +138,19 @@ final platformConfigProvider = FutureProvider<PlatformConfig>((ref) async {
       for (final r in rawRows) {
         debugPrint('[PlatformConfig][diag]   row: $r');
       }
+      diagSelectResult = rawRows.isEmpty ? '0_rows' : '${rawRows.length}_rows';
       if (rawRows.isNotEmpty) {
         diagRawRow = Map<String, dynamic>.from(rawRows.first as Map);
       }
     } on PostgrestException catch (e) {
+      diagSelectResult = 'pg_error:${e.code}:${e.message}';
       debugPrint('[PlatformConfig][diag] PostgrestException on select(*):');
       debugPrint('[PlatformConfig][diag]   code   : ${e.code}');
       debugPrint('[PlatformConfig][diag]   message: ${e.message}');
       debugPrint('[PlatformConfig][diag]   details: ${e.details}');
       debugPrint('[PlatformConfig][diag]   hint   : ${e.hint}');
     } catch (e) {
+      diagSelectResult = 'error:$e';
       debugPrint('[PlatformConfig][diag] error on select(*): $e');
     }
     debugPrint('[PlatformConfig][diag] ─────────────────────────────────');
@@ -156,8 +166,8 @@ final platformConfigProvider = FutureProvider<PlatformConfig>((ref) async {
 
     if (row == null) {
       final msg = '[PlatformConfig] platform_config row id=1 not found at '
-          '${Env.supabaseUrl} (jwt_ref=$jwtRef) — check migration 070 was applied '
-          'and the correct SUPABASE_URL dart-define is set';
+          '${Env.supabaseUrl} (jwt_ref=$jwtRef, diag_select=$diagSelectResult) — '
+          'check migration 070 was applied and the correct SUPABASE_URL dart-define is set';
       debugPrint(msg);
       throw StateError(msg);
     }

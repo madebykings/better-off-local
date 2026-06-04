@@ -114,7 +114,10 @@ class _DebugOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final urlRef  = Uri.tryParse(Env.supabaseUrl)?.host.split('.').firstOrNull ?? '?';
-    final jwtRef  = config.diagJwtRef ?? '(not yet fetched)';
+    // Decode jwt_ref directly from the anon key so the comparison works in the
+    // error case too (config.diagJwtRef is null when the provider fails because
+    // PlatformConfig.fromMap is never called on the failure path).
+    final jwtRef  = jwtProjectRef(Env.supabaseAnonKey);
     final rawRow  = config.diagRawRow;
     final error   = asyncConfig.error;
     final isPgErr = error is PostgrestException;
