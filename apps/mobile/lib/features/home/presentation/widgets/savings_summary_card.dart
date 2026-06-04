@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app/router/route_names.dart';
@@ -70,43 +71,7 @@ class SavingsSummaryCard extends ConsumerWidget {
             ),
             if (kDebugMode) ...[
               const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: DefaultTextStyle(
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 9, fontFamily: 'monospace'),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('── DEBUG: platform_config ──',
-                          style: TextStyle(color: Colors.yellow, fontWeight: FontWeight.bold)),
-                      Text('supabase: ${Env.supabaseUrl}'),
-                      Text('db updated_at: ${config.updatedAt?.toUtc().toIso8601String() ?? "(null)"}'),
-                      Text('fetched_at:  ${config.fetchedAt?.toLocal().toIso8601String() ?? "(null)"}'),
-                      if (asyncConfig.isLoading)
-                        const Text('state: loading…',
-                            style: TextStyle(color: Colors.cyan)),
-                      if (asyncConfig.hasValue && asyncConfig.value != null)
-                        const Text('state: ok — DB row received',
-                            style: TextStyle(color: Colors.greenAccent)),
-                      if (asyncConfig.hasError) ...[
-                        const Text('state: ERROR — using hardcoded defaults',
-                            style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-                        Text('reason: ${asyncConfig.error}',
-                            style: const TextStyle(color: Colors.orange)),
-                      ],
-                      if (!asyncConfig.isLoading && !asyncConfig.hasError && asyncConfig.value == null)
-                        const Text('state: null row — row id=1 missing',
-                            style: TextStyle(color: Colors.redAccent)),
-                    ],
-                  ),
-                ),
-              ),
+              _DebugOverlay(asyncConfig: asyncConfig, config: config),
             ],
           ],
         ),
@@ -130,5 +95,108 @@ class SavingsSummaryCard extends ConsumerWidget {
     } else {
       launchUrl(uri, mode: LaunchMode.externalApplication);
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Debug overlay — shown inside the card in kDebugMode builds only
+// ---------------------------------------------------------------------------
+
+class _DebugOverlay extends StatelessWidget {
+  const _DebugOverlay({
+    required this.asyncConfig,
+    required this.config,
+  });
+
+  final AsyncValue<PlatformConfig> asyncConfig;
+  final PlatformConfig config;
+
+  @override
+  Widget build(BuildContext context) {
+    final urlRef  = Uri.tryParse(Env.supabaseUrl)?.host.split('.').firstOrNull ?? '?';
+    final jwtRef  = config.diagJwtRef ?? '(not yet fetched)';
+    final rawRow  = config.diagRawRow;
+    final error   = asyncConfig.error;
+    final isPgErr = error is PostgrestException;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.black54,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: DefaultTextStyle(
+        style: const TextStyle(
+            color: Colors.white70, fontSize: 9, fontFamily: 'monospace'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('── DEBUG: platform_config ──',
+                style: TextStyle(
+                    color: Colors.yellow, fontWeight: FontWeight.bold)),
+
+            // Project identity check
+            Text('url_ref : $urlRef'),
+            Text('jwt_ref : $jwtRef',
+                style: TextStyle(
+                    color: urlRef == jwtRef ? Colors.greenAccent : Colors.redAccent)),
+            Text('supabase: ${Env.supabaseUrl}'),
+
+            // DB timestamps
+            Text('db updated_at: ${config.updatedAt?.toUtc().toIso8601String() ?? "(null)"}'),
+            Text('fetched_at:    ${config.fetchedAt?.toLocal().toIso8601String() ?? "(null)"}'),
+
+            const SizedBox(height: 4),
+
+            // Provider state
+            if (asyncConfig.isLoading)
+              const Text('state: loading…',
+                  style: TextStyle(color: Colors.cyan)),
+
+            if (asyncConfig.hasValue && asyncConfig.value != null)
+              const Text('state: ok — DB row received',
+                  style: TextStyle(
+                      color: Colors.greenAccent,
+                      fontWeight: FontWeight.bold)),
+
+            if (asyncConfig.hasError) ...[
+              const Text('state: ERROR — using hardcoded defaults',
+                  style: TextStyle(
+                      color: Colors.redAccent, fontWeight: FontWeight.bold)),
+              if (isPgErr) ...[
+                Text('pg.code:    ${(error as PostgrestException).code}',
+                    style: const TextStyle(color: Colors.orangeAccent)),
+                Text('pg.message: ${error.message}',
+                    style: const TextStyle(color: Colors.orangeAccent)),
+                Text('pg.details: ${error.details}',
+                    style: const TextStyle(color: Colors.orangeAccent)),
+                Text('pg.hint:    ${error.hint}',
+                    style: const TextStyle(color: Colors.orangeAccent)),
+              ] else
+                Text('reason: $error',
+                    style: const TextStyle(color: Colors.orange)),
+            ],
+
+            if (!asyncConfig.isLoading &&
+                !asyncConfig.hasError &&
+                asyncConfig.value == null)
+              const Text('state: null — row id=1 missing in DB',
+                  style: TextStyle(color: Colors.redAccent)),
+
+            // Diagnostic raw row
+            if (rawRow != null) ...[
+              const SizedBox(height: 4),
+              const Text('diag select(*) row:',
+                  style: TextStyle(color: Colors.lightBlueAccent)),
+              ...rawRow.entries.map(
+                (e) => Text('  ${e.key}: ${e.value}',
+                    style: const TextStyle(color: Colors.lightBlueAccent)),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }
