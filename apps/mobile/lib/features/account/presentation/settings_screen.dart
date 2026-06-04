@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../notifications/providers/notification_preferences_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -22,20 +23,20 @@ class SettingsScreen extends ConsumerWidget {
           ),
 
           const _SectionHeader('Notifications'),
-          const _NotificationPreferenceTile(
-            title: 'New offers nearby',
-            subtitle: 'Get notified when new offers are added',
-            prefKey: 'notif_new_offers',
+          const _DbNotifPrefTile(
+            title: 'New offers from followed businesses',
+            subtitle: 'Notified when a business you follow goes live',
+            column: 'new_offers',
           ),
-          const _NotificationPreferenceTile(
-            title: 'Membership updates',
-            subtitle: 'Renewal reminders and membership changes',
-            prefKey: 'notif_membership',
+          const _DbNotifPrefTile(
+            title: 'Loyalty programmes',
+            subtitle: 'New loyalty card programmes from local businesses',
+            column: 'loyalty_programmes',
           ),
-          const _NotificationPreferenceTile(
-            title: 'Redemption confirmations',
-            subtitle: 'Confirmation when you redeem an offer',
-            prefKey: 'notif_redemptions',
+          const _DbNotifPrefTile(
+            title: 'Referral campaigns',
+            subtitle: 'Referral offer campaigns from businesses you follow',
+            column: 'referral_campaigns',
           ),
 
           const _SectionHeader('Legal'),
@@ -115,36 +116,42 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Simple toggle backed by a shared [StateProvider] keyed by [prefKey].
-/// In production this would persist to Supabase profile preferences.
-class _NotificationPreferenceTile extends ConsumerWidget {
-  const _NotificationPreferenceTile({
+/// Database-backed notification preference toggle.
+class _DbNotifPrefTile extends ConsumerWidget {
+  const _DbNotifPrefTile({
     required this.title,
     required this.subtitle,
-    required this.prefKey,
+    required this.column,
   });
 
   final String title;
   final String subtitle;
-  final String prefKey;
+
+  /// Column name in the notification_preferences table.
+  final String column;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = _notifPrefProvider(prefKey);
-    final enabled = ref.watch(provider);
+    final prefsAsync = ref.watch(notificationPreferencesProvider);
+
+    final enabled = prefsAsync.when(
+      data: (prefs) => switch (column) {
+        'new_offers'         => prefs.newOffers,
+        'loyalty_programmes' => prefs.loyaltyProgrammes,
+        'referral_campaigns' => prefs.referralCampaigns,
+        _                    => true,
+      },
+      loading: () => true,
+      error: (_, __) => true,
+    );
 
     return SwitchListTile(
       title: Text(title),
-      subtitle: Text(subtitle),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
       value: enabled,
-      onChanged: (val) => ref.read(provider.notifier).state = val,
+      onChanged: prefsAsync.isLoading
+          ? null
+          : (val) => updateNotificationPreference(ref, column, val),
     );
   }
-}
-
-/// Per-key notification preference state (in-memory; extend to persist later).
-final _prefProviders = <String, StateProvider<bool>>{};
-
-StateProvider<bool> _notifPrefProvider(String key) {
-  return _prefProviders.putIfAbsent(key, () => StateProvider<bool>((_) => true));
 }
