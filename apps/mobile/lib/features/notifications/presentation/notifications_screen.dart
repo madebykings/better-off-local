@@ -91,13 +91,22 @@ class _NotificationTile extends ConsumerWidget {
     if (!notification.isRead) {
       controller.markRead(notification.id);
     }
-    final offerId = notification.payload?['offer_id'] as String?;
-    if (offerId != null &&
-        (notification.type == NotificationType.offer ||
-            notification.type == NotificationType.businessUpdate)) {
-      context.push(
-        RouteNames.offerDetail.replaceAll(':offerId', offerId),
-      );
+    switch (notification.type) {
+      case NotificationType.offer || NotificationType.businessUpdate:
+        final offerId = notification.payload?['offer_id'] as String?;
+        if (offerId != null) {
+          context.push(RouteNames.offerDetail.replaceAll(':offerId', offerId));
+        }
+      case NotificationType.membership:
+        context.push(RouteNames.card);
+      case NotificationType.redemption:
+        context.push(RouteNames.redemptionHistory);
+      case NotificationType.referral:
+        context.push(RouteNames.referral);
+      case NotificationType.region:
+        context.push(RouteNames.regionProgress);
+      case NotificationType.system:
+        break;
     }
   }
 

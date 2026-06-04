@@ -20,14 +20,30 @@ class OfferListScreen extends ConsumerStatefulWidget {
   ConsumerState<OfferListScreen> createState() => _OfferListScreenState();
 }
 
-class _OfferListScreenState extends ConsumerState<OfferListScreen> {
+class _OfferListScreenState extends ConsumerState<OfferListScreen>
+    with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(liveOffersProvider);
+      ref.invalidate(homeRetailersProvider);
+    }
   }
 
   void _onSearchChanged(String query) {

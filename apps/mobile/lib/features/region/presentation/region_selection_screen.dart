@@ -10,7 +10,12 @@ import '../../../app/theme/app_text_styles.dart';
 import '../../../core/providers/session_provider.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../../home/home_providers.dart';
+import '../../loyalty/providers/loyalty_providers.dart';
+import '../../map/providers/map_providers.dart';
+import '../../offers/providers/offers_providers.dart';
 import '../../profile/providers/profile_providers.dart';
+import '../../retailers/providers/retailer_providers.dart';
 import '../domain/region.dart';
 import '../providers/region_providers.dart';
 
@@ -46,6 +51,13 @@ class _RegionSelectionScreenState extends ConsumerState<RegionSelectionScreen> {
       ref.invalidate(profileProvider);
       // Invalidate region data so the region progress screen rebuilds fresh.
       ref.invalidate(memberRegionIdProvider(session.user.id));
+      // Cascade invalidation: all content providers are region-dependent.
+      ref.invalidate(liveOffersProvider);
+      ref.invalidate(homeOffersProvider);
+      ref.invalidate(homeRetailersProvider);
+      ref.invalidate(liveRetailersProvider);
+      ref.invalidate(mapBaseDataProvider);
+      ref.invalidate(myLoyaltyCardsProvider);
       if (mounted) {
         if (widget.isOnboarding) {
           context.go(RouteNames.home);

@@ -20,19 +20,28 @@ class FavouritesScreen extends ConsumerStatefulWidget {
 }
 
 class _FavouritesScreenState extends ConsumerState<FavouritesScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(favouritesProvider);
+    }
   }
 
   @override
@@ -79,7 +88,10 @@ class _FavouriteOffersTab extends ConsumerWidget {
         final offers = rows
             .map((r) {
               final offerMap = r['offers'] as Map<String, dynamic>?;
-              return offerMap != null ? Offer.fromMap(offerMap) : null;
+              if (offerMap == null) return null;
+              // Only show live offers — silently drop paused/archived/expired.
+              if (offerMap['status'] != 'live') return null;
+              return Offer.fromMap(offerMap);
             })
             .whereType<Offer>()
             .toList();

@@ -10,11 +10,37 @@ import 'widgets/loyalty_stamp_grid.dart';
 
 const _kTeal = Color(0xFF0D9488);
 
-class MyLoyaltyCardsScreen extends ConsumerWidget {
+class MyLoyaltyCardsScreen extends ConsumerStatefulWidget {
   const MyLoyaltyCardsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyLoyaltyCardsScreen> createState() =>
+      _MyLoyaltyCardsScreenState();
+}
+
+class _MyLoyaltyCardsScreenState extends ConsumerState<MyLoyaltyCardsScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.invalidate(myLoyaltyCardsProvider);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final cardsAsync = ref.watch(myLoyaltyCardsProvider);
 
     return Scaffold(
@@ -58,34 +84,49 @@ class MyLoyaltyCardsScreen extends ConsumerWidget {
             );
           }
 
-          final active = cards.where((c) => c.status == LoyaltyCardStatus.active).toList();
-          final completed = cards.where((c) => c.status == LoyaltyCardStatus.completed).toList();
-          final claimed = cards.where((c) => c.status == LoyaltyCardStatus.claimed).toList();
-          final expired = cards.where((c) => c.status == LoyaltyCardStatus.expired).toList();
+          // Active cards keep their progress-based sort from the provider.
+          final active =
+              cards.where((c) => c.status == LoyaltyCardStatus.active).toList();
+          final completed = cards
+              .where((c) => c.status == LoyaltyCardStatus.completed)
+              .toList();
+          final claimed =
+              cards.where((c) => c.status == LoyaltyCardStatus.claimed).toList();
+          final expired =
+              cards.where((c) => c.status == LoyaltyCardStatus.expired).toList();
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (active.isNotEmpty) ...[
-                _SectionHeader('In progress'),
-                ...active.map((c) => _CardTile(card: c)),
-                const SizedBox(height: 8),
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(myLoyaltyCardsProvider),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (completed.isNotEmpty) ...[
+                  _SectionHeader('Ready to claim'),
+                  ...completed.map((c) => _CardTile(
+                        card: c,
+                        onClaimTap: () => context.push(
+                          RouteNames.redemptionQR
+                              .replaceAll(':offerId', c.offerId),
+                        ),
+                      )),
+                  const SizedBox(height: 8),
+                ],
+                if (active.isNotEmpty) ...[
+                  _SectionHeader('In progress'),
+                  ...active.map((c) => _CardTile(card: c)),
+                  const SizedBox(height: 8),
+                ],
+                if (claimed.isNotEmpty) ...[
+                  _SectionHeader('Claimed'),
+                  ...claimed.map((c) => _CardTile(card: c)),
+                  const SizedBox(height: 8),
+                ],
+                if (expired.isNotEmpty) ...[
+                  _SectionHeader('Expired'),
+                  ...expired.map((c) => _CardTile(card: c)),
+                ],
               ],
-              if (completed.isNotEmpty) ...[
-                _SectionHeader('Ready to claim'),
-                ...completed.map((c) => _CardTile(card: c)),
-                const SizedBox(height: 8),
-              ],
-              if (claimed.isNotEmpty) ...[
-                _SectionHeader('Claimed'),
-                ...claimed.map((c) => _CardTile(card: c)),
-                const SizedBox(height: 8),
-              ],
-              if (expired.isNotEmpty) ...[
-                _SectionHeader('Expired'),
-                ...expired.map((c) => _CardTile(card: c)),
-              ],
-            ],
+            ),
           );
         },
       ),
@@ -115,8 +156,9 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _CardTile extends StatelessWidget {
-  const _CardTile({required this.card});
+  const _CardTile({required this.card, this.onClaimTap});
   final LoyaltyCard card;
+  final VoidCallback? onClaimTap;
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +171,7 @@ class _CardTile extends StatelessWidget {
     if (isExpired) headerColor = AppColors.textDisabled;
 
     String statusLabel = '${card.stampsEarned} of ${card.stampsRequired} stamps';
-    if (isCompleted) statusLabel = 'Complete — scan again to claim reward';
+    if (isCompleted) statusLabel = 'Card complete!';
     if (isClaimed) statusLabel = 'Reward claimed';
     if (isExpired) statusLabel = 'Expired';
 
@@ -215,7 +257,7 @@ class _CardTile extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                if (card.rewardDescription != null && !isExpired)
+                if (card.rewardDescription != null && !isExpired && !isCompleted)
                   Text(
                     'Reward: ${card.rewardDescription}',
                     style: const TextStyle(
@@ -224,6 +266,41 @@ class _CardTile extends StatelessWidget {
               ],
             ),
           ),
+
+          // Claim CTA — only on completed (not yet claimed) cards
+          if (isCompleted && onClaimTap != null) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Reward: ${card.rewardDescription ?? 'see retailer'}',
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: onClaimTap,
+                      icon: const Icon(Icons.qr_code, size: 16),
+                      label: const Text('Scan QR to claim reward'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _kTeal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
