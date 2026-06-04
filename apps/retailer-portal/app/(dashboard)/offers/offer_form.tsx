@@ -477,6 +477,9 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
                 Members collect one stamp per verified scanner scan. When they reach the target, they claim their reward.
               </p>
             </div>
+            {errors.loyaltyConfig && (
+              <p className="text-sm text-red-600" role="alert">{errors.loyaltyConfig}</p>
+            )}
 
             <Field label="Stamps required" required hint="Between 2 and 20" error={loyaltyErrors.stampsRequired}>
               <input

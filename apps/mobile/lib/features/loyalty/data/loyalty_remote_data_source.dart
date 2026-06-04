@@ -10,9 +10,8 @@ class LoyaltyRemoteDataSource {
         .select(
           'id, offer_id, retailer_id, stamps_earned, stamps_required, status, '
           'created_at, completed_at, claimed_at, '
-          'offers(title), '
-          'retailers(name), '
-          'offer_loyalty_config(reward_description)',
+          'offers(title, offer_loyalty_config(reward_description)), '
+          'retailers(name)',
         )
         .eq('profile_id', profileId)
         .order('created_at', ascending: false);
@@ -25,9 +24,8 @@ class LoyaltyRemoteDataSource {
         .select(
           'id, offer_id, retailer_id, stamps_earned, stamps_required, status, '
           'created_at, completed_at, claimed_at, '
-          'offers(title), '
-          'retailers(name), '
-          'offer_loyalty_config(reward_description)',
+          'offers(title, offer_loyalty_config(reward_description)), '
+          'retailers(name)',
         )
         .eq('profile_id', profileId)
         .eq('offer_id', offerId)

@@ -40,7 +40,7 @@ class LoyaltyCard extends Equatable {
   factory LoyaltyCard.fromMap(Map<String, dynamic> map) {
     final offers = map['offers'] as Map<String, dynamic>?;
     final retailers = map['retailers'] as Map<String, dynamic>?;
-    final loyaltyConfig = map['offer_loyalty_config'] as Map<String, dynamic>?;
+    final loyaltyConfig = offers?['offer_loyalty_config'] as Map<String, dynamic>?;
 
     LoyaltyCardStatus parseStatus(String s) => switch (s) {
           'completed' => LoyaltyCardStatus.completed,

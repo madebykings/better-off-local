@@ -81,7 +81,20 @@ begin
        where ra.attempt_id = p_redemption_attempt_id
        limit 1;
 
-      stamps_earned  := coalesce(v_new_stamps_earned, 0);
+      -- Card was deleted after the original success; no stamps_earned to return.
+      if v_new_stamps_earned is null then
+        valid                   := true;
+        outcome                 := 'reward_claimed';
+        status                  := 'success';
+        rejection_reason        := null;
+        stamps_earned           := null;
+        stamps_required         := null;
+        next_stamp_available_at := null;
+        return next;
+        return;
+      end if;
+
+      stamps_earned  := v_new_stamps_earned;
       valid          := true;
       outcome        := case when coalesce(status,'') = 'claimed' then 'reward_claimed'
                              when stamps_earned >= stamps_required then 'completed'

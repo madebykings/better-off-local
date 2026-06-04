@@ -17,12 +17,13 @@ import { saveFirstOffer } from '@/lib/actions/first_offer';
 // ---------------------------------------------------------------------------
 
 const OFFER_TYPE_CONFIG: Record<OfferType, { label: string; hint: string }> = {
-  percentage_discount: { label: 'Percentage off',   hint: 'e.g. 10% off' },
-  fixed_discount:      { label: 'Fixed amount off', hint: 'e.g. £5 off' },
-  free_item:           { label: 'Free item',         hint: 'e.g. Free coffee' },
-  buy_one_get_one:     { label: 'Buy one get one',  hint: 'e.g. BOGOF' },
-  meal_deal:           { label: 'Meal deal',         hint: 'e.g. Lunch deal' },
-  other:               { label: 'Special access',   hint: 'e.g. Members-only event' },
+  percentage_discount: { label: 'Percentage off',    hint: 'e.g. 10% off' },
+  fixed_discount:      { label: 'Fixed amount off',  hint: 'e.g. £5 off' },
+  free_item:           { label: 'Free item',          hint: 'e.g. Free coffee' },
+  buy_one_get_one:     { label: 'Buy one get one',   hint: 'e.g. BOGOF' },
+  meal_deal:           { label: 'Meal deal',          hint: 'e.g. Lunch deal' },
+  loyalty_visits:      { label: 'Loyalty stamp card', hint: 'e.g. Collect 8 stamps' },
+  other:               { label: 'Special access',    hint: 'e.g. Members-only event' },
 };
 
 const REDEMPTION_RULE_OPTIONS: { value: RedemptionRule; label: string }[] = [
@@ -335,6 +336,7 @@ const OFFER_TYPE_BADGE_CLASS: Record<OfferType, string> = {
   free_item:           'bg-purple-50 text-purple-700',
   buy_one_get_one:     'bg-violet-50 text-violet-700',
   meal_deal:           'bg-orange-50 text-orange-700',
+  loyalty_visits:      'bg-teal-50 text-teal-700',
   other:               'bg-amber-50 text-amber-700',
 };
 
