@@ -8,6 +8,13 @@ import {
   setVenueAllowanceOverride,
   deactivateRetailer,
 } from '@/lib/actions/admin';
+import { RetailerModerationActions } from '@/components/moderation/moderation_actions';
+import {
+  approveRetailer,
+  rejectRetailer,
+  suspendRetailer,
+  setRetailerVisibility,
+} from '@/lib/actions/moderation';
 
 export const metadata: Metadata = { title: 'Retailer – Admin' };
 
@@ -143,6 +150,19 @@ export default async function RetailerDetailPage({ params }: Props) {
           <span className="text-xs text-gray-400 block">Visibility</span>
           <span className="font-medium text-gray-700">{retailer.visibility_status}</span>
         </div>
+      </div>
+
+      {/* ── Moderation actions ──────────────────────────────────────────── */}
+      <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 mb-6">
+        <p className="text-sm font-semibold text-gray-700 mb-3">Moderation actions</p>
+        <RetailerModerationActions
+          retailerId={retailerId}
+          currentApprovalStatus={retailer.approval_status}
+          approveAction={approveRetailer}
+          rejectAction={rejectRetailer}
+          suspendAction={suspendRetailer}
+          setVisibilityAction={setRetailerVisibility}
+        />
       </div>
 
       {/* ── Account activation ──────────────────────────────────────────── */}

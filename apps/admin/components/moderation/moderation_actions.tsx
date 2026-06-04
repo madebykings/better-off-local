@@ -138,7 +138,7 @@ export function OfferModerationActions({
 }: OfferActionsProps) {
   return (
     <div className="flex flex-wrap gap-2">
-      {(currentStatus === 'pending' || currentStatus === 'paused') && (
+      {(currentStatus === 'pending' || currentStatus === 'paused' || currentStatus === 'rejected') && (
         <ActionButton
           label="Approve & go live"
           action={(r) => approveAction(offerId, r)}

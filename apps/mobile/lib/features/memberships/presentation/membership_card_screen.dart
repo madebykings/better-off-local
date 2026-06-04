@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
@@ -67,6 +68,31 @@ class _MembershipCardScreenState extends ConsumerState<MembershipCardScreen>
     super.dispose();
   }
 
+  /// Opens the Stripe Customer Portal so the user can update their
+  /// payment method. Follows the same pattern as AccountScreen._managePlan.
+  Future<void> _openPortal(BuildContext context) async {
+    if (!mounted) return;
+    final scaffold = ScaffoldMessenger.of(context);
+    try {
+      final url = await ref
+          .read(membershipRepositoryProvider)
+          .createPortalSession();
+      if (!mounted) return;
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final membershipAsync = ref.watch(currentMembershipProvider);
@@ -98,6 +124,15 @@ class _MembershipCardScreenState extends ConsumerState<MembershipCardScreen>
           loading: () => const _PassSkeleton(),
           error: (e, _) => ErrorState(message: e.toString()),
           data: (membership) {
+            // past_due: user still has access but payment is failing — show
+            // a dedicated warning screen rather than the generic no-plan prompt.
+            if (membership != null &&
+                membership.status == MembershipStatus.pastDue) {
+              return _PastDuePrompt(
+                onUpdatePayment: () => _openPortal(context),
+              );
+            }
+
             if (membership == null || !membership.isEntitled) {
               return _NoPlanPrompt(
                 onSubscribe: () => context.push(RouteNames.paywall),
@@ -866,6 +901,66 @@ class _PassSkeleton extends StatelessWidget {
               }),
             ),
           )),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Past-due prompt — payment failed, still has access, needs to update card
+// ---------------------------------------------------------------------------
+
+class _PastDuePrompt extends StatelessWidget {
+  const _PastDuePrompt({required this.onUpdatePayment});
+
+  final VoidCallback onUpdatePayment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.pagePadding),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Warning banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.warning.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.warning,
+                  size: 22,
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Payment failed — please update your payment method to keep access',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textPrimary,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          PrimaryButton(
+            label: 'Update payment method',
+            onPressed: onUpdatePayment,
+          ),
         ],
       ),
     );

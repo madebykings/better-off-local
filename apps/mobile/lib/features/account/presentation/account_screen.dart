@@ -620,6 +620,60 @@ class _MembershipTile extends StatelessWidget {
       );
     }
 
+    // past_due: user's payment failed but they still have access — show a
+    // warning banner with a direct link to update their payment method.
+    if (membership != null &&
+        membership!.status == MembershipStatus.pastDue) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Warning banner
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.warning.withValues(alpha: 0.5),
+                ),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.warning,
+                    size: 20,
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Payment failed — please update your payment method to keep access',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onManagePlan,
+                child: const Text('Update payment method'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (membership == null || !membership!.isEntitled) {
       return Padding(
         padding: const EdgeInsets.all(16),

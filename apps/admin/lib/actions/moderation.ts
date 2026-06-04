@@ -190,7 +190,7 @@ export async function approveRetailer(retailerId: string, reason?: string) {
   revalidatePath('/review');
 }
 
-export async function rejectRetailer(retailerId: string, note: string) {
+export async function rejectRetailer(retailerId: string, note?: string) {
   if (!note?.trim()) return; // server-side guard — note is required
 
   const { userId } = await requireAdmin();
@@ -209,6 +209,7 @@ export async function rejectRetailer(retailerId: string, note: string) {
     .update({
       approval_status: 'rejected',
       visibility_status: 'hidden',
+      review_notes: note!.trim(),
       updated_at: new Date().toISOString(),
     })
     .eq('id', retailerId);

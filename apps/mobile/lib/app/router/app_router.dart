@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/providers/session_provider.dart';
+import '../../features/memberships/domain/membership.dart';
+import '../../features/memberships/providers/membership_providers.dart';
 import '../../features/profile/providers/profile_providers.dart';
 
 import '../../features/follow/presentation/following_screen.dart';
@@ -39,8 +41,9 @@ import '../../features/retailers/presentation/retailer_detail_screen.dart';
 import '../../features/shell/presentation/app_shell.dart';
 import 'route_names.dart';
 
-/// Listens to [sessionProvider] and [profileProvider] and notifies [GoRouter]
-/// to re-evaluate its redirect whenever auth state or profile state changes.
+/// Listens to [sessionProvider], [profileProvider], and
+/// [currentMembershipProvider] and notifies [GoRouter] to re-evaluate its
+/// redirect whenever auth state, profile state, or membership state changes.
 class _RouterNotifier extends ChangeNotifier {
   _RouterNotifier(this._ref) {
     _ref.listen<AsyncValue<Session?>>(
@@ -48,6 +51,7 @@ class _RouterNotifier extends ChangeNotifier {
       (_, __) => notifyListeners(),
     );
     _ref.listen(profileProvider, (_, __) => notifyListeners());
+    _ref.listen(currentMembershipProvider, (_, __) => notifyListeners());
   }
 
   final Ref _ref;
@@ -111,6 +115,40 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             !isOnRegionSelection &&
             !isOnCompleteProfile) {
           return RouteNames.regionSelection;
+        }
+
+        // Gate 3: membership gate — expired or cancelled members are redirected
+        // to the paywall. past_due is NOT gated (still a paying member; they see
+        // a banner instead). We use valueOrNull so the gate is skipped while the
+        // provider is still loading, avoiding blocking navigation on app start.
+        //
+        // Routes exempt from this gate (always accessible):
+        //   - paywall, activating, subscriptionSuccess  (membership purchase flow)
+        //   - account + its sub-routes                  (account/plan management)
+        //   - card                                      (membership card screen)
+        final membershipGatedRoutes = {
+          RouteNames.home,
+          RouteNames.explore,
+          RouteNames.map,
+          RouteNames.favourites,
+          RouteNames.notifications,
+          RouteNames.redemptionHistory,
+          RouteNames.redemptionConfirmation,
+          RouteNames.redemptionFailed,
+        };
+
+        final isOnMembershipGatedRoute =
+            membershipGatedRoutes.contains(state.matchedLocation) ||
+            state.matchedLocation.startsWith(RouteNames.explore + '/') ||
+            state.matchedLocation.startsWith('/redemptions/');
+
+        if (isOnMembershipGatedRoute) {
+          final membership = ref.read(currentMembershipProvider).valueOrNull;
+          if (membership != null) {
+            final gated = membership.status == MembershipStatus.expired ||
+                membership.status == MembershipStatus.cancelled;
+            if (gated) return RouteNames.paywall;
+          }
         }
 
       }
