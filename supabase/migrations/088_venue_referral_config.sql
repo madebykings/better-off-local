@@ -236,6 +236,11 @@ grant  execute on function try_unlock_venue_referral_rewards(uuid) to service_ro
 
 -- ── 5. Updated get_venue_referral_status ─────────────────────────────────────
 
+-- DROP required: RETURNS TABLE grew from 4 to 6 columns (added reward_title,
+-- platform_referral_code). PostgreSQL does not allow CREATE OR REPLACE to
+-- change OUT parameter types or count — a DROP + CREATE is the only option.
+drop function if exists get_venue_referral_status(uuid, uuid);
+
 create or replace function get_venue_referral_status(
   p_offer_id   uuid,
   p_profile_id uuid
