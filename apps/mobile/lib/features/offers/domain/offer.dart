@@ -19,6 +19,7 @@ class Offer extends Equatable {
     this.imageUrl,
     this.retailerLogoUrl,
     this.distanceKm,
+    this.offerMeta,
     // Offer rules (nullable — offer may have no rules row)
     this.maxRedemptionsPerUser,
     this.maxRedemptionsPerDay,
@@ -43,6 +44,7 @@ class Offer extends Equatable {
   final String? imageUrl;
   final String? retailerLogoUrl;
   final double? distanceKm;
+  final Map<String, dynamic>? offerMeta;
 
   // Offer rules
   final int? maxRedemptionsPerUser;
@@ -133,6 +135,7 @@ class Offer extends Equatable {
       isFeatured: map['is_featured'] as bool? ?? false,
       imageUrl: map['image_url'] as String?,
       retailerLogoUrl: retailers?['logo_url'] as String?,
+      offerMeta: map['offer_meta'] as Map<String, dynamic>?,
       // Rules (from joined offer_rules row; null if no rules set)
       maxRedemptionsPerUser: rules?['max_redemptions_per_user'] as int?,
       maxRedemptionsPerDay: rules?['max_redemptions_per_day'] as int?,

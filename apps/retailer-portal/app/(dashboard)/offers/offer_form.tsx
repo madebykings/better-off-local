@@ -22,6 +22,7 @@ import {
   needsDiscountValue,
   needsLoyaltyConfig,
   needsVenueReferralConfig,
+  needsOfferMeta,
   discountValueLabel,
   discountValuePlaceholder,
   type LoyaltyConfigFields,
@@ -30,6 +31,8 @@ import {
   type VenueReferralConfigFields,
   EMPTY_VENUE_REFERRAL_CONFIG,
   VENUE_REFERRAL_MAX_REWARD_OPTIONS,
+  type OfferMetaFields,
+  EMPTY_OFFER_META,
 } from '@/lib/utils/first_offer';
 import { REDEMPTION_RULES, type RedemptionRule } from '@/lib/utils/redemption_rules';
 
@@ -138,9 +141,11 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
     selectedLocationIds: [],
     newCustomersOnly: false,
     imageUrl: '',
-    estimatedSavingPence: '',
     ...initialData,
   });
+  const [offerMeta, setOfferMeta] = useState<OfferMetaFields>(
+    initialData?.offerMeta ?? EMPTY_OFFER_META,
+  );
   const [loyaltyConfig, setLoyaltyConfig] = useState<LoyaltyConfigFields>(
     initialData?.loyaltyConfig ?? EMPTY_LOYALTY_CONFIG,
   );
@@ -163,6 +168,37 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
     };
   }
 
+  function setMeta(key: keyof OfferMetaFields) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setOfferMeta((prev) => ({ ...prev, [key]: e.target.value }));
+      setSaved(false);
+    };
+  }
+
+  function updateMetaItem(index: number, value: string) {
+    setOfferMeta((prev) => {
+      const items = [...(prev.includedItems ?? [])];
+      items[index] = value;
+      return { ...prev, includedItems: items };
+    });
+    setSaved(false);
+  }
+
+  function addMetaItem() {
+    setOfferMeta((prev) => ({
+      ...prev,
+      includedItems: [...(prev.includedItems ?? []), ''],
+    }));
+  }
+
+  function removeMetaItem(index: number) {
+    setOfferMeta((prev) => ({
+      ...prev,
+      includedItems: (prev.includedItems ?? []).filter((_, i) => i !== index),
+    }));
+    setSaved(false);
+  }
+
   function setVenueReferral(key: keyof VenueReferralConfigFields) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       setVenueReferralConfig((prev) => ({ ...prev, [key]: e.target.value }));
@@ -181,6 +217,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
 
   function setOfferType(type: OfferType) {
     setFields((prev) => ({ ...prev, offerType: type }));
+    setOfferMeta(EMPTY_OFFER_META);
     if (errors.offerType) setErrors((prev) => ({ ...prev, offerType: undefined }));
     if (needsLoyaltyConfig(type) && !loyaltyConfig.rewardDescription) {
       setLoyaltyConfig(initialData?.loyaltyConfig ?? EMPTY_LOYALTY_CONFIG);
@@ -220,6 +257,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
 
       const submittedFields: OfferFields = {
         ...fields,
+        offerMeta: needsOfferMeta(fields.offerType) ? offerMeta : undefined,
         loyaltyConfig: needsLoyaltyConfig(fields.offerType) ? loyaltyConfig : undefined,
         venueReferralConfig: needsVenueReferralConfig(fields.offerType) ? venueReferralConfig : undefined,
       };
@@ -499,6 +537,179 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
             ].join(' ')}>
               {computeValueText(fields.offerType, fields.discountValue) || '—'}
             </span>
+          </div>
+        )}
+
+        {/* Type-specific display fields */}
+        {needsOfferMeta(fields.offerType) && (
+          <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-4 space-y-4">
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+              Offer details
+              <span className="ml-1.5 normal-case font-normal text-blue-500">(optional — shown on the member app)</span>
+            </p>
+
+            {/* percentage_discount */}
+            {fields.offerType === 'percentage_discount' && (
+              <>
+                <Field label="Applies to" hint='e.g. "all drinks" or "food only"'>
+                  <input
+                    type="text"
+                    value={offerMeta.appliesTo ?? ''}
+                    onChange={setMeta('appliesTo')}
+                    placeholder="e.g. all drinks"
+                    maxLength={80}
+                    className={inputCls(false)}
+                    disabled={!canEdit || isPending}
+                  />
+                </Field>
+                <Field label="Minimum spend (£)" hint="Optional — leave blank if there is no minimum">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">£</span>
+                    <input
+                      type="number"
+                      value={offerMeta.minSpend ?? ''}
+                      onChange={setMeta('minSpend')}
+                      placeholder="e.g. 10"
+                      min={0.01}
+                      step={0.01}
+                      className={[inputCls(false), 'pl-7'].join(' ')}
+                      disabled={!canEdit || isPending}
+                    />
+                  </div>
+                </Field>
+              </>
+            )}
+
+            {/* fixed_discount */}
+            {fields.offerType === 'fixed_discount' && (
+              <Field label="Minimum spend (£)" hint="Optional — leave blank if there is no minimum">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">£</span>
+                  <input
+                    type="number"
+                    value={offerMeta.minSpend ?? ''}
+                    onChange={setMeta('minSpend')}
+                    placeholder="e.g. 20"
+                    min={0.01}
+                    step={0.01}
+                    className={[inputCls(false), 'pl-7'].join(' ')}
+                    disabled={!canEdit || isPending}
+                  />
+                </div>
+              </Field>
+            )}
+
+            {/* free_item */}
+            {fields.offerType === 'free_item' && (
+              <>
+                <Field label="Free item name" hint='e.g. "flat white" or "slice of cake"'>
+                  <input
+                    type="text"
+                    value={offerMeta.freeItemName ?? ''}
+                    onChange={setMeta('freeItemName')}
+                    placeholder="e.g. flat white"
+                    maxLength={80}
+                    className={inputCls(false)}
+                    disabled={!canEdit || isPending}
+                  />
+                </Field>
+                <Field label="Qualifying purchase" hint='e.g. "any food order" — leave blank if no purchase is required'>
+                  <input
+                    type="text"
+                    value={offerMeta.qualifyingPurchase ?? ''}
+                    onChange={setMeta('qualifyingPurchase')}
+                    placeholder="e.g. any food order"
+                    maxLength={80}
+                    className={inputCls(false)}
+                    disabled={!canEdit || isPending}
+                  />
+                </Field>
+              </>
+            )}
+
+            {/* buy_one_get_one */}
+            {fields.offerType === 'buy_one_get_one' && (
+              <>
+                <Field label="Buy item" hint='e.g. "any main course" or "any drink"'>
+                  <input
+                    type="text"
+                    value={offerMeta.buyItem ?? ''}
+                    onChange={setMeta('buyItem')}
+                    placeholder="e.g. any main course"
+                    maxLength={80}
+                    className={inputCls(false)}
+                    disabled={!canEdit || isPending}
+                  />
+                </Field>
+                <Field label="Get item" hint='e.g. "second of equal or lesser value"'>
+                  <input
+                    type="text"
+                    value={offerMeta.receiveItem ?? ''}
+                    onChange={setMeta('receiveItem')}
+                    placeholder="e.g. second of equal or lesser value"
+                    maxLength={80}
+                    className={inputCls(false)}
+                    disabled={!canEdit || isPending}
+                  />
+                </Field>
+              </>
+            )}
+
+            {/* meal_deal */}
+            {fields.offerType === 'meal_deal' && (
+              <>
+                <Field label="Bundle price (£)" hint="The all-in price for the meal deal">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">£</span>
+                    <input
+                      type="number"
+                      value={offerMeta.bundlePrice ?? ''}
+                      onChange={setMeta('bundlePrice')}
+                      placeholder="e.g. 9.99"
+                      min={0.01}
+                      step={0.01}
+                      className={[inputCls(false), 'pl-7'].join(' ')}
+                      disabled={!canEdit || isPending}
+                    />
+                  </div>
+                </Field>
+                <Field label="Included items" hint="What's in the deal — up to 8 items">
+                  <div className="space-y-2">
+                    {(offerMeta.includedItems ?? []).map((item, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={item}
+                          onChange={(e) => updateMetaItem(idx, e.target.value)}
+                          placeholder={`Item ${idx + 1}`}
+                          maxLength={60}
+                          className={[inputCls(false), 'flex-1'].join(' ')}
+                          disabled={!canEdit || isPending}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeMetaItem(idx)}
+                          disabled={!canEdit || isPending}
+                          className="rounded-lg border border-gray-200 px-2.5 py-2 text-xs text-gray-400 hover:text-red-500 hover:border-red-200 disabled:opacity-40"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                    {(offerMeta.includedItems ?? []).length < 8 && canEdit && (
+                      <button
+                        type="button"
+                        onClick={addMetaItem}
+                        disabled={isPending}
+                        className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-40"
+                      >
+                        + Add item
+                      </button>
+                    )}
+                  </div>
+                </Field>
+              </>
+            )}
           </div>
         )}
 
@@ -925,27 +1136,6 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
                 </button>
               </div>
             )}
-          </div>
-        </Field>
-
-        {/* Estimated saving */}
-        <Field
-          label="Estimated customer saving (£)"
-          hint={`Amount saved per redemption in pounds. ${OFFER_TYPE_CONFIG[fields.offerType].savingHint}. Used in the savings screen and analytics.`}
-          error={errors.estimatedSavingPence}
-        >
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">£</span>
-            <input
-              type="number"
-              value={fields.estimatedSavingPence}
-              onChange={set('estimatedSavingPence')}
-              placeholder="e.g. 3.50"
-              min={0.01}
-              step={0.01}
-              className={[inputCls(!!errors.estimatedSavingPence), 'pl-7'].join(' ')}
-              disabled={!canEdit || isPending}
-            />
           </div>
         </Field>
 

@@ -118,6 +118,104 @@ export const EMPTY_VENUE_REFERRAL_CONFIG: VenueReferralConfigFields = {
   maxRewardsPerReferrer: '',
 };
 
+// ---------------------------------------------------------------------------
+// Type-specific offer metadata (display fields — not enforcement)
+// ---------------------------------------------------------------------------
+
+export type OfferMetaFields = {
+  appliesTo?: string;          // percentage_discount: "all drinks"
+  minSpend?: string;           // percentage_discount + fixed_discount: "20"
+  freeItemName?: string;       // free_item: "Large Coffee"
+  qualifyingPurchase?: string; // free_item: "any breakfast"
+  buyItem?: string;            // buy_one_get_one: "any main course"
+  receiveItem?: string;        // buy_one_get_one: "second of equal or lesser value"
+  bundlePrice?: string;        // meal_deal: "9.99"
+  includedItems?: string[];    // meal_deal: ["Burger", "Fries", "Drink"]
+};
+
+export const EMPTY_OFFER_META: OfferMetaFields = {
+  appliesTo: '',
+  minSpend: '',
+  freeItemName: '',
+  qualifyingPurchase: '',
+  buyItem: '',
+  receiveItem: '',
+  bundlePrice: '',
+  includedItems: [],
+};
+
+/** Returns true for types that support type-specific display metadata. */
+export function needsOfferMeta(offerType: OfferType): boolean {
+  return (
+    offerType === 'percentage_discount' ||
+    offerType === 'fixed_discount' ||
+    offerType === 'free_item' ||
+    offerType === 'buy_one_get_one' ||
+    offerType === 'meal_deal'
+  );
+}
+
+/** Auto-derives estimated saving in pence. Only derivable for fixed_discount. */
+export function autoDeriveSavingPence(offerType: OfferType, discountValue: string): number | null {
+  if (offerType === 'fixed_discount') {
+    const v = parseFloat(discountValue);
+    if (!isNaN(v) && v > 0) return Math.round(v * 100);
+  }
+  return null;
+}
+
+/** Builds a short summary string from structured offer meta for the mobile card. */
+export function buildShortSummary(
+  offerType: OfferType,
+  meta: OfferMetaFields,
+  discountValue: string,
+): string | null {
+  switch (offerType) {
+    case 'percentage_discount': {
+      const v = discountValue.trim();
+      if (!v) return null;
+      let s = `${v}% off`;
+      if (meta.appliesTo?.trim()) s += ` ${meta.appliesTo.trim()}`;
+      if (meta.minSpend?.trim()) s += ` — min. spend £${meta.minSpend.trim()}`;
+      return s;
+    }
+    case 'fixed_discount': {
+      const v = discountValue.trim();
+      if (!v) return null;
+      let s = `£${v} off`;
+      if (meta.minSpend?.trim()) s += ` when you spend £${meta.minSpend.trim()} or more`;
+      return s;
+    }
+    case 'free_item': {
+      const name = meta.freeItemName?.trim();
+      if (!name) return null;
+      let s = `Free ${name}`;
+      if (meta.qualifyingPurchase?.trim()) s += ` with ${meta.qualifyingPurchase.trim().toLowerCase()}`;
+      return s;
+    }
+    case 'buy_one_get_one': {
+      const buy = meta.buyItem?.trim();
+      const get = meta.receiveItem?.trim();
+      if (buy && get) return `Buy ${buy} · get ${get}`;
+      return 'Buy one, get one free';
+    }
+    case 'meal_deal': {
+      const price = meta.bundlePrice?.trim();
+      const items = (meta.includedItems ?? []).filter((i) => i.trim());
+      if (price && items.length) return `Meal deal £${price} · ${items.join(', ')}`;
+      if (price) return `Meal deal — £${price}`;
+      if (items.length) return `Meal deal: ${items.join(', ')}`;
+      return 'Members meal deal';
+    }
+    case 'loyalty_visits':
+      return 'Loyalty stamp card — collect stamps, earn rewards';
+    case 'venue_referral':
+      return 'Refer a friend and earn rewards';
+    default:
+      return null;
+  }
+}
+
 /** Label for the discount value input based on offer type. */
 export function discountValueLabel(offerType: OfferType): string {
   return offerType === 'percentage_discount' ? 'Discount percentage' : 'Discount amount (£)';

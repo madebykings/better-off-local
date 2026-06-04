@@ -136,6 +136,29 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                           style: AppTextStyles.bodyMedium,
                         ),
                       ],
+                      if (offer.offerType == 'free_item' &&
+                          offer.offerMeta?['free_item_name'] != null) ...[
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        _FreeItemSection(meta: offer.offerMeta!),
+                      ],
+                      if (offer.offerType == 'buy_one_get_one' &&
+                          (offer.offerMeta?['buy_item'] != null ||
+                           offer.offerMeta?['receive_item'] != null)) ...[
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        _BogofSection(meta: offer.offerMeta!),
+                      ],
+                      if (offer.offerType == 'meal_deal' &&
+                          (offer.offerMeta?['bundle_price'] != null ||
+                           (offer.offerMeta?['included_items'] as List?)?.isNotEmpty == true)) ...[
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        _MealDealSection(meta: offer.offerMeta!),
+                      ],
                       if (offer.offerType == 'loyalty_visits') ...[
                         const SizedBox(height: 20),
                         const Divider(),
@@ -288,6 +311,177 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
         'Nov',
         'Dec'
       ][m];
+}
+
+// ---------------------------------------------------------------------------
+// Structured offer detail sections — shown when offer_meta is populated
+// ---------------------------------------------------------------------------
+
+class _FreeItemSection extends StatelessWidget {
+  const _FreeItemSection({required this.meta});
+  final Map<String, dynamic> meta;
+
+  @override
+  Widget build(BuildContext context) {
+    final itemName = (meta['free_item_name'] as String? ?? '').toUpperCase();
+    final qualifying = meta['qualifying_purchase'] as String?;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'FREE $itemName',
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFFF97316),
+            letterSpacing: 0.5,
+          ),
+        ),
+        if (qualifying != null && qualifying.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            'with $qualifying',
+            style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _BogofSection extends StatelessWidget {
+  const _BogofSection({required this.meta});
+  final Map<String, dynamic> meta;
+
+  @override
+  Widget build(BuildContext context) {
+    final buyItem = meta['buy_item'] as String?;
+    final receiveItem = meta['receive_item'] as String?;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.shopping_bag_outlined, size: 16, color: Color(0xFF8B5CF6)),
+            const SizedBox(width: 6),
+            const Text(
+              'Buy one get one',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF8B5CF6),
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFEDE9FE)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            children: [
+              _BogofRow(label: 'BUY', value: buyItem ?? 'one item', color: const Color(0xFF8B5CF6)),
+              const Divider(height: 1, color: Color(0xFFEDE9FE)),
+              _BogofRow(label: 'GET', value: receiveItem ?? 'one free', color: const Color(0xFF6D28D9)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BogofRow extends StatelessWidget {
+  const _BogofRow({required this.label, required this.value, required this.color});
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            alignment: Alignment.center,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: color,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MealDealSection extends StatelessWidget {
+  const _MealDealSection({required this.meta});
+  final Map<String, dynamic> meta;
+
+  @override
+  Widget build(BuildContext context) {
+    final price = meta['bundle_price'] as String?;
+    final rawItems = meta['included_items'];
+    final items = rawItems is List ? rawItems.cast<String>() : <String>[];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.restaurant_menu_outlined, size: 16, color: Color(0xFFEA580C)),
+            const SizedBox(width: 6),
+            const Text(
+              'Meal deal',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFEA580C),
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+        if (price != null && price.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            '£$price',
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFFEA580C),
+            ),
+          ),
+        ],
+        if (items.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                const Text('• ', style: TextStyle(color: AppColors.textSecondary)),
+                Text(item, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
+              ],
+            ),
+          )),
+        ],
+      ],
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -5,7 +5,14 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { type RuleColumns, ruleToColumns } from '@/lib/utils/redemption_rules';
-import { type OfferType, OFFER_TYPES, computeValueText, needsDiscountValue, needsLoyaltyConfig, needsVenueReferralConfig, type LoyaltyConfigFields, EMPTY_LOYALTY_CONFIG, type VenueReferralConfigFields } from '@/lib/utils/first_offer';
+import {
+  type OfferType, OFFER_TYPES, computeValueText, needsDiscountValue,
+  needsLoyaltyConfig, needsVenueReferralConfig, needsOfferMeta,
+  type LoyaltyConfigFields, EMPTY_LOYALTY_CONFIG,
+  type VenueReferralConfigFields,
+  type OfferMetaFields, EMPTY_OFFER_META,
+  autoDeriveSavingPence, buildShortSummary,
+} from '@/lib/utils/first_offer';
 import type { RedemptionRule } from '@/lib/utils/redemption_rules';
 
 // ---------------------------------------------------------------------------
@@ -25,7 +32,7 @@ export type OfferFields = {
   venueScope: 'all' | 'specific';
   selectedLocationIds: string[];
   imageUrl: string;            // public URL of the uploaded cover image, or ''
-  estimatedSavingPence: string; // integer string in pence, or ''
+  offerMeta?: OfferMetaFields; // type-specific display fields; null for types that don't use meta
   loyaltyConfig?: LoyaltyConfigFields;
   venueReferralConfig?: VenueReferralConfigFields;
 };
@@ -106,6 +113,31 @@ function validateOffer(fields: OfferFields): Partial<Record<keyof OfferFields, s
     }
   }
   return errors;
+}
+
+function buildOfferMetaJson(
+  offerType: OfferType,
+  meta: OfferMetaFields | undefined,
+): Record<string, unknown> | null {
+  if (!meta || !needsOfferMeta(offerType)) return null;
+  const result: Record<string, unknown> = {};
+  if (offerType === 'percentage_discount') {
+    if (meta.appliesTo?.trim()) result.applies_to = meta.appliesTo.trim();
+    if (meta.minSpend?.trim()) result.min_spend = meta.minSpend.trim();
+  } else if (offerType === 'fixed_discount') {
+    if (meta.minSpend?.trim()) result.min_spend = meta.minSpend.trim();
+  } else if (offerType === 'free_item') {
+    if (meta.freeItemName?.trim()) result.free_item_name = meta.freeItemName.trim();
+    if (meta.qualifyingPurchase?.trim()) result.qualifying_purchase = meta.qualifyingPurchase.trim();
+  } else if (offerType === 'buy_one_get_one') {
+    if (meta.buyItem?.trim()) result.buy_item = meta.buyItem.trim();
+    if (meta.receiveItem?.trim()) result.receive_item = meta.receiveItem.trim();
+  } else if (offerType === 'meal_deal') {
+    if (meta.bundlePrice?.trim()) result.bundle_price = meta.bundlePrice.trim();
+    const items = (meta.includedItems ?? []).filter((i) => i.trim());
+    if (items.length) result.included_items = items;
+  }
+  return Object.keys(result).length > 0 ? result : null;
 }
 
 async function upsertVenueReferralConfig(service: ReturnType<typeof createServiceClient>, offerId: string, cfg: VenueReferralConfigFields): Promise<void> {
@@ -194,9 +226,9 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
       status: 'draft',
       created_by_profile_id: ctx.userId,
       image_url: fields.imageUrl.trim() || null,
-      estimated_saving_pence: fields.estimatedSavingPence.trim()
-        ? Math.round(parseFloat(fields.estimatedSavingPence) * 100)
-        : null,
+      offer_meta: buildOfferMetaJson(fields.offerType, fields.offerMeta),
+      estimated_saving_pence: autoDeriveSavingPence(fields.offerType, fields.discountValue),
+      short_summary: buildShortSummary(fields.offerType, fields.offerMeta ?? EMPTY_OFFER_META, fields.discountValue),
     })
     .select('id')
     .single();
@@ -286,9 +318,9 @@ export async function updateOffer(
       start_at: fields.startDate ? new Date(fields.startDate).toISOString() : null,
       end_at: fields.endDate ? new Date(fields.endDate).toISOString() : null,
       image_url: fields.imageUrl.trim() || null,
-      estimated_saving_pence: fields.estimatedSavingPence.trim()
-        ? Math.round(parseFloat(fields.estimatedSavingPence) * 100)
-        : null,
+      offer_meta: buildOfferMetaJson(fields.offerType, fields.offerMeta),
+      estimated_saving_pence: autoDeriveSavingPence(fields.offerType, fields.discountValue),
+      short_summary: buildShortSummary(fields.offerType, fields.offerMeta ?? EMPTY_OFFER_META, fields.discountValue),
       ...(statusChanged ? { status: newStatus } : {}),
       updated_at: new Date().toISOString(),
     })

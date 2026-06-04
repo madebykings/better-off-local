@@ -6,7 +6,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { ruleFromColumns, type RuleColumns } from '@/lib/utils/redemption_rules';
 import { OfferForm } from '../offer_form';
 import type { OfferFields } from '@/lib/actions/offers';
-import { type OfferType, needsDiscountValue, type LoyaltyConfigFields, EMPTY_LOYALTY_CONFIG } from '@/lib/utils/first_offer';
+import { type OfferType, needsDiscountValue, needsOfferMeta, type LoyaltyConfigFields, EMPTY_LOYALTY_CONFIG, type OfferMetaFields } from '@/lib/utils/first_offer';
 
 export const metadata: Metadata = { title: 'Edit Offer – Retailer Portal' };
 
@@ -27,7 +27,7 @@ export default async function OfferDetailPage({ params }: Props) {
   const [offerResult, rulesResult, locationsResult, offerLocationsResult, loyaltyConfigResult] = await Promise.all([
     supabase
       .from('offers')
-      .select('id, title, value_text, description, offer_type, start_at, end_at, status, venue_scope, image_url, estimated_saving_pence')
+      .select('id, title, value_text, description, offer_type, start_at, end_at, status, venue_scope, image_url, estimated_saving_pence, offer_meta')
       .eq('id', offerId)
       .eq('retailer_id', retailerId)
       .maybeSingle(),
@@ -80,6 +80,21 @@ export default async function OfferDetailPage({ params }: Props) {
     return '';
   }
 
+  function parseOfferMeta(raw: unknown, offerType: OfferType): OfferMetaFields | undefined {
+    if (!raw || !needsOfferMeta(offerType)) return undefined;
+    const m = raw as Record<string, unknown>;
+    return {
+      appliesTo: (m.applies_to as string | undefined) ?? '',
+      minSpend: (m.min_spend as string | undefined) ?? '',
+      freeItemName: (m.free_item_name as string | undefined) ?? '',
+      qualifyingPurchase: (m.qualifying_purchase as string | undefined) ?? '',
+      buyItem: (m.buy_item as string | undefined) ?? '',
+      receiveItem: (m.receive_item as string | undefined) ?? '',
+      bundlePrice: (m.bundle_price as string | undefined) ?? '',
+      includedItems: Array.isArray(m.included_items) ? (m.included_items as string[]) : [],
+    };
+  }
+
   // Map legacy 'bundle' type (DB enum value predating buy_one_get_one) to its
   // current equivalent so the form renders correctly for older offers.
   const rawType = offer.offer_type as string;
@@ -111,9 +126,7 @@ export default async function OfferDetailPage({ params }: Props) {
     venueScope,
     selectedLocationIds,
     imageUrl: (offer as any).image_url ?? '',
-    estimatedSavingPence: (offer as any).estimated_saving_pence != null
-      ? ((offer as any).estimated_saving_pence as number / 100).toFixed(2)
-      : '',
+    offerMeta: parseOfferMeta((offer as any).offer_meta, offerType),
     loyaltyConfig,
   };
 
