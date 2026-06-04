@@ -88,7 +88,9 @@ class _VenueReferralBody extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Share this offer. When a friend visits for the first time and redeems it, you\'ll earn a reward.',
+            status.rewardTitle != null && status.rewardTitle!.isNotEmpty
+                ? 'Share this offer. When a friend visits for the first time, you\'ll earn: ${status.rewardTitle}'
+                : 'Share this offer. When a friend visits for the first time and redeems it, you\'ll earn a reward.',
             style: AppTextStyles.bodyMedium.copyWith(
               color: AppColors.textSecondary,
             ),

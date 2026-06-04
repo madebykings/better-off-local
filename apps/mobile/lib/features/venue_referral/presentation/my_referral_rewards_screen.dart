@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/providers/supabase_provider.dart';
@@ -141,7 +143,13 @@ class _RewardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isUnlocked = reward.isUnlocked;
 
-    return Container(
+    return GestureDetector(
+      onTap: isUnlocked
+          ? () => context.push(
+                RouteNames.redemptionQR.replaceAll(':offerId', reward.offerId),
+              )
+          : null,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -175,8 +183,15 @@ class _RewardCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (reward.retailerName.isNotEmpty)
+                  Text(
+                    reward.retailerName,
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 Text(
-                  reward.offerTitle,
+                  reward.rewardTitle ?? reward.offerTitle,
                   style: AppTextStyles.bodyLarge.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -184,7 +199,7 @@ class _RewardCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 if (isUnlocked)
                   Text(
-                    'Show this to the retailer to claim your reward',
+                    'Earned ${_fmtDate(reward.unlockedAt)} · tap to redeem',
                     style: AppTextStyles.labelSmall.copyWith(
                       color: _amber,
                     ),
@@ -196,13 +211,6 @@ class _RewardCard extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
                   ),
-                const SizedBox(height: 2),
-                Text(
-                  'Earned ${_fmtDate(reward.unlockedAt)}',
-                  style: AppTextStyles.labelSmall.copyWith(
-                    color: AppColors.textDisabled,
-                  ),
-                ),
               ],
             ),
           ),
@@ -210,6 +218,6 @@ class _RewardCard extends StatelessWidget {
             const Icon(Icons.chevron_right, size: 18, color: AppColors.textDisabled),
         ],
       ),
-    );
+    ));
   }
 }

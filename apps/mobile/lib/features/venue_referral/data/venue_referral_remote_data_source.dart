@@ -21,9 +21,16 @@ class VenueReferralRemoteDataSource {
         : <String, dynamic>{};
 
     final token = data['share_token'] as String? ?? '';
-    final shareUrl = token.isNotEmpty
-        ? 'https://betterofflocal.com/venue-referral?t=$token'
-        : '';
+    final rewardTitle = data['reward_title'] as String?;
+    final platformCode = data['platform_referral_code'] as String?;
+
+    String shareUrl = '';
+    if (token.isNotEmpty) {
+      shareUrl = 'https://betterofflocal.com/venue-referral?t=$token';
+      if (platformCode != null && platformCode.isNotEmpty) {
+        shareUrl += '&ref=$platformCode';
+      }
+    }
 
     return VenueReferralStatus(
       offerId: offerId,
@@ -33,13 +40,19 @@ class VenueReferralRemoteDataSource {
       invitedCount: (data['invited_count'] as num?)?.toInt() ?? 0,
       unlockedCount: (data['unlocked_count'] as num?)?.toInt() ?? 0,
       redeemedCount: (data['redeemed_count'] as num?)?.toInt() ?? 0,
+      rewardTitle: rewardTitle,
+      platformReferralCode: platformCode,
     );
   }
 
   Future<List<VenueReferralReward>> fetchMyRewards(String profileId) async {
     final rows = await _client
         .from('venue_referral_rewards')
-        .select('id, offer_id, status, unlocked_at, redeemed_at, offer:offers(title)')
+        .select(
+          'id, offer_id, status, unlocked_at, redeemed_at, '
+          'offer:offers(title, retailer:retailers(name)), '
+          'config:offer_venue_referral_config(reward_title)',
+        )
         .eq('referrer_profile_id', profileId)
         .inFilter('status', ['unlocked', 'redeemed'])
         .order('unlocked_at', ascending: false);

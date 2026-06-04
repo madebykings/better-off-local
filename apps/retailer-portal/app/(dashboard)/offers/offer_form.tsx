@@ -21,11 +21,15 @@ import {
   computeValueText,
   needsDiscountValue,
   needsLoyaltyConfig,
+  needsVenueReferralConfig,
   discountValueLabel,
   discountValuePlaceholder,
   type LoyaltyConfigFields,
   EMPTY_LOYALTY_CONFIG,
   LOYALTY_REWARD_TYPES,
+  type VenueReferralConfigFields,
+  EMPTY_VENUE_REFERRAL_CONFIG,
+  VENUE_REFERRAL_MAX_REWARD_OPTIONS,
 } from '@/lib/utils/first_offer';
 import { REDEMPTION_RULES, type RedemptionRule } from '@/lib/utils/redemption_rules';
 
@@ -140,6 +144,9 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
   const [loyaltyConfig, setLoyaltyConfig] = useState<LoyaltyConfigFields>(
     initialData?.loyaltyConfig ?? EMPTY_LOYALTY_CONFIG,
   );
+  const [venueReferralConfig, setVenueReferralConfig] = useState<VenueReferralConfigFields>(
+    initialData?.venueReferralConfig ?? EMPTY_VENUE_REFERRAL_CONFIG,
+  );
   const [errors, setErrors] = useState<Partial<Record<keyof OfferFields, string>>>({});
   const [loyaltyErrors, setLoyaltyErrors] = useState<Partial<Record<keyof LoyaltyConfigFields, string>>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -152,6 +159,14 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
       setLoyaltyConfig((prev) => ({ ...prev, [key]: e.target.value }));
       if (loyaltyErrors[key]) setLoyaltyErrors((prev) => ({ ...prev, [key]: undefined }));
+      setSaved(false);
+    };
+  }
+
+  function setVenueReferral(key: keyof VenueReferralConfigFields) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      setVenueReferralConfig((prev) => ({ ...prev, [key]: e.target.value }));
+      if (errors.venueReferralConfig) setErrors((prev) => ({ ...prev, venueReferralConfig: undefined }));
       setSaved(false);
     };
   }
@@ -169,6 +184,9 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
     if (errors.offerType) setErrors((prev) => ({ ...prev, offerType: undefined }));
     if (needsLoyaltyConfig(type) && !loyaltyConfig.rewardDescription) {
       setLoyaltyConfig(initialData?.loyaltyConfig ?? EMPTY_LOYALTY_CONFIG);
+    }
+    if (needsVenueReferralConfig(type) && !venueReferralConfig.rewardTitle) {
+      setVenueReferralConfig(initialData?.venueReferralConfig ?? EMPTY_VENUE_REFERRAL_CONFIG);
     }
   }
 
@@ -203,6 +221,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
       const submittedFields: OfferFields = {
         ...fields,
         loyaltyConfig: needsLoyaltyConfig(fields.offerType) ? loyaltyConfig : undefined,
+        venueReferralConfig: needsVenueReferralConfig(fields.offerType) ? venueReferralConfig : undefined,
       };
 
       if (mode === 'create') {
@@ -571,6 +590,187 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
           </div>
         )}
 
+        {/* Venue referral campaign config */}
+        {needsVenueReferralConfig(fields.offerType) && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 space-y-5">
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Referral campaign configuration</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Members share a unique link. When someone they invite makes their first redemption at your venue, the referrer earns the reward below.
+              </p>
+            </div>
+            {errors.venueReferralConfig && (
+              <p className="text-sm text-red-600" role="alert">{errors.venueReferralConfig as string}</p>
+            )}
+
+            {/* Referrer reward */}
+            <div className="space-y-4">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Referrer reward</p>
+              <Field label="Reward title" required hint='What the referrer receives. e.g. "Free haircut" or "£5 off your next visit"'>
+                <input
+                  type="text"
+                  value={venueReferralConfig.rewardTitle}
+                  onChange={setVenueReferral('rewardTitle')}
+                  placeholder="e.g. Free flat white"
+                  maxLength={120}
+                  className={inputCls(false)}
+                  disabled={!canEdit || isPending}
+                />
+              </Field>
+              <Field label="Reward description (optional)" hint="Extra context shown to the referrer after the reward unlocks">
+                <textarea
+                  value={venueReferralConfig.rewardDescription}
+                  onChange={setVenueReferral('rewardDescription')}
+                  placeholder="e.g. Show this notification to the barista to claim your free drink"
+                  maxLength={300}
+                  rows={3}
+                  className={inputCls(false) + ' resize-none'}
+                  disabled={!canEdit || isPending}
+                />
+              </Field>
+            </div>
+
+            {/* Friend reward */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Friend reward (optional)</p>
+              <label className={[
+                'flex items-start gap-3 rounded-lg border p-3 cursor-pointer select-none',
+                venueReferralConfig.friendRewardEnabled
+                  ? 'border-amber-400 bg-amber-100'
+                  : 'border-gray-200 bg-white hover:border-gray-300',
+                !canEdit ? 'opacity-60 cursor-not-allowed' : '',
+              ].join(' ')}>
+                <input
+                  type="checkbox"
+                  checked={venueReferralConfig.friendRewardEnabled}
+                  disabled={!canEdit || isPending}
+                  onChange={(e) => {
+                    if (!canEdit || isPending) return;
+                    setVenueReferralConfig((prev) => ({ ...prev, friendRewardEnabled: e.target.checked }));
+                    setSaved(false);
+                  }}
+                  className="mt-0.5 accent-amber-600"
+                />
+                <span>
+                  <span className={`block text-sm font-medium ${venueReferralConfig.friendRewardEnabled ? 'text-amber-800' : 'text-gray-800'}`}>
+                    Offer an incentive to the invited friend too
+                  </span>
+                  <span className="block text-xs text-gray-400 mt-0.5">
+                    Show a reward to the friend on the share link — encourages them to visit sooner.
+                  </span>
+                </span>
+              </label>
+
+              {venueReferralConfig.friendRewardEnabled && (
+                <div className="space-y-4 pl-1">
+                  <Field label="Friend reward title" required hint='e.g. "10% off your first visit"'>
+                    <input
+                      type="text"
+                      value={venueReferralConfig.friendRewardTitle}
+                      onChange={setVenueReferral('friendRewardTitle')}
+                      placeholder="e.g. 10% off your first visit"
+                      maxLength={120}
+                      className={inputCls(false)}
+                      disabled={!canEdit || isPending}
+                    />
+                  </Field>
+                  <Field label="Friend reward description (optional)">
+                    <textarea
+                      value={venueReferralConfig.friendRewardDescription}
+                      onChange={setVenueReferral('friendRewardDescription')}
+                      placeholder="e.g. Valid on your first visit only. Show this screen to redeem."
+                      maxLength={300}
+                      rows={2}
+                      className={inputCls(false) + ' resize-none'}
+                      disabled={!canEdit || isPending}
+                    />
+                  </Field>
+                </div>
+              )}
+            </div>
+
+            {/* Qualification rules — read-only info */}
+            <div className="rounded-lg border border-amber-200 bg-white/70 p-3 space-y-1">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">How referrals qualify</p>
+              <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside mt-1">
+                <li>The referred friend must be a Better Off Local member (existing or new sign-up)</li>
+                <li>The friend must make their first successful redemption at your venue</li>
+                <li>The reward unlocks automatically after the first visit</li>
+              </ul>
+            </div>
+
+            {/* Reward limits */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Reward limit per referrer</p>
+              <Field label="Maximum rewards per member" hint="How many referral rewards one member can earn for this campaign">
+                <select
+                  value={venueReferralConfig.maxRewardsPerReferrer}
+                  onChange={setVenueReferral('maxRewardsPerReferrer')}
+                  className={inputCls(false) + ' cursor-pointer'}
+                  disabled={!canEdit || isPending}
+                >
+                  {VENUE_REFERRAL_MAX_REWARD_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                  <option value="custom">Custom number…</option>
+                </select>
+                {venueReferralConfig.maxRewardsPerReferrer !== '' &&
+                  !VENUE_REFERRAL_MAX_REWARD_OPTIONS.map((o) => o.value).includes(venueReferralConfig.maxRewardsPerReferrer as any) && (
+                  <input
+                    type="number"
+                    value={venueReferralConfig.maxRewardsPerReferrer === 'custom' ? '' : venueReferralConfig.maxRewardsPerReferrer}
+                    onChange={setVenueReferral('maxRewardsPerReferrer')}
+                    placeholder="e.g. 7"
+                    min={1}
+                    step={1}
+                    className={inputCls(false) + ' mt-2'}
+                    disabled={!canEdit || isPending}
+                  />
+                )}
+              </Field>
+            </div>
+
+            {/* Campaign summary preview */}
+            <div className="rounded-lg border border-amber-300 bg-white p-4">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-3">Campaign summary</p>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-500 mt-0.5">🎁</span>
+                  <div>
+                    <span className="font-medium text-gray-800">
+                      {venueReferralConfig.rewardTitle.trim() || <span className="italic text-gray-400">Referrer reward not set</span>}
+                    </span>
+                    {venueReferralConfig.rewardDescription.trim() && (
+                      <p className="text-xs text-gray-500 mt-0.5">{venueReferralConfig.rewardDescription.trim()}</p>
+                    )}
+                  </div>
+                </div>
+                {venueReferralConfig.friendRewardEnabled && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 mt-0.5">👥</span>
+                    <div>
+                      <span className="text-sm text-gray-700">
+                        Friend also gets:{' '}
+                        <span className="font-medium">
+                          {venueReferralConfig.friendRewardTitle.trim() || <span className="italic text-gray-400">title not set</span>}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-400">🔢</span>
+                  <span className="text-sm text-gray-600">
+                    {venueReferralConfig.maxRewardsPerReferrer
+                      ? `Up to ${venueReferralConfig.maxRewardsPerReferrer} reward${parseInt(venueReferralConfig.maxRewardsPerReferrer, 10) !== 1 ? 's' : ''} per member`
+                      : 'Unlimited rewards per member'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Headline */}
         <Field label="Headline" required hint="Full offer title shown on the detail page" error={errors.headline}>
           <input
@@ -736,7 +936,8 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
           </div>
         </Field>
 
-        {/* New customers only */}
+        {/* New customers only — hidden for venue_referral (qualification is built-in) */}
+        {fields.offerType !== 'venue_referral' && (
         <Field label="Audience">
           <label className={[
             'flex items-start gap-3 rounded-lg border p-3 cursor-pointer select-none',
@@ -765,6 +966,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
             </span>
           </label>
         </Field>
+        )}
 
         {canEdit && (
           <div className="flex items-center gap-4 border-t border-gray-100 pt-6">

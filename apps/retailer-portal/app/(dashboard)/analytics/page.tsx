@@ -194,6 +194,13 @@ export default async function AnalyticsPage() {
       .in('status', ['live', 'paused', 'expired']),
   ]);
 
+  // ── Venue referral share links ────────────────────────────────────────────
+  // Count distinct share tokens (= links shared) per retailer
+  const vrShareLinksResult = await supabase
+    .from('venue_referral_share_tokens')
+    .select('offer_id')
+    .in('offer_id', (venueReferralOffersResult.data ?? []).map((o: { id: string }) => o.id));
+
   // ── Venue referral secondary fetch ───────────────────────────────────────
   const venueReferralOffers = (venueReferralOffersResult.data ?? []) as { id: string; title: string }[];
   const vrOfferIds = venueReferralOffers.map((o) => o.id);
@@ -201,7 +208,7 @@ export default async function AnalyticsPage() {
   const [vrInvitationsResult, vrRewardsResult] =
     vrOfferIds.length > 0
       ? await Promise.all([
-          supabase.from('venue_referral_invitations').select('offer_id').in('offer_id', vrOfferIds),
+          supabase.from('venue_referral_invitations').select('offer_id, was_existing_member').in('offer_id', vrOfferIds),
           supabase.from('venue_referral_rewards').select('offer_id, status').in('offer_id', vrOfferIds),
         ])
       : [{ data: [] }, { data: [] }];
@@ -298,16 +305,31 @@ export default async function AnalyticsPage() {
 
   // ── Venue referral metrics ────────────────────────────────────────────────
 
-  const vrInvitations = (vrInvitationsResult.data ?? []) as { offer_id: string }[];
+  const vrInvitations = (vrInvitationsResult.data ?? []) as { offer_id: string; was_existing_member: boolean | null }[];
   const vrRewards = (vrRewardsResult.data ?? []) as { offer_id: string; status: string }[];
+  const vrShareLinks = (vrShareLinksResult.data ?? []) as { offer_id: string }[];
 
+  const totalLinksShared = vrShareLinks.length;
   const totalInvitesSent = vrInvitations.length;
   const totalRewardsUnlocked = vrRewards.filter((r) => r.status === 'unlocked').length;
   const totalRewardsRedeemed = vrRewards.filter((r) => r.status === 'redeemed').length;
+  // was_existing_member breakdown (null = pre-migration row, excluded from breakdown)
+  const newBolMembersReferred = vrInvitations.filter((r) => r.was_existing_member === false).length;
+  const existingBolMembersReferred = vrInvitations.filter((r) => r.was_existing_member === true).length;
 
   const vrInvitesByOffer = new Map<string, number>();
   for (const r of vrInvitations) {
     vrInvitesByOffer.set(r.offer_id, (vrInvitesByOffer.get(r.offer_id) ?? 0) + 1);
+  }
+  const vrSharesByOffer = new Map<string, number>();
+  for (const r of vrShareLinks) {
+    vrSharesByOffer.set(r.offer_id, (vrSharesByOffer.get(r.offer_id) ?? 0) + 1);
+  }
+  const vrNewBolByOffer = new Map<string, number>();
+  for (const r of vrInvitations) {
+    if (r.was_existing_member === false) {
+      vrNewBolByOffer.set(r.offer_id, (vrNewBolByOffer.get(r.offer_id) ?? 0) + 1);
+    }
   }
   const vrRewardsByOffer = new Map<string, { unlocked: number; redeemed: number }>();
   for (const r of vrRewards) {
@@ -317,10 +339,12 @@ export default async function AnalyticsPage() {
     vrRewardsByOffer.set(r.offer_id, cur);
   }
   const vrOfferBreakdown = venueReferralOffers.map((o) => {
+    const links = vrSharesByOffer.get(o.id) ?? 0;
     const invited = vrInvitesByOffer.get(o.id) ?? 0;
+    const newBol = vrNewBolByOffer.get(o.id) ?? 0;
     const { unlocked = 0, redeemed = 0 } = vrRewardsByOffer.get(o.id) ?? {};
     const converted = unlocked + redeemed;
-    return { ...o, invited, converted, unlocked, redeemed, conversionPct: pct(converted, invited) };
+    return { ...o, links, invited, newBol, converted, unlocked, redeemed, conversionPct: pct(converted, invited) };
   });
 
   // ── Headline card definitions ─────────────────────────────────────────────
@@ -441,22 +465,31 @@ export default async function AnalyticsPage() {
       )}
 
       {/* Venue referral rewards */}
-      {(totalInvitesSent > 0 || venueReferralOffers.length > 0) && (
+      {(totalLinksShared > 0 || totalInvitesSent > 0 || venueReferralOffers.length > 0) && (
         <div className="mb-8">
           <h2 className="text-lg font-semibold mb-3">Venue referral rewards</h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 mb-5">
-            <MetricCard label="Invites sent" value={totalInvitesSent} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 mb-5">
+            <MetricCard label="Links shared" value={totalLinksShared} />
+            <MetricCard label="Friends invited" value={totalInvitesSent} />
+            <MetricCard label="New BOL members" value={newBolMembersReferred} />
             <MetricCard label="Rewards unlocked" value={totalRewardsUnlocked} />
             <MetricCard label="Rewards redeemed" value={totalRewardsRedeemed} />
           </div>
+          {existingBolMembersReferred > 0 && (
+            <p className="text-xs text-gray-500 mb-4">
+              {existingBolMembersReferred} invitation{existingBolMembersReferred !== 1 ? 's were' : ' was'} from existing BOL members
+              (counted in &ldquo;Friends invited&rdquo; but not &ldquo;New BOL members&rdquo;).
+            </p>
+          )}
           {vrOfferBreakdown.length > 0 && (
             <div className="overflow-x-auto rounded-lg border border-gray-200">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
                     <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Referral offer</th>
+                    <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Links</th>
                     <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Invited</th>
-                    <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Converted</th>
+                    <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">New BOL</th>
                     <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Unlocked</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Redeemed</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Conv. %</th>
@@ -465,9 +498,10 @@ export default async function AnalyticsPage() {
                 <tbody className="divide-y divide-gray-100">
                   {vrOfferBreakdown.map((o) => (
                     <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-medium text-gray-800 max-w-[220px] truncate">{o.title}</td>
+                      <td className="px-4 py-3 font-medium text-gray-800 max-w-[200px] truncate">{o.title}</td>
+                      <td className="px-3 py-3 text-right text-gray-700">{o.links}</td>
                       <td className="px-3 py-3 text-right text-gray-700">{o.invited}</td>
-                      <td className="px-3 py-3 text-right text-gray-700">{o.converted}</td>
+                      <td className="px-3 py-3 text-right text-gray-700">{o.newBol}</td>
                       <td className="px-3 py-3 text-right text-gray-700">{o.unlocked}</td>
                       <td className="px-4 py-3 text-right text-gray-700">{o.redeemed}</td>
                       <td className="px-4 py-3 text-right text-gray-500">{o.conversionPct}</td>

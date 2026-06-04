@@ -189,7 +189,12 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
             child: Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: _buildCTA(context, offer.id, availability),
+              child: _buildCTA(
+                context,
+                offer.id,
+                availability,
+                isVenueReferral: offer.offerType == 'venue_referral',
+              ),
             ),
           ),
         );
@@ -200,8 +205,15 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
   Widget _buildCTA(
     BuildContext context,
     String offerId,
-    OfferAvailability? availability,
-  ) {
+    OfferAvailability? availability, {
+    bool isVenueReferral = false,
+  }) {
+    // venue_referral offers don't use the QR redemption flow directly — the
+    // VenueReferralSection in the body handles sharing. Show a scroll-to hint.
+    if (isVenueReferral) {
+      return const SizedBox.shrink();
+    }
+
     // Still loading availability — show disabled button to avoid layout shift.
     if (availability == null) {
       return const PrimaryButton(label: 'Use this offer', onPressed: null);

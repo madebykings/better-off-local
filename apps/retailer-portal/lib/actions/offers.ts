@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { type RuleColumns, ruleToColumns } from '@/lib/utils/redemption_rules';
-import { type OfferType, OFFER_TYPES, computeValueText, needsDiscountValue, needsLoyaltyConfig, type LoyaltyConfigFields, EMPTY_LOYALTY_CONFIG } from '@/lib/utils/first_offer';
+import { type OfferType, OFFER_TYPES, computeValueText, needsDiscountValue, needsLoyaltyConfig, needsVenueReferralConfig, type LoyaltyConfigFields, EMPTY_LOYALTY_CONFIG, type VenueReferralConfigFields } from '@/lib/utils/first_offer';
 import type { RedemptionRule } from '@/lib/utils/redemption_rules';
 
 // ---------------------------------------------------------------------------
@@ -27,6 +27,7 @@ export type OfferFields = {
   imageUrl: string;            // public URL of the uploaded cover image, or ''
   estimatedSavingPence: string; // integer string in pence, or ''
   loyaltyConfig?: LoyaltyConfigFields;
+  venueReferralConfig?: VenueReferralConfigFields;
 };
 
 export type OfferActionResult = {
@@ -85,7 +86,40 @@ function validateOffer(fields: OfferFields): Partial<Record<keyof OfferFields, s
       }
     }
   }
+  if (needsVenueReferralConfig(fields.offerType)) {
+    const cfg = fields.venueReferralConfig;
+    if (!cfg) {
+      errors.offerType = 'Referral campaign configuration is required.';
+    } else {
+      if (!cfg.rewardTitle.trim()) {
+        errors.venueReferralConfig = 'Referrer reward title is required.' as any;
+      }
+      if (cfg.friendRewardEnabled && !cfg.friendRewardTitle.trim()) {
+        errors.venueReferralConfig = 'Friend reward title is required when friend reward is enabled.' as any;
+      }
+      if (cfg.maxRewardsPerReferrer.trim()) {
+        const cap = parseInt(cfg.maxRewardsPerReferrer, 10);
+        if (isNaN(cap) || cap < 1) {
+          errors.venueReferralConfig = 'Reward limit must be a positive whole number.' as any;
+        }
+      }
+    }
+  }
   return errors;
+}
+
+async function upsertVenueReferralConfig(service: ReturnType<typeof createServiceClient>, offerId: string, cfg: VenueReferralConfigFields): Promise<void> {
+  await service.rpc('upsert_venue_referral_config', {
+    p_offer_id:                  offerId,
+    p_reward_title:              cfg.rewardTitle.trim(),
+    p_reward_description:        cfg.rewardDescription.trim() || null,
+    p_friend_reward_enabled:     cfg.friendRewardEnabled,
+    p_friend_reward_title:       cfg.friendRewardEnabled ? cfg.friendRewardTitle.trim() || null : null,
+    p_friend_reward_description: cfg.friendRewardEnabled ? cfg.friendRewardDescription.trim() || null : null,
+    p_max_rewards_per_referrer:  cfg.maxRewardsPerReferrer.trim()
+      ? parseInt(cfg.maxRewardsPerReferrer, 10)
+      : null,
+  });
 }
 
 async function upsertLoyaltyConfig(service: ReturnType<typeof createServiceClient>, offerId: string, cfg: LoyaltyConfigFields): Promise<void> {
@@ -186,6 +220,9 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
   if (needsLoyaltyConfig(fields.offerType) && fields.loyaltyConfig) {
     await upsertLoyaltyConfig(service, offer.id, fields.loyaltyConfig);
   }
+  if (needsVenueReferralConfig(fields.offerType) && fields.venueReferralConfig) {
+    await upsertVenueReferralConfig(service, offer.id, fields.venueReferralConfig);
+  }
 
   revalidatePath('/offers');
   return { offerId: offer.id };
@@ -282,6 +319,9 @@ export async function updateOffer(
 
   if (needsLoyaltyConfig(fields.offerType) && fields.loyaltyConfig) {
     await upsertLoyaltyConfig(service, offerId, fields.loyaltyConfig);
+  }
+  if (needsVenueReferralConfig(fields.offerType) && fields.venueReferralConfig) {
+    await upsertVenueReferralConfig(service, offerId, fields.venueReferralConfig);
   }
 
   revalidatePath(`/offers/${offerId}`);

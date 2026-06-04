@@ -9,6 +9,8 @@ class VenueReferralStatus extends Equatable {
     required this.invitedCount,
     required this.unlockedCount,
     required this.redeemedCount,
+    this.rewardTitle,
+    this.platformReferralCode,
   });
 
   final String offerId;
@@ -18,6 +20,8 @@ class VenueReferralStatus extends Equatable {
   final int invitedCount;
   final int unlockedCount;
   final int redeemedCount;
+  final String? rewardTitle;
+  final String? platformReferralCode;
 
   @override
   List<Object?> get props => [offerId, shareToken];
@@ -28,24 +32,32 @@ class VenueReferralReward extends Equatable {
     required this.id,
     required this.offerId,
     required this.offerTitle,
+    required this.retailerName,
     required this.status,
     required this.unlockedAt,
+    this.rewardTitle,
     this.redeemedAt,
   });
 
   final String id;
   final String offerId;
   final String offerTitle;
+  final String retailerName;
   final String status;
   final DateTime unlockedAt;
+  final String? rewardTitle;
   final DateTime? redeemedAt;
 
   factory VenueReferralReward.fromMap(Map<String, dynamic> map) {
     final offer = map['offer'] as Map<String, dynamic>?;
+    final retailer = offer?['retailer'] as Map<String, dynamic>?;
+    final config = map['config'] as Map<String, dynamic>?;
     return VenueReferralReward(
       id: map['id'] as String,
       offerId: map['offer_id'] as String,
       offerTitle: offer?['title'] as String? ?? 'Referral reward',
+      retailerName: retailer?['name'] as String? ?? '',
+      rewardTitle: config?['reward_title'] as String?,
       status: map['status'] as String? ?? 'unlocked',
       unlockedAt: DateTime.parse(map['unlocked_at'] as String),
       redeemedAt: map['redeemed_at'] != null

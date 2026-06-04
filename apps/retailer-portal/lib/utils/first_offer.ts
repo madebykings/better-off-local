@@ -76,6 +76,37 @@ export function needsLoyaltyConfig(offerType: OfferType): boolean {
   return offerType === 'loyalty_visits';
 }
 
+/** Returns true for the venue_referral offer type which requires referral campaign config. */
+export function needsVenueReferralConfig(offerType: OfferType): boolean {
+  return offerType === 'venue_referral';
+}
+
+export const VENUE_REFERRAL_MAX_REWARD_OPTIONS = [
+  { value: '',   label: 'Unlimited — no cap on rewards per member' },
+  { value: '1',  label: '1 reward per member' },
+  { value: '3',  label: '3 rewards per member' },
+  { value: '5',  label: '5 rewards per member' },
+  { value: '10', label: '10 rewards per member' },
+] as const;
+
+export type VenueReferralConfigFields = {
+  rewardTitle: string;              // e.g. "Free haircut"
+  rewardDescription: string;        // optional longer description
+  friendRewardEnabled: boolean;
+  friendRewardTitle: string;
+  friendRewardDescription: string;
+  maxRewardsPerReferrer: string;    // '' = unlimited, or '1'/'3'/'5'/'10'/custom integer string
+};
+
+export const EMPTY_VENUE_REFERRAL_CONFIG: VenueReferralConfigFields = {
+  rewardTitle: '',
+  rewardDescription: '',
+  friendRewardEnabled: false,
+  friendRewardTitle: '',
+  friendRewardDescription: '',
+  maxRewardsPerReferrer: '',
+};
+
 /** Label for the discount value input based on offer type. */
 export function discountValueLabel(offerType: OfferType): string {
   return offerType === 'percentage_discount' ? 'Discount percentage' : 'Discount amount (£)';
