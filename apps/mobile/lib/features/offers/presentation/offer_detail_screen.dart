@@ -9,6 +9,7 @@ import '../../../core/widgets/primary_button.dart';
 import '../../favourites/providers/favourites_providers.dart';
 import '../../loyalty/providers/loyalty_providers.dart';
 import '../../loyalty/presentation/widgets/loyalty_stamp_grid.dart';
+import '../../venue_referral/presentation/venue_referral_section.dart';
 import '../domain/offer_availability.dart';
 import '../providers/offers_providers.dart';
 
@@ -140,6 +141,15 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                         const Divider(),
                         const SizedBox(height: 16),
                         _LoyaltySection(offerId: offer.id),
+                      ],
+                      if (offer.offerType == 'venue_referral') ...[
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        VenueReferralSection(
+                          offerId: offer.id,
+                          offerTitle: offer.title,
+                        ),
                       ],
                       if (offer.endAt != null) ...[
                         const SizedBox(height: 16),

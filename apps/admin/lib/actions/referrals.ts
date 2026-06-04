@@ -71,6 +71,38 @@ export async function cancelReferralReward(formData: FormData) {
   revalidatePath('/referrals');
 }
 
+export async function voidVenueReferralReward(formData: FormData) {
+  const { userId } = await requireAdmin();
+  const rewardId = formData.get('reward_id') as string;
+  const reason = (formData.get('reason') as string | null) ?? 'Voided by admin';
+
+  if (!rewardId) return;
+
+  const supabase = createServiceClient();
+
+  const { error } = await supabase.rpc('void_venue_referral_reward', {
+    p_reward_id:  rewardId,
+    p_admin_id:   userId,
+    p_void_reason: reason,
+  });
+
+  if (error) {
+    console.error('[voidVenueReferralReward] rpc failed:', error.message, { rewardId });
+    return;
+  }
+
+  await supabase.from('admin_actions').insert({
+    admin_profile_id: userId,
+    action_type: 'venue_referral_reward_voided',
+    target_table: 'venue_referral_rewards',
+    target_id: rewardId,
+    reason,
+    metadata_json: null,
+  });
+
+  revalidatePath('/referrals');
+}
+
 export async function triggerEligibilityCheck() {
   const { userId } = await requireAdmin();
 

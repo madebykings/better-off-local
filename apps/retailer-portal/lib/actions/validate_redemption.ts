@@ -46,6 +46,8 @@ export type ScanResult =
     }
   | { token_type: 'membership_pass'; valid: true; plan_interval: string; member_since: string | null; consumer_name: string | null }
   | { token_type: 'membership_pass'; valid: false; rejection_reason?: string }
+  | { token_type: 'venue_referral_reward'; valid: true; offer_title: string; reward_description: string | null; consumer_name: string | null }
+  | { token_type: 'venue_referral_reward'; valid: false; status: RedemptionStatus; rejection_reason: string }
   | { token_type: 'unknown'; valid: false; rejection_reason: string };
 
 /**
@@ -182,6 +184,26 @@ export async function validateRedemption(
       stamps_earned: (body.stamps_earned as number | undefined) ?? undefined,
       stamps_required: (body.stamps_required as number | undefined) ?? undefined,
       next_stamp_available_at: (body.next_stamp_available_at as string | null) ?? null,
+    };
+  }
+
+  if (body.token_type === 'venue_referral_reward') {
+    if (body.valid === true) {
+      return {
+        token_type: 'venue_referral_reward',
+        valid: true,
+        offer_title: (body.offer_title as string | null) ?? 'Referral reward',
+        reward_description: (body.reward_description as string | null) ?? null,
+        consumer_name: (body.consumer_name as string | null) ?? null,
+      };
+    }
+    return {
+      token_type: 'venue_referral_reward',
+      valid: false,
+      status: (body.status as RedemptionStatus) ?? 'rejected',
+      rejection_reason:
+        (body.rejection_reason as string | null) ??
+        'This QR code could not be validated.',
     };
   }
 

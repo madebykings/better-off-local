@@ -120,6 +120,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                 label: 'Refer a friend',
                 onTap: () => context.push(RouteNames.referral),
               ),
+              const _Divider(),
+              _NavTile(
+                icon: Icons.people_outline,
+                label: 'My referral rewards',
+                onTap: () => context.push(RouteNames.venueReferralRewards),
+              ),
             ],
           ),
 

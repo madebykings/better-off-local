@@ -102,6 +102,9 @@ class Offer extends Equatable {
     if (type == 'loyalty_visits') {
       return const Color(0xFF0D9488); // teal
     }
+    if (type == 'venue_referral') {
+      return const Color(0xFFD97706); // amber
+    }
     // Default: green (percentage_discount, other)
     return const Color(0xFF2D6A4F);
   }

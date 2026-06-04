@@ -46,4 +46,7 @@ abstract class RouteNames {
 
   // Loyalty cards
   static const loyaltyCards = '/account/loyalty';
+
+  // Venue referral rewards
+  static const venueReferralRewards = '/account/venue-referral-rewards';
 }

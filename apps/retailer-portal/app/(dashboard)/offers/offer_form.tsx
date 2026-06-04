@@ -40,6 +40,7 @@ const OFFER_TYPE_CONFIG: Record<OfferType, { label: string; hint: string; icon: 
   buy_one_get_one:     { label: 'Buy one get one',   hint: 'e.g. BOGOF main course',       icon: '2️⃣', savingHint: 'e.g. 8.00 for half the cost of a £16 item' },
   meal_deal:           { label: 'Meal deal',          hint: 'e.g. Lunch meal deal',        icon: '🍱', savingHint: 'e.g. 4.00 if the deal saves ~£4 vs buying separately' },
   loyalty_visits:      { label: 'Loyalty stamp card', hint: 'e.g. Collect 8 stamps, free coffee', icon: '🃏', savingHint: 'e.g. 3.50 for the reward value (free coffee)' },
+  venue_referral:      { label: 'Refer a friend',     hint: 'e.g. Refer a friend, get a free coffee', icon: '🤝', savingHint: 'e.g. 3.50 for the reward the referrer receives' },
   other:               { label: 'Special deal',       hint: 'e.g. Members-only event',    icon: '⭐', savingHint: 'Estimated pounds saved per use, if applicable' },
 };
 
@@ -460,6 +461,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
               fields.offerType === 'percentage_discount' ? 'bg-green-700' :
               fields.offerType === 'fixed_discount' ? 'bg-blue-600' :
               fields.offerType === 'loyalty_visits' ? 'bg-teal-600' :
+              fields.offerType === 'venue_referral' ? 'bg-amber-600' :
               fields.offerType === 'buy_one_get_one' ? 'bg-purple-600' :
               'bg-orange-500',
             ].join(' ')}>

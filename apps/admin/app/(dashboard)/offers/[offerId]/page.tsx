@@ -67,7 +67,7 @@ export default async function OfferDetailPage({ params }: Props) {
   const o = offerResult.data;
   const retailerId = (o as any).retailer_id as string | null;
 
-  const [rulesResult, actionsResult, offerLocationsResult, locationsResult, loyaltyConfigResult, loyaltyStatsResult] = await Promise.all([
+  const [rulesResult, actionsResult, offerLocationsResult, locationsResult, loyaltyConfigResult, loyaltyStatsResult, vrInvitationsResult, vrRewardsResult] = await Promise.all([
     supabase
       .from('offer_rules')
       .select('max_redemptions_per_user, max_redemptions_per_day, max_redemptions_total, cooldown_hours, new_customers_only')
@@ -100,6 +100,14 @@ export default async function OfferDetailPage({ params }: Props) {
       .from('loyalty_cards')
       .select('status')
       .eq('offer_id', offerId),
+    supabase
+      .from('venue_referral_invitations')
+      .select('id')
+      .eq('offer_id', offerId),
+    supabase
+      .from('venue_referral_rewards')
+      .select('id, status')
+      .eq('offer_id', offerId),
   ]);
 
   const rules = rulesResult.data;
@@ -114,6 +122,17 @@ export default async function OfferDetailPage({ params }: Props) {
         active: loyaltyCards.filter((c) => c.status === 'active').length,
         completed: loyaltyCards.filter((c) => c.status === 'completed').length,
         claimed: loyaltyCards.filter((c) => c.status === 'claimed').length,
+      }
+    : null;
+
+  const vrInvitations = vrInvitationsResult.data ?? [];
+  const vrRewards = (vrRewardsResult.data ?? []) as { id: string; status: string }[];
+  const vrStats = (o as any).offer_type === 'venue_referral'
+    ? {
+        invited:  vrInvitations.length,
+        unlocked: vrRewards.filter((r) => r.status === 'unlocked').length,
+        redeemed: vrRewards.filter((r) => r.status === 'redeemed').length,
+        voided:   vrRewards.filter((r) => r.status === 'voided').length,
       }
     : null;
 
@@ -241,6 +260,19 @@ export default async function OfferDetailPage({ params }: Props) {
               </dl>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Venue referral stats */}
+      {vrStats && (
+        <div className="bg-white rounded-lg border border-amber-200 p-4 mb-6">
+          <h2 className="text-sm font-semibold text-amber-700 mb-4">Venue referral statistics</h2>
+          <dl className="grid grid-cols-4 gap-3">
+            <Field label="Invitations"  value={String(vrStats.invited)} />
+            <Field label="Unlocked"     value={String(vrStats.unlocked)} />
+            <Field label="Redeemed"     value={String(vrStats.redeemed)} />
+            <Field label="Voided"       value={String(vrStats.voided)} />
+          </dl>
         </div>
       )}
 

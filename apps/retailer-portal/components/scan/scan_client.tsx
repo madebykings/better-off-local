@@ -425,6 +425,17 @@ function ResultCard({
     );
   }
 
+  if (result.token_type === 'venue_referral_reward') {
+    return (
+      <VenueReferralResultCard
+        result={result}
+        countdown={countdown}
+        onScanNow={onScanNow}
+        onBackToOffers={onBackToOffers}
+      />
+    );
+  }
+
   if (result.token_type === 'redemption' && result.valid) {
     return (
       <div className="rounded-lg border border-green-300 bg-green-50 p-6 space-y-4">
@@ -588,6 +599,63 @@ function RedemptionRejectedCard({
         {nextAvailableLabel && (
           <p className="text-sm text-gray-500">Available again: {nextAvailableLabel}</p>
         )}
+      </div>
+      <ScanNextFooter countdown={countdown} onScanNow={onScanNow} onBackToOffers={onBackToOffers} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Venue referral reward result card
+// ---------------------------------------------------------------------------
+
+function VenueReferralResultCard({
+  result,
+  countdown,
+  onScanNow,
+  onBackToOffers,
+}: {
+  result: Extract<ScanResult, { token_type: 'venue_referral_reward' }>;
+  countdown: number | null;
+  onScanNow: () => void;
+  onBackToOffers?: () => void;
+}) {
+  if (result.valid) {
+    return (
+      <div className="rounded-lg border border-amber-300 bg-amber-50 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-amber-600 text-3xl">🤝</span>
+          <div>
+            <p className="font-semibold text-amber-800 text-lg">REFERRAL REWARD</p>
+            {result.consumer_name && (
+              <p className="text-sm text-amber-700">{result.consumer_name}</p>
+            )}
+          </div>
+        </div>
+        <div className="bg-white rounded-md p-4 border border-amber-200 space-y-2">
+          <p className="text-sm font-medium text-gray-700">{result.offer_title}</p>
+          {result.reward_description && (
+            <p className="text-base text-gray-600">{result.reward_description}</p>
+          )}
+        </div>
+        <div className="bg-amber-100 rounded-md px-4 py-3 border border-amber-200">
+          <p className="text-sm font-semibold text-amber-800">This member referred a friend.</p>
+          <p className="text-xs text-amber-700 mt-0.5">Please give them their referral reward now.</p>
+        </div>
+        <ScanNextFooter countdown={countdown} onScanNow={onScanNow} onBackToOffers={onBackToOffers} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-red-200 bg-red-50 p-6 space-y-4">
+      <div className="flex items-center gap-3">
+        <span className="text-red-500 text-3xl">✕</span>
+        <p className="font-semibold text-red-800 text-lg">REFERRAL REWARD DECLINED</p>
+      </div>
+      <div className="bg-white rounded-md p-3 border border-red-200">
+        <p className="text-sm font-medium text-gray-700">Do not give a reward.</p>
+        <p className="text-sm text-gray-600 mt-1">{result.rejection_reason}</p>
       </div>
       <ScanNextFooter countdown={countdown} onScanNow={onScanNow} onBackToOffers={onBackToOffers} />
     </div>

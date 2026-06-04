@@ -23,6 +23,7 @@ const OFFER_TYPE_CONFIG: Record<OfferType, { label: string; hint: string }> = {
   buy_one_get_one:     { label: 'Buy one get one',   hint: 'e.g. BOGOF' },
   meal_deal:           { label: 'Meal deal',          hint: 'e.g. Lunch deal' },
   loyalty_visits:      { label: 'Loyalty stamp card', hint: 'e.g. Collect 8 stamps' },
+  venue_referral:      { label: 'Refer a friend',    hint: 'e.g. Refer a friend, earn a reward' },
   other:               { label: 'Special access',    hint: 'e.g. Members-only event' },
 };
 
@@ -337,6 +338,7 @@ const OFFER_TYPE_BADGE_CLASS: Record<OfferType, string> = {
   buy_one_get_one:     'bg-violet-50 text-violet-700',
   meal_deal:           'bg-orange-50 text-orange-700',
   loyalty_visits:      'bg-teal-50 text-teal-700',
+  venue_referral:      'bg-amber-50 text-amber-700',
   other:               'bg-amber-50 text-amber-700',
 };
 

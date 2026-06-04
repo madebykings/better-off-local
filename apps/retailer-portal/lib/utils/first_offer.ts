@@ -13,6 +13,7 @@ export const OFFER_TYPES = [
   'buy_one_get_one',
   'meal_deal',
   'loyalty_visits',
+  'venue_referral',
   'other',
 ] as const;
 
@@ -56,6 +57,8 @@ export function computeValueText(offerType: OfferType, discountValue: string): s
       return 'MEAL DEAL';
     case 'loyalty_visits':
       return 'COLLECT STAMPS';
+    case 'venue_referral':
+      return 'REFER & EARN';
     case 'other':
       return 'SPECIAL DEAL';
     default:

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
-import { markReferralPaid, cancelReferralReward, triggerEligibilityCheck } from '@/lib/actions/referrals';
+import { markReferralPaid, cancelReferralReward, triggerEligibilityCheck, voidVenueReferralReward } from '@/lib/actions/referrals';
 
 export const metadata: Metadata = { title: 'Referrals – Admin' };
 
@@ -56,6 +56,18 @@ export default async function ReferralsPage({ searchParams }: Props) {
     0,
   );
 
+  // ── Venue referral reward counts ────────────────────────────────────────────
+
+  const [
+    { count: vrUnlockedCount },
+    { count: vrRedeemedCount },
+    { count: vrVoidedCount },
+  ] = await Promise.all([
+    supabase.from('venue_referral_rewards').select('id', { count: 'exact', head: true }).eq('status', 'unlocked'),
+    supabase.from('venue_referral_rewards').select('id', { count: 'exact', head: true }).eq('status', 'redeemed'),
+    supabase.from('venue_referral_rewards').select('id', { count: 'exact', head: true }).eq('status', 'voided'),
+  ]);
+
   // ── Reward rows ─────────────────────────────────────────────────────────────
 
   const baseSelect =
@@ -92,10 +104,38 @@ export default async function ReferralsPage({ searchParams }: Props) {
     paid: paid ?? [],
   };
 
+  // ── Venue referral reward rows ───────────────────────────────────────────────
+
+  const vrSelect =
+    'id, status, unlocked_at, redeemed_at, voided_at, void_reason, ' +
+    'offer:offers(title), ' +
+    'referrer:profiles!venue_referral_rewards_referrer_profile_id_fkey(full_name, email), ' +
+    'invitation:venue_referral_invitations(invitee:profiles!venue_referral_invitations_invitee_profile_id_fkey(full_name, email))';
+
+  const vrStatusFilter = activeTab === 'vr_unlocked'
+    ? 'unlocked'
+    : activeTab === 'vr_redeemed'
+    ? 'redeemed'
+    : activeTab === 'vr_voided'
+    ? 'voided'
+    : null;
+
+  const { data: vrRows } = vrStatusFilter
+    ? await supabase
+        .from('venue_referral_rewards')
+        .select(vrSelect)
+        .eq('status', vrStatusFilter)
+        .order('unlocked_at', { ascending: false })
+        .limit(200)
+    : { data: [] as any[] };
+
   const tabs = [
-    { key: 'eligible', label: 'Eligible', count: eligibleCount ?? 0 },
-    { key: 'pending',  label: 'Pending',  count: pendingCount ?? 0 },
-    { key: 'paid',     label: 'Paid',     count: paidCount ?? 0 },
+    { key: 'eligible',    label: 'Eligible',    count: eligibleCount ?? 0 },
+    { key: 'pending',     label: 'Pending',      count: pendingCount ?? 0 },
+    { key: 'paid',        label: 'Paid',         count: paidCount ?? 0 },
+    { key: 'vr_unlocked', label: 'VR Unlocked',  count: vrUnlockedCount ?? 0 },
+    { key: 'vr_redeemed', label: 'VR Redeemed',  count: vrRedeemedCount ?? 0 },
+    { key: 'vr_voided',   label: 'VR Voided',    count: vrVoidedCount ?? 0 },
   ];
 
   return (
@@ -160,7 +200,92 @@ export default async function ReferralsPage({ searchParams }: Props) {
       </div>
 
       {/* Table */}
-      <RewardsTable rows={rows[activeTab] ?? []} tab={activeTab} />
+      {activeTab.startsWith('vr_') ? (
+        <VenueRewardsTable rows={vrRows ?? []} tab={activeTab} />
+      ) : (
+        <RewardsTable rows={rows[activeTab] ?? []} tab={activeTab} />
+      )}
+    </div>
+  );
+}
+
+function VenueRewardsTable({ rows, tab }: { rows: any[]; tab: string }) {
+  if (rows.length === 0) {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white py-12 text-center text-sm text-gray-400">
+        No venue referral rewards in this category.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <table className="w-full text-sm">
+        <thead className="border-b border-gray-200 bg-gray-50">
+          <tr>
+            <th className="px-4 py-3 text-left font-medium text-gray-600">Offer</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-600">Referrer</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-600">Invitee</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-600">Unlocked</th>
+            {tab === 'vr_redeemed' && <th className="px-4 py-3 text-left font-medium text-gray-600">Redeemed</th>}
+            {tab === 'vr_voided'   && <th className="px-4 py-3 text-left font-medium text-gray-600">Void reason</th>}
+            {tab === 'vr_unlocked' && <th className="px-4 py-3" />}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {rows.map((r: any) => (
+            <tr key={r.id} className="hover:bg-gray-50">
+              <td className="px-4 py-3 text-gray-800">{r.offer?.title ?? '—'}</td>
+              <td className="px-4 py-3">
+                <p className="font-medium text-gray-800">{r.referrer?.full_name ?? '—'}</p>
+                <p className="text-xs text-gray-400">{r.referrer?.email ?? ''}</p>
+              </td>
+              <td className="px-4 py-3">
+                <p className="text-gray-700">{r.invitation?.invitee?.full_name ?? '—'}</p>
+                <p className="text-xs text-gray-400">{r.invitation?.invitee?.email ?? ''}</p>
+              </td>
+              <td className="px-4 py-3">
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                  r.status === 'unlocked' ? 'bg-amber-100 text-amber-700' :
+                  r.status === 'redeemed' ? 'bg-green-100 text-green-700' :
+                  'bg-red-100 text-red-700'
+                }`}>
+                  {r.status}
+                </span>
+              </td>
+              <td className="px-4 py-3 whitespace-nowrap text-gray-500">{fmtDate(r.unlocked_at)}</td>
+              {tab === 'vr_redeemed' && (
+                <td className="px-4 py-3 whitespace-nowrap text-gray-500">{fmtDate(r.redeemed_at)}</td>
+              )}
+              {tab === 'vr_voided' && (
+                <td className="px-4 py-3 text-gray-500 text-xs">{r.void_reason ?? '—'}</td>
+              )}
+              {tab === 'vr_unlocked' && (
+                <td className="px-4 py-3">
+                  <form action={voidVenueReferralReward}>
+                    <input type="hidden" name="reward_id" value={r.id} />
+                    <input type="hidden" name="reason" value="Voided by admin" />
+                    <button
+                      type="submit"
+                      className="text-xs text-red-500 underline hover:text-red-700"
+                    >
+                      Void
+                    </button>
+                  </form>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colSpan={tab === 'vr_voided' ? 6 : tab === 'vr_redeemed' ? 6 : 6} className="border-t border-gray-100 px-4 py-2.5 text-xs text-gray-400">
+              {rows.length} reward{rows.length !== 1 ? 's' : ''}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
     </div>
   );
 }

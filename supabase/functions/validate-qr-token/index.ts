@@ -261,7 +261,37 @@ serve(async (req) => {
       });
     }
 
-    // ── 5b. Standard offer redemption path ────────────────────────────────
+    // ── 5b. Venue referral reward path ────────────────────────────────────
+    if (offerType === 'venue_referral') {
+      const { data: vrRows, error: vrError } = await supabase.rpc('redeem_venue_referral_reward', {
+        p_token_hash:            tokenHash,
+        p_retailer_profile_id:   user.id,
+        p_redemption_attempt_id: attemptId,
+      });
+
+      if (vrError) {
+        console.error('[RPC_ERROR] redeem_venue_referral_reward:', vrError.message);
+        return json({ error: 'Failed to process venue referral reward' }, 500);
+      }
+
+      const result = vrRows?.[0];
+      if (!result) {
+        console.error('[RPC_ERROR] redeem_venue_referral_reward returned no rows');
+        return json({ error: 'Failed to process venue referral reward' }, 500);
+      }
+
+      return json({
+        token_type:        'venue_referral_reward',
+        valid:             result.valid,
+        status:            result.status ?? undefined,
+        rejection_reason:  result.rejection_reason ?? undefined,
+        offer_title:       result.offer_title ?? undefined,
+        reward_description: result.reward_description ?? undefined,
+        consumer_name:     result.consumer_name ?? undefined,
+      });
+    }
+
+    // ── 5c. Standard offer redemption path ────────────────────────────────
     const { data: rpcRows, error: rpcError } = await supabase.rpc('redeem_offer_token', {
       p_token_hash:            tokenHash,
       p_retailer_profile_id:   user.id,

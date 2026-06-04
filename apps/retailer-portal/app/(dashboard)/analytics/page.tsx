@@ -80,6 +80,7 @@ export default async function AnalyticsPage() {
     recentScansResult,
     loyaltyCardsResult,
     loyaltyOffersResult,
+    venueReferralOffersResult,
   ] = await Promise.all([
     // Headline: total offer views at this retailer
     supabase
@@ -183,7 +184,27 @@ export default async function AnalyticsPage() {
       .eq('retailer_id', retailerId)
       .eq('offer_type', 'loyalty_visits')
       .in('status', ['live', 'paused', 'expired']),
+
+    // Venue referral offers for this retailer
+    supabase
+      .from('offers')
+      .select('id, title')
+      .eq('retailer_id', retailerId)
+      .eq('offer_type', 'venue_referral')
+      .in('status', ['live', 'paused', 'expired']),
   ]);
+
+  // ── Venue referral secondary fetch ───────────────────────────────────────
+  const venueReferralOffers = (venueReferralOffersResult.data ?? []) as { id: string; title: string }[];
+  const vrOfferIds = venueReferralOffers.map((o) => o.id);
+
+  const [vrInvitationsResult, vrRewardsResult] =
+    vrOfferIds.length > 0
+      ? await Promise.all([
+          supabase.from('venue_referral_invitations').select('offer_id').in('offer_id', vrOfferIds),
+          supabase.from('venue_referral_rewards').select('offer_id, status').in('offer_id', vrOfferIds),
+        ])
+      : [{ data: [] }, { data: [] }];
 
   // ── Derived headline metrics ──────────────────────────────────────────────
 
@@ -273,6 +294,33 @@ export default async function AnalyticsPage() {
     const completed = cards.filter((c) => c.status === 'completed').length;
     const claimed = cards.filter((c) => c.status === 'claimed').length;
     return { ...o, issued, active, completed, claimed, claimPct: pct(claimed, issued) };
+  });
+
+  // ── Venue referral metrics ────────────────────────────────────────────────
+
+  const vrInvitations = (vrInvitationsResult.data ?? []) as { offer_id: string }[];
+  const vrRewards = (vrRewardsResult.data ?? []) as { offer_id: string; status: string }[];
+
+  const totalInvitesSent = vrInvitations.length;
+  const totalRewardsUnlocked = vrRewards.filter((r) => r.status === 'unlocked').length;
+  const totalRewardsRedeemed = vrRewards.filter((r) => r.status === 'redeemed').length;
+
+  const vrInvitesByOffer = new Map<string, number>();
+  for (const r of vrInvitations) {
+    vrInvitesByOffer.set(r.offer_id, (vrInvitesByOffer.get(r.offer_id) ?? 0) + 1);
+  }
+  const vrRewardsByOffer = new Map<string, { unlocked: number; redeemed: number }>();
+  for (const r of vrRewards) {
+    const cur = vrRewardsByOffer.get(r.offer_id) ?? { unlocked: 0, redeemed: 0 };
+    if (r.status === 'unlocked') cur.unlocked++;
+    if (r.status === 'redeemed') cur.redeemed++;
+    vrRewardsByOffer.set(r.offer_id, cur);
+  }
+  const vrOfferBreakdown = venueReferralOffers.map((o) => {
+    const invited = vrInvitesByOffer.get(o.id) ?? 0;
+    const { unlocked = 0, redeemed = 0 } = vrRewardsByOffer.get(o.id) ?? {};
+    const converted = unlocked + redeemed;
+    return { ...o, invited, converted, unlocked, redeemed, conversionPct: pct(converted, invited) };
   });
 
   // ── Headline card definitions ─────────────────────────────────────────────
@@ -383,6 +431,46 @@ export default async function AnalyticsPage() {
                       <td className="px-3 py-3 text-right text-gray-700">{o.completed}</td>
                       <td className="px-4 py-3 text-right text-gray-700">{o.claimed}</td>
                       <td className="px-4 py-3 text-right text-gray-500">{o.claimPct}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Venue referral rewards */}
+      {(totalInvitesSent > 0 || venueReferralOffers.length > 0) && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-3">Venue referral rewards</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 mb-5">
+            <MetricCard label="Invites sent" value={totalInvitesSent} />
+            <MetricCard label="Rewards unlocked" value={totalRewardsUnlocked} />
+            <MetricCard label="Rewards redeemed" value={totalRewardsRedeemed} />
+          </div>
+          {vrOfferBreakdown.length > 0 && (
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Referral offer</th>
+                    <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Invited</th>
+                    <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Converted</th>
+                    <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Unlocked</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Redeemed</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Conv. %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {vrOfferBreakdown.map((o) => (
+                    <tr key={o.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-800 max-w-[220px] truncate">{o.title}</td>
+                      <td className="px-3 py-3 text-right text-gray-700">{o.invited}</td>
+                      <td className="px-3 py-3 text-right text-gray-700">{o.converted}</td>
+                      <td className="px-3 py-3 text-right text-gray-700">{o.unlocked}</td>
+                      <td className="px-4 py-3 text-right text-gray-700">{o.redeemed}</td>
+                      <td className="px-4 py-3 text-right text-gray-500">{o.conversionPct}</td>
                     </tr>
                   ))}
                 </tbody>
