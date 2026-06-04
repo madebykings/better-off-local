@@ -10,6 +10,7 @@ import '../../../core/widgets/brand_logo.dart';
 import '../providers/platform_config_provider.dart';
 import 'widgets/categories_section.dart';
 import 'widgets/featured_retailers_section.dart';
+import 'widgets/loyalty_cards_section.dart';
 import 'widgets/nearby_offers_section.dart';
 import 'widgets/savings_summary_card.dart';
 
@@ -38,6 +39,7 @@ class HomeScreen extends ConsumerWidget {
                 _HomeHeader(),
                 _SearchRow(),
                 SizedBox(height: 14),
+                LoyaltyCardsSection(),
                 NearbyOffersSection(),
                 SizedBox(height: 28),
                 CategoriesSection(),

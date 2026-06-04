@@ -9,14 +9,16 @@ final loyaltyDataSourceProvider = Provider<LoyaltyRemoteDataSource>(
   (ref) => LoyaltyRemoteDataSource(ref.watch(supabaseClientProvider)),
 );
 
-/// All loyalty cards for the current user.
+/// All loyalty cards for the current user, sorted by completion % descending.
 final myLoyaltyCardsProvider = FutureProvider<List<LoyaltyCard>>((ref) async {
   final session = ref.watch(sessionProvider).valueOrNull;
   if (session == null) return [];
   final rows = await ref
       .read(loyaltyDataSourceProvider)
       .fetchMyCards(session.user.id);
-  return rows.map(LoyaltyCard.fromMap).toList();
+  final cards = rows.map(LoyaltyCard.fromMap).toList();
+  cards.sort((a, b) => b.progressFraction.compareTo(a.progressFraction));
+  return cards;
 });
 
 /// Loyalty card for a specific offer (may be null if not yet started).

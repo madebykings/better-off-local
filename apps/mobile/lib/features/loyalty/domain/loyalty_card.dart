@@ -13,6 +13,7 @@ class LoyaltyCard extends Equatable {
     required this.stampsRequired,
     required this.status,
     required this.createdAt,
+    this.retailerLogoUrl,
     this.rewardDescription,
     this.completedAt,
     this.claimedAt,
@@ -23,6 +24,7 @@ class LoyaltyCard extends Equatable {
   final String offerTitle;
   final String retailerId;
   final String retailerName;
+  final String? retailerLogoUrl;
   final int stampsEarned;
   final int stampsRequired;
   final LoyaltyCardStatus status;
@@ -55,6 +57,7 @@ class LoyaltyCard extends Equatable {
       offerTitle:        offers?['title'] as String? ?? '',
       retailerId:        map['retailer_id'] as String,
       retailerName:      retailers?['name'] as String? ?? '',
+      retailerLogoUrl:   retailers?['logo_url'] as String?,
       stampsEarned:      map['stamps_earned'] as int? ?? 0,
       stampsRequired:    map['stamps_required'] as int? ?? 0,
       status:            parseStatus(map['status'] as String? ?? 'active'),
