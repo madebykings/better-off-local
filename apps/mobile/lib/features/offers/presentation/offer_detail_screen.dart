@@ -153,7 +153,8 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                       ],
                       if (offer.offerType == 'meal_deal' &&
                           (offer.offerMeta?['bundle_price'] != null ||
-                           (offer.offerMeta?['included_items'] as List?)?.isNotEmpty == true)) ...[
+                           (offer.offerMeta?['included_items'] is List &&
+                            (offer.offerMeta!['included_items'] as List).isNotEmpty))) ...[
                         const SizedBox(height: 20),
                         const Divider(),
                         const SizedBox(height: 16),

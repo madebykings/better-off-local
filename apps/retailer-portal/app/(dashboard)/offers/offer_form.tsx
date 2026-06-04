@@ -217,7 +217,9 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
 
   function setOfferType(type: OfferType) {
     setFields((prev) => ({ ...prev, offerType: type }));
-    setOfferMeta(EMPTY_OFFER_META);
+    // Only reset meta when switching away from a meta-supporting type — switching between
+    // meta types (e.g. percentage_discount ↔ fixed_discount) preserves shared fields like minSpend.
+    if (!needsOfferMeta(type)) setOfferMeta(EMPTY_OFFER_META);
     if (errors.offerType) setErrors((prev) => ({ ...prev, offerType: undefined }));
     if (needsLoyaltyConfig(type) && !loyaltyConfig.rewardDescription) {
       setLoyaltyConfig(initialData?.loyaltyConfig ?? EMPTY_LOYALTY_CONFIG);

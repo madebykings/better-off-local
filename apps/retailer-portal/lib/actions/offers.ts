@@ -211,6 +211,9 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
   if (!ctx) return { error: 'No retailer account found.' };
 
   const service = createServiceClient();
+  const derivedMeta = buildOfferMetaJson(fields.offerType, fields.offerMeta);
+  const derivedSaving = autoDeriveSavingPence(fields.offerType, fields.discountValue);
+  const derivedSummary = buildShortSummary(fields.offerType, fields.offerMeta ?? EMPTY_OFFER_META, fields.discountValue);
   const { data: offer, error } = await service
     .from('offers')
     .insert({
@@ -226,9 +229,10 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
       status: 'draft',
       created_by_profile_id: ctx.userId,
       image_url: fields.imageUrl.trim() || null,
-      offer_meta: buildOfferMetaJson(fields.offerType, fields.offerMeta),
-      estimated_saving_pence: autoDeriveSavingPence(fields.offerType, fields.discountValue),
-      short_summary: buildShortSummary(fields.offerType, fields.offerMeta ?? EMPTY_OFFER_META, fields.discountValue),
+      offer_meta: derivedMeta,
+      // Only write columns we can derive — omitting them on INSERT gives NULL (correct for new offers).
+      ...(derivedSaving !== null ? { estimated_saving_pence: derivedSaving } : {}),
+      ...(derivedSummary !== null ? { short_summary: derivedSummary } : {}),
     })
     .select('id')
     .single();
@@ -305,6 +309,9 @@ export async function updateOffer(
   }
 
   const statusChanged = newStatus !== existing.status;
+  const derivedMeta = buildOfferMetaJson(fields.offerType, fields.offerMeta);
+  const derivedSaving = autoDeriveSavingPence(fields.offerType, fields.discountValue);
+  const derivedSummary = buildShortSummary(fields.offerType, fields.offerMeta ?? EMPTY_OFFER_META, fields.discountValue);
 
   const { error } = await service
     .from('offers')
@@ -318,9 +325,10 @@ export async function updateOffer(
       start_at: fields.startDate ? new Date(fields.startDate).toISOString() : null,
       end_at: fields.endDate ? new Date(fields.endDate).toISOString() : null,
       image_url: fields.imageUrl.trim() || null,
-      offer_meta: buildOfferMetaJson(fields.offerType, fields.offerMeta),
-      estimated_saving_pence: autoDeriveSavingPence(fields.offerType, fields.discountValue),
-      short_summary: buildShortSummary(fields.offerType, fields.offerMeta ?? EMPTY_OFFER_META, fields.discountValue),
+      offer_meta: derivedMeta,
+      // Only write columns we can derive — omitting them on UPDATE preserves any admin-set values.
+      ...(derivedSaving !== null ? { estimated_saving_pence: derivedSaving } : {}),
+      ...(derivedSummary !== null ? { short_summary: derivedSummary } : {}),
       ...(statusChanged ? { status: newStatus } : {}),
       updated_at: new Date().toISOString(),
     })

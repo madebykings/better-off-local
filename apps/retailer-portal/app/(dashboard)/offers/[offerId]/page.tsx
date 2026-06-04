@@ -27,7 +27,7 @@ export default async function OfferDetailPage({ params }: Props) {
   const [offerResult, rulesResult, locationsResult, offerLocationsResult, loyaltyConfigResult] = await Promise.all([
     supabase
       .from('offers')
-      .select('id, title, value_text, description, offer_type, start_at, end_at, status, venue_scope, image_url, estimated_saving_pence, offer_meta')
+      .select('id, title, value_text, description, offer_type, start_at, end_at, status, venue_scope, image_url, offer_meta')
       .eq('id', offerId)
       .eq('retailer_id', retailerId)
       .maybeSingle(),
