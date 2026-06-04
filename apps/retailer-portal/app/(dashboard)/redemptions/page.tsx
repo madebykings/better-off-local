@@ -40,12 +40,16 @@ export default async function RedemptionsPage() {
   const { retailerId } = await requireRetailerUser();
   const supabase = createServiceClient();
 
-  const { data: redemptions } = await supabase
+  const { data: redemptions, error: redemptionsError } = await supabase
     .from('redemptions')
-    .select('id, status, rejection_reason, redeemed_at, offers(title), profiles(full_name)')
+    .select('id, status, rejection_reason, redeemed_at, offers!offer_id(title), profiles!profile_id(full_name)')
     .eq('retailer_id', retailerId)
     .order('redeemed_at', { ascending: false })
     .limit(100);
+
+  if (redemptionsError) {
+    console.error('[RedemptionsPage] query error:', redemptionsError.message);
+  }
 
   const rows = (redemptions ?? []) as unknown as RedemptionRow[];
 

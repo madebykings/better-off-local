@@ -66,7 +66,7 @@ export async function createInviteLink(
     return { error: 'Could not create invite link. Please try again.' };
   }
 
-  revalidatePath('/settings');
+  revalidatePath('/team');
   return { error: null, success: true };
 }
 
@@ -100,7 +100,7 @@ export async function revokeInviteLink(
     return { error: 'Could not revoke invite link.' };
   }
 
-  revalidatePath('/settings');
+  revalidatePath('/team');
   return { error: null, success: true };
 }
 

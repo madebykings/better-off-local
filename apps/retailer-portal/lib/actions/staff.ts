@@ -33,6 +33,6 @@ export async function removeStaff(staffId: string): Promise<StaffActionState> {
     return { error: 'Could not remove staff member. Please try again.' };
   }
 
-  revalidatePath('/settings');
+  revalidatePath('/team');
   return { error: null, success: true };
 }
