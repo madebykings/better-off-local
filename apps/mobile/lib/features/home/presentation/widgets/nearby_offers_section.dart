@@ -60,8 +60,8 @@ class NearbyOffersSection extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         SizedBox(
-          // Height = image(120) + body(72) = 192 + 13px shadow room.
-          height: 205,
+          // Height = image(120) + body(82) = 202 + 13px buffer.
+          height: 215,
           child: offersAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (_, __) => const Center(child: Text('Unable to load offers')),

@@ -63,8 +63,10 @@ class PlatformConfig {
 }
 
 /// Fetches platform_config row id=1 from the admin-editable table.
-/// Falls back to [PlatformConfig.defaults] only when the DB fetch fails or a
-/// field is empty — it does NOT fall back when the row contains real values.
+///
+/// Throws [StateError] if the row is missing (signals a missing seed row or
+/// wrong environment). Propagates other exceptions (network, auth) so the
+/// widget can inspect [AsyncValue.error] in the debug overlay.
 ///
 /// Invalidate this provider to force a re-fetch (e.g. on pull-to-refresh).
 final platformConfigProvider = FutureProvider<PlatformConfig>((ref) async {
@@ -77,12 +79,17 @@ final platformConfigProvider = FutureProvider<PlatformConfig>((ref) async {
         .maybeSingle();
 
     if (row == null) {
-      debugPrint('[PlatformConfig] no row returned from ${Env.supabaseUrl} — using defaults');
-      return PlatformConfig.defaults;
+      final msg = '[PlatformConfig] platform_config row id=1 not found at '
+          '${Env.supabaseUrl} — check migration 070 was applied and the '
+          'correct SUPABASE_URL dart-define is set';
+      debugPrint(msg);
+      throw StateError(msg);
     }
     return PlatformConfig.fromMap(row);
   } catch (e, st) {
-    debugPrint('[PlatformConfig] fetch error from ${Env.supabaseUrl} — using defaults\n$e\n$st');
-    return PlatformConfig.defaults;
+    if (e is! StateError) {
+      debugPrint('[PlatformConfig] fetch error from ${Env.supabaseUrl}\n$e\n$st');
+    }
+    rethrow;
   }
 });

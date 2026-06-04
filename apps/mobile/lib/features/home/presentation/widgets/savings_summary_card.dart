@@ -18,8 +18,8 @@ class SavingsSummaryCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final config = ref.watch(platformConfigProvider).valueOrNull ??
-        PlatformConfig.defaults;
+    final asyncConfig = ref.watch(platformConfigProvider);
+    final config = asyncConfig.valueOrNull ?? PlatformConfig.defaults;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -86,8 +86,23 @@ class SavingsSummaryCard extends ConsumerWidget {
                       const Text('── DEBUG: platform_config ──',
                           style: TextStyle(color: Colors.yellow, fontWeight: FontWeight.bold)),
                       Text('supabase: ${Env.supabaseUrl}'),
-                      Text('db updated_at: ${config.updatedAt?.toUtc().toIso8601String() ?? "(null — using defaults)"}'),
-                      Text('fetched_at:  ${config.fetchedAt?.toLocal().toIso8601String() ?? "(null — using defaults)"}'),
+                      Text('db updated_at: ${config.updatedAt?.toUtc().toIso8601String() ?? "(null)"}'),
+                      Text('fetched_at:  ${config.fetchedAt?.toLocal().toIso8601String() ?? "(null)"}'),
+                      if (asyncConfig.isLoading)
+                        const Text('state: loading…',
+                            style: TextStyle(color: Colors.cyan)),
+                      if (asyncConfig.hasValue && asyncConfig.value != null)
+                        const Text('state: ok — DB row received',
+                            style: TextStyle(color: Colors.greenAccent)),
+                      if (asyncConfig.hasError) ...[
+                        const Text('state: ERROR — using hardcoded defaults',
+                            style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                        Text('reason: ${asyncConfig.error}',
+                            style: const TextStyle(color: Colors.orange)),
+                      ],
+                      if (!asyncConfig.isLoading && !asyncConfig.hasError && asyncConfig.value == null)
+                        const Text('state: null row — row id=1 missing',
+                            style: TextStyle(color: Colors.redAccent)),
                     ],
                   ),
                 ),

@@ -52,9 +52,11 @@ class OfferCard extends ConsumerWidget {
   /// Shows a gray "Closed" badge. Only shown when neither open nor closing soon.
   final bool isClosed;
 
-  // Body height is fixed so Spacer() can anchor the redemption rule to bottom.
-  static const double _compactBodyHeight = 72.0;
-  static const double _fullBodyHeight = 90.0;
+  // Body height is fixed so Spacer() anchors the redemption rule to the bottom.
+  // Compact (176px wide, horizontal scroll): image=120 + body=82 = 202px total.
+  // Full-width (explore/favourites): image=200 + body=100 = 300px total.
+  static const double _compactBodyHeight = 82.0;
+  static const double _fullBodyHeight = 100.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -379,18 +381,18 @@ class _OfferCardBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.max,
       children: [
-        Expanded(
-          child: Text(
-            offer.title,
-            style: AppTextStyles.titleMedium.copyWith(
-              fontSize: compact ? 14.0 : 16.0,
-              fontWeight: FontWeight.w700,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+        Text(
+          offer.title,
+          style: AppTextStyles.titleMedium.copyWith(
+            fontSize: compact ? 14.0 : 16.0,
+            fontWeight: FontWeight.w700,
           ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
+        const Spacer(),
         _RedemptionRow(offer: offer, compact: compact),
       ],
     );
