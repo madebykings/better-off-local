@@ -37,7 +37,10 @@ export async function startCheckout(
 ): Promise<CheckoutState> {
   // requireRetailerUser redirects to /sign-in if not authenticated.
   // Let that redirect propagate — this action is only reached from authenticated pages.
-  await requireRetailerUser();
+  const { accessRole } = await requireRetailerUser();
+  if (accessRole !== 'owner') {
+    return { error: 'Only the account owner can manage billing.' };
+  }
 
   const supabase = await createClient();
 
@@ -80,7 +83,10 @@ export async function startCheckout(
  * and cancel their subscription. Stripe returns them to /billing afterward.
  */
 export async function openBillingPortal(): Promise<void> {
-  const { retailerId } = await requireRetailerUser();
+  const { retailerId, accessRole } = await requireRetailerUser();
+  if (accessRole !== 'owner') {
+    redirect('/billing?error=access_denied');
+  }
   const service = createServiceClient();
 
   const { data: sub } = await service

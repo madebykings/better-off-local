@@ -34,7 +34,20 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
 }
 
 export default async function BillingPage() {
-  const { retailerId } = await requireRetailerUser();
+  const { retailerId, accessRole } = await requireRetailerUser();
+
+  if (accessRole !== 'owner') {
+    return (
+      <div className="max-w-xl">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-5">
+          <p className="text-sm font-medium text-red-800">Access denied</p>
+          <p className="text-sm text-red-600 mt-1">
+            Only the account owner can view billing information.
+          </p>
+        </div>
+      </div>
+    );
+  }
   const supabase = createServiceClient();
 
   const [{ data: retailer }, { data: subscription }, { data: primaryVenue }] = await Promise.all([

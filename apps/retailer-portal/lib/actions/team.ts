@@ -207,6 +207,11 @@ export async function acceptTeamInvitation(
   token: string,
   userId: string,
 ): Promise<{ error: string | null }> {
+  // Verify the accepting user's email matches the invitation.
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated.' };
+
   const service = createServiceClient();
 
   const { data: invite } = await service
@@ -217,6 +222,10 @@ export async function acceptTeamInvitation(
 
   if (!invite || invite.status !== 'pending' || new Date(invite.expires_at) < new Date()) {
     return { error: 'This invite link has expired or is no longer valid.' };
+  }
+
+  if ((user.email ?? '').toLowerCase() !== invite.email.toLowerCase()) {
+    return { error: 'This invitation was sent to a different email address.' };
   }
 
   const { error: linkError } = await service.from('retailer_users').upsert(
