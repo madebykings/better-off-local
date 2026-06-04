@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../../app/router/route_names.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_indicator.dart';
@@ -70,6 +72,8 @@ class _NotificationTile extends ConsumerWidget {
     switch (type) {
       case NotificationType.offer:
         return Icons.local_offer_outlined;
+      case NotificationType.businessUpdate:
+        return Icons.notifications_active_outlined;
       case NotificationType.membership:
         return Icons.card_membership_outlined;
       case NotificationType.redemption:
@@ -80,6 +84,20 @@ class _NotificationTile extends ConsumerWidget {
         return Icons.map_outlined;
       case NotificationType.system:
         return Icons.info_outline;
+    }
+  }
+
+  void _handleTap(BuildContext context, NotificationsController controller) {
+    if (!notification.isRead) {
+      controller.markRead(notification.id);
+    }
+    final offerId = notification.payload?['offer_id'] as String?;
+    if (offerId != null &&
+        (notification.type == NotificationType.offer ||
+            notification.type == NotificationType.businessUpdate)) {
+      context.push(
+        RouteNames.offerDetail.replaceAll(':offerId', offerId),
+      );
     }
   }
 
@@ -119,7 +137,7 @@ class _NotificationTile extends ConsumerWidget {
         ],
       ),
       isThreeLine: notification.body.isNotEmpty,
-      onTap: unread ? () => controller.markRead(notification.id) : null,
+      onTap: () => _handleTap(context, controller),
     );
   }
 }

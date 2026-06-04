@@ -7,6 +7,7 @@ enum NotificationType {
   redemption,
   referral,
   region,
+  businessUpdate,
 }
 
 class AppNotification extends Equatable {

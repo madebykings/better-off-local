@@ -29,8 +29,10 @@ final unreadNotificationCountProvider = Provider<int>((ref) {
 
 AppNotification _fromRow(Map<String, dynamic> row) {
   final typeStr = row['type'] as String? ?? 'system';
+  // DB uses snake_case for multi-word types; map to camelCase enum names.
+  final normalized = typeStr == 'business_update' ? 'businessUpdate' : typeStr;
   final type = NotificationType.values.firstWhere(
-    (t) => t.name == typeStr,
+    (t) => t.name == normalized,
     orElse: () => NotificationType.system,
   );
   return AppNotification(
