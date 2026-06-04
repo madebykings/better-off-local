@@ -32,6 +32,12 @@ create policy "Member updates own preferences"
 -- Fires when an offer transitions to status='live'.
 -- Notifies followers of the retailer who have NOT already been notified by
 -- notify_offer_live() (which covers favouriters and category followers).
+--
+-- IMPORTANT: This trigger is named offers_notify_followers. PostgreSQL fires
+-- AFTER triggers in alphabetical name order. offers_notify_followers sorts
+-- BEFORE offers_notify_on_live (f < o), so notify_offer_live() has NOT yet
+-- run when this trigger executes. The dedup check therefore queries favourites
+-- and category_follows directly rather than the notifications table.
 
 create or replace function notify_followers_new_offer()
 returns trigger
@@ -69,11 +75,22 @@ begin
             and cm.status in ('active', 'trialing')
             and cm.current_period_end > now()
        )
-       -- Don't double-notify members already covered by notify_offer_live()
+       -- Don't double-notify members covered by notify_offer_live():
+       --   section (a) covers retailer favouriters
+       --   section (b) covers category followers (excluding favouriters)
+       -- We cannot check the notifications table here because this trigger
+       -- fires before notify_offer_live() runs (alphabetical trigger order).
        and not exists (
-         select 1 from notifications n
-          where n.profile_id = rf.profile_id
-            and (n.data_json->>'offer_id') = NEW.id::text
+         select 1 from favourites f
+          where f.profile_id = rf.profile_id
+            and f.retailer_id = NEW.retailer_id
+            and f.offer_id is null
+       )
+       and not exists (
+         select 1 from category_follows cf
+           join retailer_categories rc on rc.category_id = cf.category_id
+          where cf.profile_id = rf.profile_id
+            and rc.retailer_id = NEW.retailer_id
        )
   loop
     perform insert_notification(

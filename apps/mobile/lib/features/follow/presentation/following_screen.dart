@@ -84,25 +84,30 @@ class FollowingScreen extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       )
                     : null,
-                trailing: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    side: BorderSide(
-                      color: isFollowing
-                          ? AppColors.textDisabled
+                trailing: SizedBox(
+                  width: 84,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      side: BorderSide(
+                        color: isFollowing
+                            ? AppColors.textDisabled
+                            : AppColors.primary,
+                      ),
+                      foregroundColor: isFollowing
+                          ? AppColors.textSecondary
                           : AppColors.primary,
                     ),
-                    foregroundColor:
-                        isFollowing ? AppColors.textSecondary : AppColors.primary,
-                  ),
-                  onPressed: () => toggleRetailerFollow(
-                      ref, retailerId, isFollowing, context),
-                  child: Text(
-                    isFollowing ? 'Following' : 'Follow',
-                    style: const TextStyle(fontSize: 12),
+                    onPressed: () => toggleRetailerFollow(
+                        ref, retailerId, isFollowing, context),
+                    child: Text(
+                      isFollowing ? 'Following' : 'Follow',
+                      style: const TextStyle(fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
                 onTap: () => context.push(
