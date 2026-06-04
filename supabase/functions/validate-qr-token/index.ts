@@ -195,13 +195,73 @@ serve(async (req) => {
 
   // First check the token exists in redemption_tokens so we can return 404 for
   // genuinely unknown tokens rather than an RPC rejection.
+  // Also fetch the offer_type so we can route to the correct RPC below.
   const { data: tokenExists } = await supabase
     .from('redemption_tokens')
-    .select('id, profile_id')
+    .select('id, profile_id, offer_id')
     .eq('token_hash', tokenHash)
     .maybeSingle();
 
   if (tokenExists) {
+    // Resolve offer type to determine which RPC path to use.
+    let offerType: string | null = null;
+    if (tokenExists.offer_id) {
+      const { data: offerRow } = await supabase
+        .from('offers')
+        .select('offer_type')
+        .eq('id', tokenExists.offer_id)
+        .maybeSingle();
+      offerType = offerRow?.offer_type ?? null;
+    }
+
+    // ── 5a. Loyalty stamp path ────────────────────────────────────────────
+    if (offerType === 'loyalty_visits') {
+      const { data: loyaltyRows, error: loyaltyError } = await supabase.rpc('process_loyalty_stamp', {
+        p_token_hash:            tokenHash,
+        p_retailer_profile_id:   user.id,
+        p_redemption_attempt_id: attemptId,
+      });
+
+      if (loyaltyError) {
+        console.error('[RPC_ERROR] process_loyalty_stamp:', loyaltyError.message);
+        return json({ error: 'Failed to process loyalty stamp' }, 500);
+      }
+
+      const result = loyaltyRows?.[0];
+      if (!result) {
+        console.error('[RPC_ERROR] process_loyalty_stamp returned no rows');
+        return json({ error: 'Failed to process loyalty stamp' }, 500);
+      }
+
+      // Fetch consumer's first name for staff confirmation.
+      let consumerName: string | null = null;
+      if (result.valid === true && tokenExists.profile_id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', tokenExists.profile_id)
+          .maybeSingle();
+        if (profile?.full_name) {
+          consumerName = (profile.full_name as string).split(' ')[0] ?? null;
+        }
+      }
+
+      return json({
+        token_type:             'loyalty_stamp',
+        valid:                  result.valid,
+        outcome:                result.outcome ?? undefined,
+        status:                 result.status ?? undefined,
+        rejection_reason:       result.rejection_reason ?? undefined,
+        stamps_earned:          result.stamps_earned ?? undefined,
+        stamps_required:        result.stamps_required ?? undefined,
+        offer_title:            result.offer_title ?? undefined,
+        reward_description:     result.reward_description ?? undefined,
+        next_stamp_available_at: result.next_stamp_available_at ?? undefined,
+        consumer_name:          consumerName ?? undefined,
+      });
+    }
+
+    // ── 5b. Standard offer redemption path ────────────────────────────────
     const { data: rpcRows, error: rpcError } = await supabase.rpc('redeem_offer_token', {
       p_token_hash:            tokenHash,
       p_retailer_profile_id:   user.id,

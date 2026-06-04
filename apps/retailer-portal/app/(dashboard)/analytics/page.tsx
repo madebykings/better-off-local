@@ -14,6 +14,11 @@ type OfferRow = {
   is_featured: boolean;
 };
 
+type LoyaltyCardRow = {
+  offer_id: string;
+  status: string;
+};
+
 type ScanRow = {
   id: string;
   redeemed_at: string;
@@ -73,6 +78,8 @@ export default async function AnalyticsPage() {
     tokensPerOfferResult,
     successPerOfferResult,
     recentScansResult,
+    loyaltyCardsResult,
+    loyaltyOffersResult,
   ] = await Promise.all([
     // Headline: total offer views at this retailer
     supabase
@@ -162,6 +169,20 @@ export default async function AnalyticsPage() {
       .eq('retailer_id', retailerId)
       .order('redeemed_at', { ascending: false })
       .limit(25),
+
+    // Loyalty cards for this retailer (status breakdown)
+    supabase
+      .from('loyalty_cards')
+      .select('offer_id, status')
+      .eq('retailer_id', retailerId),
+
+    // Loyalty offers for this retailer (for per-offer breakdown)
+    supabase
+      .from('offers')
+      .select('id, title')
+      .eq('retailer_id', retailerId)
+      .eq('offer_type', 'loyalty_visits')
+      .in('status', ['live', 'paused', 'expired']),
   ]);
 
   // ── Derived headline metrics ──────────────────────────────────────────────
@@ -227,6 +248,32 @@ export default async function AnalyticsPage() {
   // ── Recent scans ──────────────────────────────────────────────────────────
 
   const recentScans = (recentScansResult.data ?? []) as unknown as ScanRow[];
+
+  // ── Loyalty card metrics ───────────────────────────────────────────────────
+
+  const loyaltyCards = (loyaltyCardsResult.data ?? []) as LoyaltyCardRow[];
+  const loyaltyOffers = (loyaltyOffersResult.data ?? []) as { id: string; title: string }[];
+
+  const totalCardsIssued = loyaltyCards.length;
+  const activeCards = loyaltyCards.filter((c) => c.status === 'active').length;
+  const completedCards = loyaltyCards.filter((c) => c.status === 'completed').length;
+  const claimedRewards = loyaltyCards.filter((c) => c.status === 'claimed').length;
+
+  // Per-loyalty-offer breakdown
+  const loyaltyCardsByOffer = new Map<string, LoyaltyCardRow[]>();
+  for (const card of loyaltyCards) {
+    const existing = loyaltyCardsByOffer.get(card.offer_id) ?? [];
+    existing.push(card);
+    loyaltyCardsByOffer.set(card.offer_id, existing);
+  }
+  const loyaltyOfferBreakdown = loyaltyOffers.map((o) => {
+    const cards = loyaltyCardsByOffer.get(o.id) ?? [];
+    const issued = cards.length;
+    const active = cards.filter((c) => c.status === 'active').length;
+    const completed = cards.filter((c) => c.status === 'completed').length;
+    const claimed = cards.filter((c) => c.status === 'claimed').length;
+    return { ...o, issued, active, completed, claimed, claimPct: pct(claimed, issued) };
+  });
 
   // ── Headline card definitions ─────────────────────────────────────────────
 
@@ -303,6 +350,47 @@ export default async function AnalyticsPage() {
           </div>
         )}
       </div>
+
+      {/* Loyalty stamp cards */}
+      {(totalCardsIssued > 0 || loyaltyOffers.length > 0) && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-3">Loyalty stamp cards</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-5">
+            <MetricCard label="Cards issued" value={totalCardsIssued} />
+            <MetricCard label="Active" value={activeCards} />
+            <MetricCard label="Completed" value={completedCards} />
+            <MetricCard label="Rewards claimed" value={claimedRewards} />
+          </div>
+          {loyaltyOfferBreakdown.length > 0 && (
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Loyalty offer</th>
+                    <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Issued</th>
+                    <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Active</th>
+                    <th className="text-right px-3 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Completed</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Claimed</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Claim %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {loyaltyOfferBreakdown.map((o) => (
+                    <tr key={o.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-800 max-w-[220px] truncate">{o.title}</td>
+                      <td className="px-3 py-3 text-right text-gray-700">{o.issued}</td>
+                      <td className="px-3 py-3 text-right text-gray-700">{o.active}</td>
+                      <td className="px-3 py-3 text-right text-gray-700">{o.completed}</td>
+                      <td className="px-4 py-3 text-right text-gray-700">{o.claimed}</td>
+                      <td className="px-4 py-3 text-right text-gray-500">{o.claimPct}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Recent scans */}
       <div>

@@ -110,6 +110,12 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
               ),
               const _Divider(),
               _NavTile(
+                icon: Icons.confirmation_num_outlined,
+                label: 'My loyalty cards',
+                onTap: () => context.push(RouteNames.loyaltyCards),
+              ),
+              const _Divider(),
+              _NavTile(
                 icon: Icons.card_giftcard_outlined,
                 label: 'Refer a friend',
                 onTap: () => context.push(RouteNames.referral),

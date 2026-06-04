@@ -67,7 +67,7 @@ export default async function OfferDetailPage({ params }: Props) {
   const o = offerResult.data;
   const retailerId = (o as any).retailer_id as string | null;
 
-  const [rulesResult, actionsResult, offerLocationsResult, locationsResult] = await Promise.all([
+  const [rulesResult, actionsResult, offerLocationsResult, locationsResult, loyaltyConfigResult, loyaltyStatsResult] = await Promise.all([
     supabase
       .from('offer_rules')
       .select('max_redemptions_per_user, max_redemptions_per_day, max_redemptions_total, cooldown_hours, new_customers_only')
@@ -91,12 +91,31 @@ export default async function OfferDetailPage({ params }: Props) {
           .eq('is_active', true)
           .order('is_primary', { ascending: false })
       : Promise.resolve({ data: [] as { id: string; name: string | null; address_line_1: string | null }[] }),
+    supabase
+      .from('offer_loyalty_config')
+      .select('stamps_required, reward_description, reward_type, reward_value_text, min_hours_between_stamps')
+      .eq('offer_id', offerId)
+      .maybeSingle(),
+    supabase
+      .from('loyalty_cards')
+      .select('status')
+      .eq('offer_id', offerId),
   ]);
 
   const rules = rulesResult.data;
   const actions = actionsResult.data ?? [];
   const offerLocations = offerLocationsResult.data ?? [];
   const locations = locationsResult.data ?? [];
+  const loyaltyConfig = loyaltyConfigResult.data;
+  const loyaltyCards = (loyaltyStatsResult.data ?? []) as { status: string }[];
+  const loyaltyStats = loyaltyConfig
+    ? {
+        issued: loyaltyCards.length,
+        active: loyaltyCards.filter((c) => c.status === 'active').length,
+        completed: loyaltyCards.filter((c) => c.status === 'completed').length,
+        claimed: loyaltyCards.filter((c) => c.status === 'claimed').length,
+      }
+    : null;
 
   const initialFields: AdminOfferFields = {
     offerType:            (o as any).offer_type as OfferType,
@@ -199,6 +218,31 @@ export default async function OfferDetailPage({ params }: Props) {
           </div>
         )}
       </div>
+
+      {/* Loyalty stamp card config */}
+      {loyaltyConfig && (
+        <div className="bg-white rounded-lg border border-teal-200 p-4 mb-6">
+          <h2 className="text-sm font-semibold text-teal-700 mb-4">Loyalty stamp card configuration</h2>
+          <dl className="grid grid-cols-2 gap-3 mb-4">
+            <Field label="Stamps required" value={String(loyaltyConfig.stamps_required)} />
+            <Field label="Reward type" value={loyaltyConfig.reward_type.replace(/_/g, ' ')} />
+            <Field label="Reward description" value={loyaltyConfig.reward_description} />
+            <Field label="Reward value" value={loyaltyConfig.reward_value_text ?? undefined} />
+            <Field label="Min hours between stamps" value={String(loyaltyConfig.min_hours_between_stamps)} />
+          </dl>
+          {loyaltyStats && (
+            <div className="pt-3 border-t border-gray-100">
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Card statistics</p>
+              <dl className="grid grid-cols-4 gap-3">
+                <Field label="Issued" value={String(loyaltyStats.issued)} />
+                <Field label="Active" value={String(loyaltyStats.active)} />
+                <Field label="Completed" value={String(loyaltyStats.completed)} />
+                <Field label="Claimed" value={String(loyaltyStats.claimed)} />
+              </dl>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Edit offer */}
       <details className="mb-6 group bg-white rounded-lg border border-gray-200">

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/providers/session_provider.dart';
 import '../../features/profile/providers/profile_providers.dart';
 
+import '../../features/loyalty/presentation/my_loyalty_cards_screen.dart';
 import '../../features/referral/presentation/referral_screen.dart';
 import '../../features/region/presentation/region_selection_screen.dart';
 import '../../features/region/presentation/region_progress_screen.dart';
@@ -227,6 +228,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'region',
                 builder: (context, state) => const RegionProgressScreen(),
+              ),
+              GoRoute(
+                path: 'loyalty',
+                builder: (context, state) => const MyLoyaltyCardsScreen(),
               ),
             ],
           ),

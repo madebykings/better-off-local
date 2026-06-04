@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { validateRedemption, type ScanResult } from '@/lib/actions/validate_redemption';
+import { validateRedemption, type ScanResult, type LoyaltyOutcome } from '@/lib/actions/validate_redemption';
 import { getOffersForPass, redeemViaPass, type PassOffer } from '@/lib/actions/pass_redemption';
 
 const RESULT_DISPLAY_SECONDS = 3;
@@ -414,6 +414,17 @@ function ResultCard({
   onScanNow: () => void;
   onBackToOffers?: () => void;
 }) {
+  if (result.token_type === 'loyalty_stamp') {
+    return (
+      <LoyaltyResultCard
+        result={result}
+        countdown={countdown}
+        onScanNow={onScanNow}
+        onBackToOffers={onBackToOffers}
+      />
+    );
+  }
+
   if (result.token_type === 'redemption' && result.valid) {
     return (
       <div className="rounded-lg border border-green-300 bg-green-50 p-6 space-y-4">
@@ -593,4 +604,165 @@ function formatNextAvailable(iso: string): string {
     timeZone: 'UTC',
     timeZoneName: 'short',
   });
+}
+
+// ---------------------------------------------------------------------------
+// Loyalty stamp result card
+// ---------------------------------------------------------------------------
+
+function LoyaltyStampDots({ earned, required }: { earned: number; required: number }) {
+  const capped = Math.min(required, 20);
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {Array.from({ length: capped }, (_, i) => (
+        <div
+          key={i}
+          className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-colors ${
+            i < earned
+              ? 'bg-teal-600 border-teal-600 text-white'
+              : 'border-teal-300 bg-white text-teal-300'
+          }`}
+        >
+          {i < earned ? '✓' : ''}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LoyaltyResultCard({
+  result,
+  countdown,
+  onScanNow,
+  onBackToOffers,
+}: {
+  result: Extract<ScanResult, { token_type: 'loyalty_stamp' }>;
+  countdown: number | null;
+  onScanNow: () => void;
+  onBackToOffers?: () => void;
+}) {
+  if (!result.valid) {
+    const nextLabel = result.next_stamp_available_at
+      ? formatNextAvailable(result.next_stamp_available_at)
+      : null;
+    return (
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-amber-500 text-3xl">✕</span>
+          <p className="font-semibold text-amber-800 text-lg">STAMP NOT ADDED</p>
+        </div>
+        <div className="bg-white rounded-md p-3 border border-amber-200 space-y-2">
+          <p className="text-sm text-gray-700">{result.rejection_reason}</p>
+          {nextLabel && (
+            <p className="text-sm text-gray-500">Next stamp available: {nextLabel}</p>
+          )}
+          {result.stamps_earned !== undefined && result.stamps_required !== undefined && (
+            <div className="pt-2">
+              <p className="text-xs text-gray-400 mb-1.5">Current progress</p>
+              <LoyaltyStampDots earned={result.stamps_earned} required={result.stamps_required} />
+              <p className="text-xs text-gray-500 mt-1">{result.stamps_earned} of {result.stamps_required} stamps</p>
+            </div>
+          )}
+        </div>
+        <ScanNextFooter countdown={countdown} onScanNow={onScanNow} onBackToOffers={onBackToOffers} />
+      </div>
+    );
+  }
+
+  const outcome = result.outcome as LoyaltyOutcome;
+
+  if (outcome === 'reward_claimed') {
+    return (
+      <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-yellow-600 text-3xl">🎉</span>
+          <div>
+            <p className="font-semibold text-yellow-800 text-lg">REWARD CLAIMED</p>
+            {result.consumer_name && (
+              <p className="text-sm text-yellow-700">{result.consumer_name}</p>
+            )}
+          </div>
+        </div>
+        <div className="bg-white rounded-md p-4 border border-yellow-200 text-center">
+          <p className="text-2xl font-bold text-gray-900">{result.reward_description}</p>
+          <p className="text-sm text-gray-500 mt-1">{result.stamps_earned} of {result.stamps_required} stamps collected</p>
+        </div>
+        <div className="bg-yellow-100 rounded-md px-4 py-3 border border-yellow-200">
+          <p className="text-sm font-semibold text-yellow-800">Please give the reward now.</p>
+          <p className="text-xs text-yellow-700 mt-0.5">The member's card has been marked as claimed.</p>
+        </div>
+        <ScanNextFooter countdown={countdown} onScanNow={onScanNow} onBackToOffers={onBackToOffers} />
+      </div>
+    );
+  }
+
+  if (outcome === 'already_claimed') {
+    return (
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-gray-400 text-3xl">✓</span>
+          <p className="font-semibold text-gray-600 text-lg">REWARD ALREADY CLAIMED</p>
+        </div>
+        <div className="bg-white rounded-md p-3 border border-gray-200">
+          <p className="text-sm text-gray-600">This member has already collected their {result.reward_description}. Their card is complete.</p>
+        </div>
+        <ScanNextFooter countdown={countdown} onScanNow={onScanNow} onBackToOffers={onBackToOffers} />
+      </div>
+    );
+  }
+
+  if (outcome === 'completed') {
+    return (
+      <div className="rounded-lg border border-teal-300 bg-teal-50 p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-teal-600 text-3xl">⭐</span>
+          <div>
+            <p className="font-semibold text-teal-800 text-lg">STAMP CARD COMPLETE!</p>
+            {result.consumer_name && (
+              <p className="text-sm text-teal-700">{result.consumer_name}</p>
+            )}
+          </div>
+        </div>
+        <div className="bg-white rounded-md p-4 border border-teal-200 space-y-3">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-gray-900">{result.reward_description}</p>
+            <p className="text-sm text-gray-500 mt-1">All {result.stamps_required} stamps collected</p>
+          </div>
+          <LoyaltyStampDots earned={result.stamps_earned} required={result.stamps_required} />
+        </div>
+        <div className="bg-teal-100 rounded-md px-4 py-3 border border-teal-200">
+          <p className="text-sm font-semibold text-teal-800">Reward unlocked!</p>
+          <p className="text-xs text-teal-700 mt-0.5">
+            The member will present their QR code again to claim. When they do, give them their {result.reward_description}.
+          </p>
+        </div>
+        <ScanNextFooter countdown={countdown} onScanNow={onScanNow} onBackToOffers={onBackToOffers} />
+      </div>
+    );
+  }
+
+  // outcome === 'stamped'
+  const remaining = result.stamps_required - result.stamps_earned;
+  return (
+    <div className="rounded-lg border border-teal-300 bg-teal-50 p-6 space-y-4">
+      <div className="flex items-center gap-3">
+        <span className="text-teal-600 text-3xl">✓</span>
+        <div>
+          <p className="font-semibold text-teal-800 text-lg">
+            STAMP {result.stamps_earned} OF {result.stamps_required} ADDED
+          </p>
+          {result.consumer_name && (
+            <p className="text-sm text-teal-700">{result.consumer_name}</p>
+          )}
+        </div>
+      </div>
+      <div className="bg-white rounded-md p-4 border border-teal-200 space-y-3">
+        <LoyaltyStampDots earned={result.stamps_earned} required={result.stamps_required} />
+        <p className="text-sm text-gray-600">
+          {remaining} more {remaining === 1 ? 'stamp' : 'stamps'} until {result.reward_description}
+        </p>
+      </div>
+      <ScanNextFooter countdown={countdown} onScanNow={onScanNow} onBackToOffers={onBackToOffers} />
+    </div>
+  );
 }

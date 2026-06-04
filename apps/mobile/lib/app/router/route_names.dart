@@ -43,4 +43,7 @@ abstract class RouteNames {
   // Region
   static const regionSelection = '/region-selection';
   static const regionProgress  = '/account/region';
+
+  // Loyalty cards
+  static const loyaltyCards = '/account/loyalty';
 }

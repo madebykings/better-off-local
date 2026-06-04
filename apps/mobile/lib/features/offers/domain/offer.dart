@@ -99,6 +99,9 @@ class Offer extends Equatable {
     if (type == 'meal_deal' || text.contains('deal') || text.contains('meal')) {
       return const Color(0xFFEA580C); // deep orange
     }
+    if (type == 'loyalty_visits') {
+      return const Color(0xFF0D9488); // teal
+    }
     // Default: green (percentage_discount, other)
     return const Color(0xFF2D6A4F);
   }

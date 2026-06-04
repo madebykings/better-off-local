@@ -12,10 +12,30 @@ export const OFFER_TYPES = [
   'free_item',
   'buy_one_get_one',
   'meal_deal',
+  'loyalty_visits',
   'other',
 ] as const;
 
 export type OfferType = (typeof OFFER_TYPES)[number];
+
+export const LOYALTY_REWARD_TYPES = ['free_item', 'percentage_discount', 'fixed_discount'] as const;
+export type LoyaltyRewardType = (typeof LOYALTY_REWARD_TYPES)[number];
+
+export type LoyaltyConfigFields = {
+  stampsRequired: string;       // '2'–'20'
+  rewardDescription: string;   // "Free flat white"
+  rewardType: LoyaltyRewardType;
+  rewardValueText: string;      // "£3.50 value", "50% off" — displayed on completed card
+  minHoursBetweenStamps: string; // '0', '1', '20', '24', …
+};
+
+export const EMPTY_LOYALTY_CONFIG: LoyaltyConfigFields = {
+  stampsRequired: '8',
+  rewardDescription: '',
+  rewardType: 'free_item',
+  rewardValueText: '',
+  minHoursBetweenStamps: '0',
+};
 
 /**
  * Derives the card badge text from offer type + optional discount value.
@@ -34,6 +54,8 @@ export function computeValueText(offerType: OfferType, discountValue: string): s
       return 'BOGOF';
     case 'meal_deal':
       return 'MEAL DEAL';
+    case 'loyalty_visits':
+      return 'COLLECT STAMPS';
     case 'other':
       return 'SPECIAL DEAL';
     default:
@@ -44,6 +66,11 @@ export function computeValueText(offerType: OfferType, discountValue: string): s
 /** Returns true for offer types that require a numeric discount value. */
 export function needsDiscountValue(offerType: OfferType): boolean {
   return offerType === 'percentage_discount' || offerType === 'fixed_discount';
+}
+
+/** Returns true for the loyalty_visits offer type which requires stamp-card config. */
+export function needsLoyaltyConfig(offerType: OfferType): boolean {
+  return offerType === 'loyalty_visits';
 }
 
 /** Label for the discount value input based on offer type. */

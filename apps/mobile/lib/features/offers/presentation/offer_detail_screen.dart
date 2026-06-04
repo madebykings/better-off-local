@@ -7,6 +7,8 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../favourites/providers/favourites_providers.dart';
+import '../../loyalty/providers/loyalty_providers.dart';
+import '../../loyalty/presentation/widgets/loyalty_stamp_grid.dart';
 import '../domain/offer_availability.dart';
 import '../providers/offers_providers.dart';
 
@@ -133,6 +135,12 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
                           style: AppTextStyles.bodyMedium,
                         ),
                       ],
+                      if (offer.offerType == 'loyalty_visits') ...[
+                        const SizedBox(height: 20),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        _LoyaltySection(offerId: offer.id),
+                      ],
                       if (offer.endAt != null) ...[
                         const SizedBox(height: 16),
                         Row(
@@ -258,4 +266,129 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
         'Nov',
         'Dec'
       ][m];
+}
+
+// ---------------------------------------------------------------------------
+// Loyalty stamp progress section — shown on loyalty_visits offers
+// ---------------------------------------------------------------------------
+
+class _LoyaltySection extends ConsumerWidget {
+  const _LoyaltySection({required this.offerId});
+  final String offerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cardAsync = ref.watch(loyaltyCardForOfferProvider(offerId));
+    final configAsync = ref.watch(loyaltyConfigProvider(offerId));
+
+    final config = configAsync.valueOrNull;
+    final card = cardAsync.valueOrNull;
+
+    final stampsRequired = card?.stampsRequired ??
+        (config?['stamps_required'] as int? ?? 8);
+    final stampsEarned = card?.stampsEarned ?? 0;
+    final rewardDescription = card?.rewardDescription ??
+        config?['reward_description'] as String?;
+
+    final isClaimed = card?.isClaimed ?? false;
+    final isComplete = card?.isComplete ?? false;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.card_giftcard_outlined,
+                size: 18, color: Color(0xFF0D9488)),
+            const SizedBox(width: 8),
+            const Text(
+              'Loyalty stamp card',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0D9488),
+              ),
+            ),
+            const Spacer(),
+            if (!isClaimed)
+              Text(
+                '$stampsEarned / $stampsRequired stamps',
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        LoyaltyStampGrid(
+          stampsEarned: stampsEarned,
+          stampsRequired: stampsRequired,
+        ),
+        const SizedBox(height: 12),
+        if (isClaimed) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFD1FAE5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.check_circle,
+                    size: 16, color: Color(0xFF059669)),
+                SizedBox(width: 8),
+                Text(
+                  'Reward claimed — start again to earn another',
+                  style: TextStyle(
+                      fontSize: 13, color: Color(0xFF065F46)),
+                ),
+              ],
+            ),
+          ),
+        ] else if (isComplete) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFCCFBF1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.stars, size: 16, color: Color(0xFF0D9488)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Card complete! Scan your QR code at the retailer to claim your reward.',
+                    style: TextStyle(
+                        fontSize: 13, color: Color(0xFF134E4A)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ] else if (card == null) ...[
+          const Text(
+            'Visit this retailer and scan your QR code to start collecting stamps.',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+        ] else ...[
+          Text(
+            '${stampsRequired - stampsEarned} more stamp${stampsRequired - stampsEarned == 1 ? '' : 's'} to complete your card.',
+            style: const TextStyle(
+                fontSize: 13, color: AppColors.textSecondary),
+          ),
+        ],
+        if (rewardDescription != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Reward: $rewardDescription',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textDisabled,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }

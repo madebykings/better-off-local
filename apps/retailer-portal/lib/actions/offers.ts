@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { type RuleColumns, ruleToColumns } from '@/lib/utils/redemption_rules';
-import { type OfferType, OFFER_TYPES, computeValueText, needsDiscountValue } from '@/lib/utils/first_offer';
+import { type OfferType, OFFER_TYPES, computeValueText, needsDiscountValue, needsLoyaltyConfig, type LoyaltyConfigFields, EMPTY_LOYALTY_CONFIG } from '@/lib/utils/first_offer';
 import type { RedemptionRule } from '@/lib/utils/redemption_rules';
 
 // ---------------------------------------------------------------------------
@@ -26,6 +26,7 @@ export type OfferFields = {
   selectedLocationIds: string[];
   imageUrl: string;            // public URL of the uploaded cover image, or ''
   estimatedSavingPence: string; // integer string in pence, or ''
+  loyaltyConfig?: LoyaltyConfigFields;
 };
 
 export type OfferActionResult = {
@@ -70,7 +71,33 @@ function validateOffer(fields: OfferFields): Partial<Record<keyof OfferFields, s
       errors.totalCap = 'Redemption cap must be a positive whole number.';
     }
   }
+  if (needsLoyaltyConfig(fields.offerType)) {
+    const cfg = fields.loyaltyConfig;
+    if (!cfg) {
+      errors.offerType = 'Loyalty stamp configuration is required.';
+    } else {
+      const stamps = parseInt(cfg.stampsRequired, 10);
+      if (isNaN(stamps) || stamps < 2 || stamps > 20) {
+        errors.loyaltyConfig = 'Stamps required must be between 2 and 20.' as any;
+      }
+      if (!cfg.rewardDescription.trim()) {
+        errors.loyaltyConfig = 'Reward description is required.' as any;
+      }
+    }
+  }
   return errors;
+}
+
+async function upsertLoyaltyConfig(service: ReturnType<typeof createServiceClient>, offerId: string, cfg: LoyaltyConfigFields): Promise<void> {
+  await service.from('offer_loyalty_config').upsert({
+    offer_id: offerId,
+    stamps_required: parseInt(cfg.stampsRequired, 10),
+    reward_description: cfg.rewardDescription.trim(),
+    reward_type: cfg.rewardType,
+    reward_value_text: cfg.rewardValueText.trim() || null,
+    min_hours_between_stamps: parseInt(cfg.minHoursBetweenStamps, 10) || 0,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'offer_id' });
 }
 
 // ---------------------------------------------------------------------------
@@ -154,6 +181,10 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
         retailer_location_id: locId,
       })),
     );
+  }
+
+  if (needsLoyaltyConfig(fields.offerType) && fields.loyaltyConfig) {
+    await upsertLoyaltyConfig(service, offer.id, fields.loyaltyConfig);
   }
 
   revalidatePath('/offers');
@@ -247,6 +278,10 @@ export async function updateOffer(
         retailer_location_id: locId,
       })),
     );
+  }
+
+  if (needsLoyaltyConfig(fields.offerType) && fields.loyaltyConfig) {
+    await upsertLoyaltyConfig(service, offerId, fields.loyaltyConfig);
   }
 
   revalidatePath(`/offers/${offerId}`);

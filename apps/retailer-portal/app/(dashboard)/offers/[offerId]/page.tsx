@@ -6,7 +6,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { ruleFromColumns, type RuleColumns } from '@/lib/utils/redemption_rules';
 import { OfferForm } from '../offer_form';
 import type { OfferFields } from '@/lib/actions/offers';
-import { type OfferType, needsDiscountValue } from '@/lib/utils/first_offer';
+import { type OfferType, needsDiscountValue, type LoyaltyConfigFields, EMPTY_LOYALTY_CONFIG } from '@/lib/utils/first_offer';
 
 export const metadata: Metadata = { title: 'Edit Offer – Retailer Portal' };
 
@@ -24,7 +24,7 @@ export default async function OfferDetailPage({ params }: Props) {
   const { retailerId } = await requireRetailerUser();
   const supabase = createServiceClient();
 
-  const [offerResult, rulesResult, locationsResult, offerLocationsResult] = await Promise.all([
+  const [offerResult, rulesResult, locationsResult, offerLocationsResult, loyaltyConfigResult] = await Promise.all([
     supabase
       .from('offers')
       .select('id, title, value_text, description, offer_type, start_at, end_at, status, venue_scope, image_url, estimated_saving_pence')
@@ -46,6 +46,11 @@ export default async function OfferDetailPage({ params }: Props) {
       .from('offer_locations')
       .select('retailer_location_id')
       .eq('offer_id', offerId),
+    supabase
+      .from('offer_loyalty_config')
+      .select('stamps_required, reward_description, reward_type, reward_value_text, min_hours_between_stamps')
+      .eq('offer_id', offerId)
+      .maybeSingle(),
   ]);
 
   if (!offerResult.data) notFound();
@@ -79,6 +84,20 @@ export default async function OfferDetailPage({ params }: Props) {
   // current equivalent so the form renders correctly for older offers.
   const rawType = offer.offer_type as string;
   const offerType = (rawType === 'bundle' ? 'buy_one_get_one' : rawType) as OfferFields['offerType'];
+
+  const loyaltyCfgRow = loyaltyConfigResult.data;
+  const loyaltyConfig: LoyaltyConfigFields | undefined = loyaltyCfgRow
+    ? {
+        stampsRequired: String(loyaltyCfgRow.stamps_required),
+        rewardDescription: loyaltyCfgRow.reward_description ?? '',
+        rewardType: (loyaltyCfgRow.reward_type as LoyaltyConfigFields['rewardType']) ?? 'free_item',
+        rewardValueText: loyaltyCfgRow.reward_value_text ?? '',
+        minHoursBetweenStamps: String(loyaltyCfgRow.min_hours_between_stamps ?? 0),
+      }
+    : offerType === 'loyalty_visits'
+    ? EMPTY_LOYALTY_CONFIG
+    : undefined;
+
   const initialData: OfferFields = {
     headline: offer.title,
     discountValue: extractDiscountValue(offer.value_text, offerType),
@@ -95,6 +114,7 @@ export default async function OfferDetailPage({ params }: Props) {
     estimatedSavingPence: (offer as any).estimated_saving_pence != null
       ? ((offer as any).estimated_saving_pence as number / 100).toFixed(2)
       : '',
+    loyaltyConfig,
   };
 
   return (

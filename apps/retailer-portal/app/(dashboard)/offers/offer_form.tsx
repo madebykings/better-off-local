@@ -20,8 +20,12 @@ import {
   EMPTY_OFFER,
   computeValueText,
   needsDiscountValue,
+  needsLoyaltyConfig,
   discountValueLabel,
   discountValuePlaceholder,
+  type LoyaltyConfigFields,
+  EMPTY_LOYALTY_CONFIG,
+  LOYALTY_REWARD_TYPES,
 } from '@/lib/utils/first_offer';
 import { REDEMPTION_RULES, type RedemptionRule } from '@/lib/utils/redemption_rules';
 
@@ -35,8 +39,23 @@ const OFFER_TYPE_CONFIG: Record<OfferType, { label: string; hint: string; icon: 
   free_item:           { label: 'Free item',          hint: 'e.g. Free coffee',            icon: '🎁', savingHint: 'e.g. 3.50 for a £3.50 item' },
   buy_one_get_one:     { label: 'Buy one get one',   hint: 'e.g. BOGOF main course',       icon: '2️⃣', savingHint: 'e.g. 8.00 for half the cost of a £16 item' },
   meal_deal:           { label: 'Meal deal',          hint: 'e.g. Lunch meal deal',        icon: '🍱', savingHint: 'e.g. 4.00 if the deal saves ~£4 vs buying separately' },
+  loyalty_visits:      { label: 'Loyalty stamp card', hint: 'e.g. Collect 8 stamps, free coffee', icon: '🃏', savingHint: 'e.g. 3.50 for the reward value (free coffee)' },
   other:               { label: 'Special deal',       hint: 'e.g. Members-only event',    icon: '⭐', savingHint: 'Estimated pounds saved per use, if applicable' },
 };
+
+const LOYALTY_REWARD_TYPE_LABELS: Record<string, string> = {
+  free_item:           'Free item',
+  percentage_discount: 'Percentage discount',
+  fixed_discount:      'Fixed amount off',
+};
+
+const STAMP_COOLDOWN_OPTIONS = [
+  { value: '0',  label: 'No minimum — any number of stamps per day' },
+  { value: '1',  label: 'At least 1 hour between stamps' },
+  { value: '4',  label: 'At least 4 hours between stamps' },
+  { value: '20', label: 'At least 20 hours (roughly once a day)' },
+  { value: '44', label: 'At least 44 hours (roughly once every 2 days)' },
+];
 
 const RULE_LABELS: Record<RedemptionRule, string> = {
   unlimited:       'Unlimited — members can use any number of times',
@@ -117,12 +136,24 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
     estimatedSavingPence: '',
     ...initialData,
   });
+  const [loyaltyConfig, setLoyaltyConfig] = useState<LoyaltyConfigFields>(
+    initialData?.loyaltyConfig ?? EMPTY_LOYALTY_CONFIG,
+  );
   const [errors, setErrors] = useState<Partial<Record<keyof OfferFields, string>>>({});
+  const [loyaltyErrors, setLoyaltyErrors] = useState<Partial<Record<keyof LoyaltyConfigFields, string>>>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  function setLoyalty(key: keyof LoyaltyConfigFields) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      setLoyaltyConfig((prev) => ({ ...prev, [key]: e.target.value }));
+      if (loyaltyErrors[key]) setLoyaltyErrors((prev) => ({ ...prev, [key]: undefined }));
+      setSaved(false);
+    };
+  }
 
   function set(key: keyof OfferFields) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -135,6 +166,9 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
   function setOfferType(type: OfferType) {
     setFields((prev) => ({ ...prev, offerType: type }));
     if (errors.offerType) setErrors((prev) => ({ ...prev, offerType: undefined }));
+    if (needsLoyaltyConfig(type) && !loyaltyConfig.rewardDescription) {
+      setLoyaltyConfig(initialData?.loyaltyConfig ?? EMPTY_LOYALTY_CONFIG);
+    }
   }
 
   async function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>) {
@@ -165,14 +199,19 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
     startTransition(async () => {
       let result: OfferActionResult | CreateOfferResult | null;
 
+      const submittedFields: OfferFields = {
+        ...fields,
+        loyaltyConfig: needsLoyaltyConfig(fields.offerType) ? loyaltyConfig : undefined,
+      };
+
       if (mode === 'create') {
-        result = await createOffer(fields);
+        result = await createOffer(submittedFields);
         if (result && 'offerId' in result) {
           router.push(`/offers/${result.offerId}`);
           return;
         }
       } else {
-        result = await updateOffer(offerId!, fields);
+        result = await updateOffer(offerId!, submittedFields);
         if (result === null) {
           setSaved(true);
           return;
@@ -420,11 +459,110 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
               'inline-block rounded px-2 py-0.5 text-xs font-bold text-white',
               fields.offerType === 'percentage_discount' ? 'bg-green-700' :
               fields.offerType === 'fixed_discount' ? 'bg-blue-600' :
+              fields.offerType === 'loyalty_visits' ? 'bg-teal-600' :
               fields.offerType === 'buy_one_get_one' ? 'bg-purple-600' :
               'bg-orange-500',
             ].join(' ')}>
               {computeValueText(fields.offerType, fields.discountValue) || '—'}
             </span>
+          </div>
+        )}
+
+        {/* Loyalty stamp-card config */}
+        {needsLoyaltyConfig(fields.offerType) && (
+          <div className="rounded-lg border border-teal-200 bg-teal-50 p-5 space-y-4">
+            <div>
+              <p className="text-sm font-semibold text-teal-800">Stamp card configuration</p>
+              <p className="text-xs text-teal-600 mt-0.5">
+                Members collect one stamp per verified scanner scan. When they reach the target, they claim their reward.
+              </p>
+            </div>
+
+            <Field label="Stamps required" required hint="Between 2 and 20" error={loyaltyErrors.stampsRequired}>
+              <input
+                type="number"
+                value={loyaltyConfig.stampsRequired}
+                onChange={setLoyalty('stampsRequired')}
+                min={2} max={20} step={1}
+                placeholder="8"
+                className={inputCls(!!loyaltyErrors.stampsRequired)}
+                disabled={!canEdit || isPending}
+              />
+            </Field>
+
+            <Field label="Reward description" required hint='What the member receives. e.g. "Free flat white" or "50% off your next meal"' error={loyaltyErrors.rewardDescription}>
+              <input
+                type="text"
+                value={loyaltyConfig.rewardDescription}
+                onChange={setLoyalty('rewardDescription')}
+                placeholder="e.g. Free flat white"
+                maxLength={120}
+                className={inputCls(!!loyaltyErrors.rewardDescription)}
+                disabled={!canEdit || isPending}
+              />
+            </Field>
+
+            <Field label="Reward type" required>
+              <select
+                value={loyaltyConfig.rewardType}
+                onChange={setLoyalty('rewardType')}
+                className={inputCls(false) + ' cursor-pointer'}
+                disabled={!canEdit || isPending}
+              >
+                {LOYALTY_REWARD_TYPES.map((rt) => (
+                  <option key={rt} value={rt}>{LOYALTY_REWARD_TYPE_LABELS[rt]}</option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Reward value (optional)" hint='Displayed on the completed card. e.g. "£3.50 value" or "50% off"'>
+              <input
+                type="text"
+                value={loyaltyConfig.rewardValueText}
+                onChange={setLoyalty('rewardValueText')}
+                placeholder="e.g. £3.50 value"
+                maxLength={60}
+                className={inputCls(false)}
+                disabled={!canEdit || isPending}
+              />
+            </Field>
+
+            <Field label="Minimum time between stamps" hint="Prevents the same member collecting multiple stamps in quick succession">
+              <select
+                value={loyaltyConfig.minHoursBetweenStamps}
+                onChange={setLoyalty('minHoursBetweenStamps')}
+                className={inputCls(false) + ' cursor-pointer'}
+                disabled={!canEdit || isPending}
+              >
+                {STAMP_COOLDOWN_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </Field>
+
+            {/* Live preview of stamp grid */}
+            {loyaltyConfig.stampsRequired && parseInt(loyaltyConfig.stampsRequired, 10) >= 2 && (
+              <div className="pt-1">
+                <p className="text-xs text-teal-600 mb-2">Preview (how members see their progress):</p>
+                <div className="flex flex-wrap gap-2">
+                  {Array.from({ length: Math.min(parseInt(loyaltyConfig.stampsRequired, 10), 20) }, (_, i) => (
+                    <div
+                      key={i}
+                      className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs ${
+                        i < 3
+                          ? 'bg-teal-600 border-teal-600 text-white'
+                          : 'border-teal-300 bg-white text-teal-300'
+                      }`}
+                    >
+                      {i < 3 ? '✓' : '○'}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-teal-500 mt-2">
+                  3 of {loyaltyConfig.stampsRequired} stamps · {parseInt(loyaltyConfig.stampsRequired, 10) - 3} more until {loyaltyConfig.rewardDescription || 'reward'}
+                </p>
+              </div>
+            )}
           </div>
         )}
 

@@ -10,6 +10,12 @@ export type RedemptionStatus =
   | 'rule_blocked'
   | 'server_error';
 
+export type LoyaltyOutcome =
+  | 'stamped'
+  | 'completed'
+  | 'reward_claimed'
+  | 'already_claimed';
+
 export type ScanResult =
   | { token_type: 'redemption'; valid: true; offer_title: string; benefit_text: string | null; consumer_name: string | null }
   | {
@@ -18,6 +24,25 @@ export type ScanResult =
       status: RedemptionStatus;
       rejection_reason: string;
       next_available_at: string | null;
+    }
+  | {
+      token_type: 'loyalty_stamp';
+      valid: true;
+      outcome: LoyaltyOutcome;
+      stamps_earned: number;
+      stamps_required: number;
+      offer_title: string;
+      reward_description: string;
+      consumer_name: string | null;
+    }
+  | {
+      token_type: 'loyalty_stamp';
+      valid: false;
+      status: RedemptionStatus;
+      rejection_reason: string;
+      stamps_earned?: number;
+      stamps_required?: number;
+      next_stamp_available_at: string | null;
     }
   | { token_type: 'membership_pass'; valid: true; plan_interval: string; member_since: string | null; consumer_name: string | null }
   | { token_type: 'membership_pass'; valid: false; rejection_reason?: string }
@@ -132,6 +157,32 @@ export async function validateRedemption(
       };
     }
     return { token_type: 'membership_pass', valid: false };
+  }
+
+  if (body.token_type === 'loyalty_stamp') {
+    if (body.valid === true) {
+      return {
+        token_type: 'loyalty_stamp',
+        valid: true,
+        outcome: (body.outcome as LoyaltyOutcome) ?? 'stamped',
+        stamps_earned: (body.stamps_earned as number) ?? 0,
+        stamps_required: (body.stamps_required as number) ?? 0,
+        offer_title: (body.offer_title as string | null) ?? 'Loyalty offer',
+        reward_description: (body.reward_description as string | null) ?? '',
+        consumer_name: (body.consumer_name as string | null) ?? null,
+      };
+    }
+    return {
+      token_type: 'loyalty_stamp',
+      valid: false,
+      status: (body.status as RedemptionStatus) ?? 'rejected',
+      rejection_reason:
+        (body.rejection_reason as string | null) ??
+        'This QR code could not be validated.',
+      stamps_earned: (body.stamps_earned as number | undefined) ?? undefined,
+      stamps_required: (body.stamps_required as number | undefined) ?? undefined,
+      next_stamp_available_at: (body.next_stamp_available_at as string | null) ?? null,
+    };
   }
 
   if (body.token_type === 'redemption') {
