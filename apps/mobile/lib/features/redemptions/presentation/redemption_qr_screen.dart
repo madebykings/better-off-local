@@ -16,6 +16,8 @@ import '../../../core/widgets/primary_button.dart';
 import '../../loyalty/data/loyalty_remote_data_source.dart';
 import '../../loyalty/providers/loyalty_providers.dart';
 import '../../offers/providers/offers_providers.dart';
+import '../data/redemptions_remote_data_source.dart';
+import '../providers/redemption_providers.dart';
 import 'redemption_controller.dart';
 
 /// Displays a short-lived QR code that the retailer scans to validate a

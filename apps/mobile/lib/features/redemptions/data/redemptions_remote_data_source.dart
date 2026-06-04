@@ -51,6 +51,41 @@ class RedemptionsRemoteDataSource {
     return response.data as Map<String, dynamic>;
   }
 
+  /// Calls the `reset_loyalty_card` RPC to archive the claimed card and create
+  /// a fresh active card for the same offer.
+  ///
+  /// Returns the new card id on success.
+  /// Throws [RedemptionException] with a human-friendly message on failure.
+  Future<String> resetLoyaltyCard({
+    required String offerId,
+    required String consumerId,
+  }) async {
+    try {
+      final result = await _client.rpc(
+        'reset_loyalty_card',
+        params: {
+          'p_offer_id': offerId,
+          'p_consumer_id': consumerId,
+        },
+      );
+      // RPC returns the new card UUID as a scalar string.
+      return result as String;
+    } on PostgrestException catch (e) {
+      throw RedemptionException(
+        message: e.message.contains('not live') || e.message.contains('offer')
+            ? 'This offer is no longer available'
+            : 'Could not start a new card. Please try again.',
+        statusCode: 500,
+        errorCode: e.code,
+      );
+    } catch (_) {
+      throw const RedemptionException(
+        message: 'Could not start a new card. Please try again.',
+        statusCode: 500,
+      );
+    }
+  }
+
   /// Fetches the authenticated user's redemption history with offer and
   /// retailer details, most recent first, limited to 50 entries.
   Future<List<Map<String, dynamic>>> fetchRedemptionHistory(
