@@ -11,6 +11,22 @@ class VenueReferralRemoteDataSource {
     required String profileId,
     required String offerTitle,
   }) async {
+    // Ensure a share token exists before reading status.
+    // get_or_create_venue_referral_token is idempotent — it returns the
+    // existing token if already created, or inserts and returns a new one.
+    // Without this call, members who have never opened the offer detail screen
+    // would see an empty share URL with disabled Share/Copy buttons.
+    try {
+      await _client.rpc('get_or_create_venue_referral_token', params: {
+        'p_offer_id':   offerId,
+        'p_profile_id': profileId,
+      });
+    } catch (e) {
+      // Non-fatal: the status fetch below will still return what it can.
+      // The share URL will be empty if the token couldn't be created.
+      debugPrint('[VenueReferral] get_or_create_venue_referral_token error: $e');
+    }
+
     final rows = await _client.rpc('get_venue_referral_status', params: {
       'p_offer_id':   offerId,
       'p_profile_id': profileId,

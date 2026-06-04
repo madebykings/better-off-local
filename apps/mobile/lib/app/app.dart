@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../core/constants/storage_keys.dart';
+import '../core/providers/supabase_provider.dart';
 import 'router/app_router.dart';
 import 'router/route_names.dart';
 import 'theme/app_theme.dart';
@@ -84,14 +85,21 @@ class _AppState extends ConsumerState<App> {
         // Stripe cancel_url — user abandoned checkout; return to plan selection.
         router.go(RouteNames.paywall);
 
+      case '/venue-referral':
+        // Venue referral share link: /venue-referral?t=TOKEN
+        // Store the token for attribution; attribute immediately if already
+        // authenticated, otherwise attribute on next profile completion.
+        final token = uri.queryParameters['t'];
+        if (token != null && token.isNotEmpty) {
+          unawaited(_handleVenueReferralToken(token.trim().toUpperCase()));
+        }
+
       default:
-        // Referral join link: /join?ref=CODE
+        // Platform referral join link: /join?ref=CODE
         if (path == '/join') {
           final code = uri.queryParameters['ref'];
           if (code != null && code.isNotEmpty) {
             // Fire-and-forget: storage write must not block the router.
-            // _handleLink is void (called from a stream listener lambda);
-            // unawaited() is the explicit fire-and-forget pattern.
             unawaited(_secureStorage.write(
               key: StorageKeys.pendingReferralCode,
               value: code.trim().toUpperCase(),
@@ -99,6 +107,43 @@ class _AppState extends ConsumerState<App> {
             debugPrint('[deep_link] referral code captured: $code');
           }
         }
+    }
+  }
+
+  /// Persists a venue referral token and attributes it immediately if the
+  /// user is already authenticated.  For unauthenticated users the token
+  /// is consumed in [CompleteProfileScreen] after sign-up.
+  Future<void> _handleVenueReferralToken(String token) async {
+    await _secureStorage.write(
+      key: StorageKeys.pendingVenueReferralToken,
+      value: token,
+    );
+    debugPrint('[deep_link] venue referral token captured: $token');
+
+    final profileId =
+        ref.read(supabaseClientProvider).auth.currentUser?.id;
+    if (profileId != null) {
+      unawaited(_attributeVenueReferral(token, profileId));
+    }
+  }
+
+  /// Calls the attribute_venue_referral RPC and clears the stored token on
+  /// success.  Errors are non-fatal — the token stays in storage so the next
+  /// launch can retry.
+  Future<void> _attributeVenueReferral(
+      String token, String profileId) async {
+    try {
+      final client = ref.read(supabaseClientProvider);
+      await client.rpc('attribute_venue_referral', params: {
+        'p_token': token,
+        'p_invitee_profile_id': profileId,
+      });
+      await _secureStorage.delete(
+          key: StorageKeys.pendingVenueReferralToken);
+      debugPrint('[deep_link] venue referral attributed: $token');
+    } catch (e) {
+      debugPrint(
+          '[deep_link] venue referral attribution error (non-fatal): $e');
     }
   }
 

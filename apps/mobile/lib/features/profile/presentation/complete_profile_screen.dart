@@ -48,6 +48,28 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
     }
   }
 
+  Future<void> _tryAttributeVenueReferral(WidgetRef ref) async {
+    const storage = FlutterSecureStorage();
+    try {
+      final token =
+          await storage.read(key: StorageKeys.pendingVenueReferralToken);
+      if (token == null || token.isEmpty) return;
+
+      final client = ref.read(supabaseClientProvider);
+      final profileId = client.auth.currentUser?.id;
+      if (profileId == null) return;
+
+      await client.rpc('attribute_venue_referral', params: {
+        'p_token': token,
+        'p_invitee_profile_id': profileId,
+      });
+      await storage.delete(key: StorageKeys.pendingVenueReferralToken);
+      debugPrint('[referral] venue referral attributed for token: $token');
+    } catch (e) {
+      debugPrint('[referral] venue referral attribution error (non-fatal): $e');
+    }
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     await ref
@@ -67,8 +89,9 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
         );
       }
       if (next is ProfileUpdateSuccess) {
-        // Attribute pending referral if one was captured from a deep link.
+        // Attribute any pending deep-link referrals captured before sign-up.
         _tryAttributeReferral(ref);
+        _tryAttributeVenueReferral(ref);
         // Router redirect will detect profile is now complete and navigate to home.
         context.go(RouteNames.home);
       }
