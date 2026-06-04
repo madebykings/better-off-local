@@ -24,7 +24,7 @@ export default async function LocationDetailPage({ params }: Props) {
   const [{ data: loc }, { data: regionRows }] = await Promise.all([
     supabase
       .from('retailer_locations')
-      .select('id, name, address_line_1, address_line_2, town, county, postcode, is_primary, is_active, region_id, opening_hours_json, logo_url, cover_image_url, phone, website_url, short_description, description, review_status, review_notes, submitted_at')
+      .select('id, name, address_line_1, address_line_2, town, postcode, is_primary, is_active, region_id, opening_hours_json, logo_url, cover_image_url, phone, website_url, short_description, description, review_status, review_notes, submitted_at')
       .eq('id', locationId)
       .eq('retailer_id', retailerId)
       .eq('is_active', true)
@@ -45,7 +45,6 @@ export default async function LocationDetailPage({ params }: Props) {
     addressLine1:     loc.address_line_1 ?? '',
     addressLine2:     loc.address_line_2 ?? '',
     town:             loc.town ?? '',
-    county:           loc.county ?? '',
     postcode:         loc.postcode ?? '',
     phone:            (loc as any).phone ?? '',
     websiteUrl:       (loc as any).website_url ?? '',

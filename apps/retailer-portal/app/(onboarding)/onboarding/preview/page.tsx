@@ -55,7 +55,7 @@ export default async function PreviewPage() {
       .eq('retailer_id', retailer.id),
     service
       .from('retailer_locations')
-      .select('address_line_1, address_line_2, town, county, postcode, opening_hours_json')
+      .select('address_line_1, address_line_2, town, postcode, opening_hours_json')
       .eq('retailer_id', retailer.id)
       .eq('is_primary', true)
       .maybeSingle(),

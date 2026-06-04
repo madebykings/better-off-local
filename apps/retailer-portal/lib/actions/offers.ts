@@ -32,6 +32,7 @@ export type OfferFields = {
   venueScope: 'all' | 'specific';
   selectedLocationIds: string[];
   imageUrl: string;            // public URL of the uploaded cover image, or ''
+  estimatedSaving: string;     // '3.50' → stored as estimated_saving_pence; required for non-discount types
   offerMeta?: OfferMetaFields; // type-specific display fields; null for types that don't use meta
   loyaltyConfig?: LoyaltyConfigFields;
   venueReferralConfig?: VenueReferralConfigFields;
@@ -77,6 +78,17 @@ function validateOffer(fields: OfferFields): Partial<Record<keyof OfferFields, s
     const cap = parseInt(fields.totalCap, 10);
     if (isNaN(cap) || cap < 1 || String(Math.floor(cap)) !== fields.totalCap.trim()) {
       errors.totalCap = 'Redemption cap must be a positive whole number.';
+    }
+  }
+  // Estimated saving is required for types where it can't be auto-derived.
+  const autoDerivableTypes: OfferType[] = ['fixed_discount', 'percentage_discount'];
+  if (!autoDerivableTypes.includes(fields.offerType) && !fields.estimatedSaving?.trim()) {
+    errors.estimatedSaving = 'Please enter the estimated customer saving (e.g. 3.50 for £3.50).';
+  }
+  if (fields.estimatedSaving?.trim()) {
+    const n = parseFloat(fields.estimatedSaving);
+    if (isNaN(n) || n < 0) {
+      errors.estimatedSaving = 'Estimated saving must be a positive number (e.g. 3.50).';
     }
   }
   if (needsLoyaltyConfig(fields.offerType)) {
@@ -212,7 +224,11 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
 
   const service = createServiceClient();
   const derivedMeta = buildOfferMetaJson(fields.offerType, fields.offerMeta);
-  const derivedSaving = autoDeriveSavingPence(fields.offerType, fields.discountValue);
+  const autoDerived = autoDeriveSavingPence(fields.offerType, fields.discountValue);
+  const manualSaving = fields.estimatedSaving?.trim()
+    ? Math.round(parseFloat(fields.estimatedSaving) * 100)
+    : null;
+  const derivedSaving = autoDerived ?? manualSaving;
   const derivedSummary = buildShortSummary(fields.offerType, fields.offerMeta ?? EMPTY_OFFER_META, fields.discountValue);
   const { data: offer, error } = await service
     .from('offers')
@@ -231,7 +247,7 @@ export async function createOffer(fields: OfferFields): Promise<CreateOfferResul
       image_url: fields.imageUrl.trim() || null,
       offer_meta: derivedMeta,
       // Only write columns we can derive — omitting them on INSERT gives NULL (correct for new offers).
-      ...(derivedSaving !== null ? { estimated_saving_pence: derivedSaving } : {}),
+      ...(derivedSaving !== null && !isNaN(derivedSaving) ? { estimated_saving_pence: derivedSaving } : {}),
       ...(derivedSummary !== null ? { short_summary: derivedSummary } : {}),
     })
     .select('id')
@@ -310,7 +326,11 @@ export async function updateOffer(
 
   const statusChanged = newStatus !== existing.status;
   const derivedMeta = buildOfferMetaJson(fields.offerType, fields.offerMeta);
-  const derivedSaving = autoDeriveSavingPence(fields.offerType, fields.discountValue);
+  const autoDerived = autoDeriveSavingPence(fields.offerType, fields.discountValue);
+  const manualSaving = fields.estimatedSaving?.trim()
+    ? Math.round(parseFloat(fields.estimatedSaving) * 100)
+    : null;
+  const derivedSaving = autoDerived ?? manualSaving;
   const derivedSummary = buildShortSummary(fields.offerType, fields.offerMeta ?? EMPTY_OFFER_META, fields.discountValue);
 
   const { error } = await service
@@ -327,7 +347,7 @@ export async function updateOffer(
       image_url: fields.imageUrl.trim() || null,
       offer_meta: derivedMeta,
       // Only write columns we can derive — omitting them on UPDATE preserves any admin-set values.
-      ...(derivedSaving !== null ? { estimated_saving_pence: derivedSaving } : {}),
+      ...(derivedSaving !== null && !isNaN(derivedSaving) ? { estimated_saving_pence: derivedSaving } : {}),
       ...(derivedSummary !== null ? { short_summary: derivedSummary } : {}),
       ...(statusChanged ? { status: newStatus } : {}),
       updated_at: new Date().toISOString(),

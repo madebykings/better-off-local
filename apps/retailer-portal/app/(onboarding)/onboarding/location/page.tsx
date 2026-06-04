@@ -11,7 +11,6 @@ const EMPTY: LocationFields = {
   addressLine1: '',
   addressLine2: '',
   town: '',
-  county: '',
   postcode: '',
 };
 
@@ -25,7 +24,7 @@ export default async function LocationPage() {
     const service = createServiceClient();
     const { data: location } = await service
       .from('retailer_locations')
-      .select('address_line_1, address_line_2, town, county, postcode')
+      .select('address_line_1, address_line_2, town, postcode')
       .eq('retailer_id', retailer.id)
       .eq('is_primary', true)
       .maybeSingle();
@@ -35,7 +34,6 @@ export default async function LocationPage() {
         addressLine1: location.address_line_1 ?? '',
         addressLine2: location.address_line_2 ?? '',
         town: location.town ?? '',
-        county: location.county ?? '',
         postcode: location.postcode ?? '',
       };
     }

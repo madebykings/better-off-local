@@ -13,13 +13,11 @@ function AddressPreview({
   addressLine1,
   addressLine2,
   town,
-  county,
   postcode,
 }: {
   addressLine1: string;
   addressLine2: string;
   town: string;
-  county: string;
   postcode: string;
 }) {
   const hasAny = addressLine1 || town || postcode;
@@ -60,7 +58,7 @@ function AddressPreview({
               <p className="text-[13px] leading-snug text-gray-700">{addressLine2}</p>
             )}
             <p className="text-[13px] leading-snug text-gray-700">
-              {[town, county].filter(Boolean).join(', ')}
+              {town}
             </p>
             {postcode && (
               <p className="text-[13px] leading-snug text-gray-700">
@@ -238,26 +236,15 @@ export function LocationForm({
           autoComplete="address-line2"
         />
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field
-            label="Town / City"
-            id="town"
-            value={fields.town}
-            onChange={set('town')}
-            placeholder="Alloa"
-            error={fieldErrors.town}
-            autoComplete="address-level2"
-          />
-          <Field
-            label="County"
-            id="county"
-            value={fields.county}
-            onChange={set('county')}
-            placeholder="Clackmannanshire"
-            optional
-            autoComplete="address-level1"
-          />
-        </div>
+        <Field
+          label="Town / City"
+          id="town"
+          value={fields.town}
+          onChange={set('town')}
+          placeholder="Alloa"
+          error={fieldErrors.town}
+          autoComplete="address-level2"
+        />
 
         <div className="max-w-[180px]">
           <Field
@@ -334,7 +321,6 @@ export function LocationForm({
           addressLine1={fields.addressLine1}
           addressLine2={fields.addressLine2}
           town={fields.town}
-          county={fields.county}
           postcode={fields.postcode}
         />
         <p className="mt-2.5 text-center text-[11px] text-gray-400">

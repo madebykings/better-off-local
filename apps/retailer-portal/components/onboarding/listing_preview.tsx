@@ -25,7 +25,6 @@ export type PreviewLocation = {
   address_line_1: string | null;
   address_line_2: string | null;
   town: string | null;
-  county: string | null;
   postcode: string | null;
   opening_hours_json: unknown;
 } | null;
@@ -390,7 +389,6 @@ function AddressBlock({ location }: { location: PreviewLocation }) {
     location.address_line_1,
     location.address_line_2,
     location.town,
-    location.county,
     location.postcode,
   ]
     .filter(Boolean)

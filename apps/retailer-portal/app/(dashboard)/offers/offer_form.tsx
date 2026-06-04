@@ -141,6 +141,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
     selectedLocationIds: [],
     newCustomersOnly: false,
     imageUrl: '',
+    estimatedSaving: '',
     ...initialData,
   });
   const [offerMeta, setOfferMeta] = useState<OfferMetaFields>(
@@ -514,7 +515,12 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
             <input
               type="number"
               value={fields.discountValue}
-              onChange={set('discountValue')}
+              onChange={(e) => {
+                set('discountValue')(e);
+                if (fields.offerType === 'fixed_discount') {
+                  setFields((prev) => ({ ...prev, estimatedSaving: e.target.value }));
+                }
+              }}
               placeholder={fields.offerType === 'percentage_discount' ? '10' : '5'}
               min={0.01}
               step={fields.offerType === 'percentage_discount' ? 1 : 0.01}
@@ -541,6 +547,41 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
             </span>
           </div>
         )}
+
+        {/* Estimated customer saving */}
+        {(() => {
+          const isAutoDerivable = fields.offerType === 'fixed_discount' || fields.offerType === 'percentage_discount';
+          const label = 'Estimated customer saving (£)';
+          const hint = fields.offerType === 'fixed_discount'
+            ? 'Auto-filled from discount value above. You can override this.'
+            : fields.offerType === 'percentage_discount'
+            ? 'Typical saving per use, e.g. 0.50 for 10% off a £5 item. Helps members compare offers.'
+            : OFFER_TYPE_CONFIG[fields.offerType]?.savingHint
+              ? `${OFFER_TYPE_CONFIG[fields.offerType].savingHint}`
+              : 'Estimated pounds saved per redemption.';
+          return (
+            <Field
+              label={label}
+              required={!isAutoDerivable}
+              hint={hint}
+              error={errors.estimatedSaving}
+            >
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm select-none">£</span>
+                <input
+                  type="number"
+                  value={fields.estimatedSaving}
+                  onChange={set('estimatedSaving')}
+                  placeholder="e.g. 3.50"
+                  min={0}
+                  step={0.01}
+                  className={[inputCls(!!errors.estimatedSaving), 'pl-7'].join(' ')}
+                  disabled={!canEdit || isPending}
+                />
+              </div>
+            </Field>
+          );
+        })()}
 
         {/* Type-specific display fields */}
         {needsOfferMeta(fields.offerType) && (

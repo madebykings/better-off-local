@@ -218,26 +218,15 @@ export function VenueForm({
         autoComplete="address-line2"
       />
 
-      <div className="grid grid-cols-2 gap-4">
-        <Field
-          label="Town / City"
-          id="town"
-          value={fields.town}
-          onChange={set('town')}
-          placeholder="Alloa"
-          error={errors.town}
-          autoComplete="address-level2"
-        />
-        <Field
-          label="County"
-          id="county"
-          value={fields.county}
-          onChange={set('county')}
-          placeholder="Clackmannanshire"
-          optional
-          autoComplete="address-level1"
-        />
-      </div>
+      <Field
+        label="Town / City"
+        id="town"
+        value={fields.town}
+        onChange={set('town')}
+        placeholder="Alloa"
+        error={errors.town}
+        autoComplete="address-level2"
+      />
 
       <div className="max-w-[180px]">
         <Field

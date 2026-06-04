@@ -19,7 +19,6 @@ const EMPTY: VenueFields = {
   addressLine1:     '',
   addressLine2:     '',
   town:             '',
-  county:           '',
   postcode:         '',
   phone:            '',
   websiteUrl:       '',
@@ -199,16 +198,10 @@ export function NewVenueForm({
         label="Address line 2" id="address-line-2" value={fields.addressLine2}
         onChange={set('addressLine2')} placeholder="Unit 4" optional autoComplete="address-line2"
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field
-          label="Town / City" id="town" value={fields.town} onChange={set('town')}
-          placeholder="Alloa" error={errors.town} autoComplete="address-level2" required
-        />
-        <Field
-          label="County" id="county" value={fields.county} onChange={set('county')}
-          placeholder="Clackmannanshire" optional autoComplete="address-level1"
-        />
-      </div>
+      <Field
+        label="Town / City" id="town" value={fields.town} onChange={set('town')}
+        placeholder="Alloa" error={errors.town} autoComplete="address-level2" required
+      />
       <div className="max-w-[180px]">
         <Field
           label="Postcode" id="postcode" value={fields.postcode} onChange={set('postcode')}

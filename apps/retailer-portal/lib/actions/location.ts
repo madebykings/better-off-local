@@ -13,7 +13,6 @@ export interface LocationFields {
   addressLine1: string;
   addressLine2: string;
   town: string;
-  county: string;
   postcode: string;
 }
 
@@ -148,7 +147,6 @@ export async function saveRetailerLocation(
     address_line_1: fields.addressLine1.trim(),
     address_line_2: fields.addressLine2.trim() || null,
     town: fields.town.trim(),
-    county: fields.county.trim() || null,
     postcode,
     country: 'United Kingdom',
     // latitude and longitude are intentionally omitted here.
@@ -243,7 +241,6 @@ export async function updateRetailerLocation(
     address_line_1: fields.addressLine1.trim(),
     address_line_2: fields.addressLine2.trim() || null,
     town: fields.town.trim(),
-    county: fields.county.trim() || null,
     postcode,
     country: 'United Kingdom',
   };
@@ -367,7 +364,6 @@ export async function createVenue(
       address_line_1: fields.addressLine1.trim(),
       address_line_2: fields.addressLine2.trim() || null,
       town: fields.town.trim(),
-      county: fields.county.trim() || null,
       postcode,
       country: 'United Kingdom',
       is_primary: isPrimary,
@@ -408,7 +404,7 @@ export async function updateVenue(
 
   const { data: existing, error: fetchError } = await service
     .from('retailer_locations')
-    .select('id, review_status, name, address_line_1, address_line_2, town, county, postcode, phone, website_url, short_description, description')
+    .select('id, review_status, name, address_line_1, address_line_2, town, postcode, phone, website_url, short_description, description')
     .eq('id', locationId)
     .eq('retailer_id', ctx.retailerId)
     .eq('is_active', true)
@@ -428,7 +424,6 @@ export async function updateVenue(
     (existing.address_line_1 ?? '') !== fields.addressLine1.trim()     ||
     (existing.address_line_2 ?? '') !== (fields.addressLine2.trim() || '') ||
     (existing.town           ?? '') !== fields.town.trim()             ||
-    (existing.county         ?? '') !== (fields.county.trim() || '')   ||
     (existing.postcode       ?? '') !== postcode                        ||
     (existing.phone          ?? '') !== (fields.phone.trim() || '')    ||
     (existing.website_url    ?? '') !== (fields.websiteUrl.trim() || '') ||
@@ -451,7 +446,6 @@ export async function updateVenue(
       address_line_1:    fields.addressLine1.trim(),
       address_line_2:    fields.addressLine2.trim() || null,
       town:              fields.town.trim(),
-      county:            fields.county.trim() || null,
       postcode,
       country:           'United Kingdom',
       phone:             fields.phone.trim() || null,
