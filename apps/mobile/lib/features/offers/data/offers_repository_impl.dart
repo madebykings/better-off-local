@@ -17,6 +17,7 @@ class OffersRepositoryImpl implements OffersRepository {
   @override
   Future<Offer> getOffer(String offerId) async {
     final row = await _dataSource.fetchOffer(offerId);
+    if (row == null) throw Exception('This offer is no longer available.');
     return Offer.fromMap(row);
   }
 

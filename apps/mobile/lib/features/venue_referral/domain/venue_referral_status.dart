@@ -51,7 +51,7 @@ class VenueReferralReward extends Equatable {
   factory VenueReferralReward.fromMap(Map<String, dynamic> map) {
     final offer = map['offer'] as Map<String, dynamic>?;
     final retailer = offer?['retailer'] as Map<String, dynamic>?;
-    final config = map['config'] as Map<String, dynamic>?;
+    final config = offer?['config'] as Map<String, dynamic>?;
     return VenueReferralReward(
       id: map['id'] as String,
       offerId: map['offer_id'] as String,

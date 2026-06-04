@@ -7,6 +7,9 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/providers/location_provider.dart';
 import '../../../core/widgets/brand_logo.dart';
+import '../../loyalty/providers/loyalty_providers.dart';
+import '../../offers/providers/offers_providers.dart';
+import '../home_providers.dart';
 import '../providers/platform_config_provider.dart';
 import 'widgets/categories_section.dart';
 import 'widgets/featured_retailers_section.dart';
@@ -14,11 +17,44 @@ import 'widgets/loyalty_cards_section.dart';
 import 'widgets/nearby_offers_section.dart';
 import 'widgets/savings_summary_card.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshAll();
+    }
+  }
+
+  void _refreshAll() {
+    ref.invalidate(platformConfigProvider);
+    ref.invalidate(homeOffersProvider);
+    ref.invalidate(homeRetailersProvider);
+    ref.invalidate(categoriesProvider);
+    ref.invalidate(myLoyaltyCardsProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Trigger a silent location permission check on first home screen load.
     // If permission is already granted, this sets locationProvider so
     // homeRetailersProvider can compute distances without prompting the user.
@@ -28,8 +64,10 @@ class HomeScreen extends ConsumerWidget {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(platformConfigProvider);
-            await ref.read(platformConfigProvider.future);
+            _refreshAll();
+            try {
+              await ref.read(homeRetailersProvider.future);
+            } catch (_) {}
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),

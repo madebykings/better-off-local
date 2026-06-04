@@ -45,7 +45,40 @@ class _OfferDetailScreenState extends ConsumerState<OfferDetailScreen> {
       ),
       error: (e, _) => Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text('Failed to load offer: $e')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.local_offer_outlined,
+                    size: 48, color: AppColors.textDisabled),
+                const SizedBox(height: 16),
+                const Text(
+                  'This offer is no longer available',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'It may have been updated or has reached its redemption limit.',
+                  style: TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                OutlinedButton(
+                  onPressed: () => context.pop(),
+                  child: const Text('Go back'),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       data: (offer) {
         final isFavourited = favouriteIds.contains(offer.id);

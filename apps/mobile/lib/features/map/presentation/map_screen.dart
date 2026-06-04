@@ -223,7 +223,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 if (retailersLoadState is AsyncError) {
                   return _RetailersErrorSheet(
                     scrollController: scrollController,
-                    error: retailersLoadState.error.toString(),
                     onRetry: () => ref.invalidate(mapBaseDataProvider),
                   );
                 }
@@ -377,12 +376,10 @@ class _SearchBarState extends State<_SearchBar> {
 class _RetailersErrorSheet extends StatelessWidget {
   const _RetailersErrorSheet({
     required this.scrollController,
-    required this.error,
     required this.onRetry,
   });
 
   final ScrollController scrollController;
-  final String error;
   final VoidCallback onRetry;
 
   @override
@@ -426,12 +423,10 @@ class _RetailersErrorSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    error,
+                    'Unable to load nearby retailers. Please check your connection and try again.',
                     style: AppTextStyles.bodyMedium
                         .copyWith(color: AppColors.textSecondary),
                     textAlign: TextAlign.center,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 20),
                   TextButton.icon(

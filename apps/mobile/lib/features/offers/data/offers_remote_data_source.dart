@@ -57,12 +57,12 @@ class OffersRemoteDataSource {
         .order('created_at', ascending: false);
   }
 
-  Future<Map<String, dynamic>> fetchOffer(String offerId) async {
+  Future<Map<String, dynamic>?> fetchOffer(String offerId) async {
     return await _client
         .from('offers')
         .select(_detailSelect)
         .eq('id', offerId)
-        .single();
+        .maybeSingle();
   }
 
   /// Fetches all consumer-facing offers for a retailer (live + expired).

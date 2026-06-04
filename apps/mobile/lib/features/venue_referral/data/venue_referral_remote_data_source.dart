@@ -67,8 +67,7 @@ class VenueReferralRemoteDataSource {
         .from('venue_referral_rewards')
         .select(
           'id, offer_id, status, unlocked_at, redeemed_at, '
-          'offer:offers(title, retailer:retailers(name)), '
-          'config:offer_venue_referral_config(reward_title)',
+          'offer:offers(title, retailer:retailers(name), config:offer_venue_referral_config(reward_title))',
         )
         .eq('referrer_profile_id', profileId)
         .inFilter('status', ['unlocked', 'redeemed'])

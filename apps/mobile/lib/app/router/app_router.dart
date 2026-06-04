@@ -113,9 +113,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return RouteNames.regionSelection;
         }
 
-        if (profile != null && profile.hasRegion && isOnRegionSelection) {
-          return RouteNames.home;
-        }
       }
 
       return null;
