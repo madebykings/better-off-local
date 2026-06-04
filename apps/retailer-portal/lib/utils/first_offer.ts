@@ -19,6 +19,17 @@ export const OFFER_TYPES = [
 
 export type OfferType = (typeof OFFER_TYPES)[number];
 
+// Types shown in the standard offer creation form.
+// Loyalty and referral programmes are created via their dedicated pages.
+export const STANDARD_OFFER_TYPES: ReadonlyArray<OfferType> = [
+  'percentage_discount',
+  'fixed_discount',
+  'free_item',
+  'buy_one_get_one',
+  'meal_deal',
+  'other',
+];
+
 export const LOYALTY_REWARD_TYPES = ['free_item', 'percentage_discount', 'fixed_discount'] as const;
 export type LoyaltyRewardType = (typeof LOYALTY_REWARD_TYPES)[number];
 

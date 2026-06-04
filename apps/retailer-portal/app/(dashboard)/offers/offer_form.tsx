@@ -15,7 +15,7 @@ import {
 } from '@/lib/actions/offers';
 import { uploadOfferImage } from '@/lib/actions/offer_images';
 import {
-  OFFER_TYPES,
+  STANDARD_OFFER_TYPES,
   type OfferType,
   EMPTY_OFFER,
   computeValueText,
@@ -252,6 +252,7 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
   const isLiveOrPaused = offerStatus === 'live' || offerStatus === 'paused';
   const canEdit = isDraft || isLiveOrPaused || offerStatus === 'pending' || offerStatus === 'approved' || offerStatus === 'rejected';
   const descCount = fields.description.length;
+  const isManagedType = fields.offerType === 'loyalty_visits' || fields.offerType === 'venue_referral';
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -340,35 +341,47 @@ export function OfferForm({ mode, offerId, offerStatus, initialData, locations }
 
         {/* Offer type */}
         <Field label="Offer type" required error={errors.offerType}>
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            {OFFER_TYPES.map((type) => {
-              const cfg = OFFER_TYPE_CONFIG[type];
-              const active = fields.offerType === type;
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setOfferType(type)}
-                  disabled={!canEdit || isPending}
-                  className={[
-                    'flex items-start gap-3 rounded-lg border p-3 text-left transition-colors',
-                    active
-                      ? 'border-green-700 bg-green-50'
-                      : 'border-gray-200 bg-white hover:border-gray-300',
-                    !canEdit ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer',
-                  ].join(' ')}
-                >
-                  <span className="text-lg leading-none">{cfg.icon}</span>
-                  <span>
-                    <span className={`block text-sm font-medium ${active ? 'text-green-800' : 'text-gray-800'}`}>
-                      {cfg.label}
+          {isManagedType ? (
+            <div className="mt-1">
+              <div className="inline-flex items-center gap-2.5 rounded-lg border border-green-700 bg-green-50 px-3 py-2.5">
+                <span className="text-lg leading-none">{OFFER_TYPE_CONFIG[fields.offerType].icon}</span>
+                <span className="text-sm font-medium text-green-800">{OFFER_TYPE_CONFIG[fields.offerType].label}</span>
+              </div>
+              <p className="mt-1.5 text-xs text-gray-400">
+                Managed via the {fields.offerType === 'loyalty_visits' ? 'Loyalty' : 'Referrals'} section.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              {STANDARD_OFFER_TYPES.map((type) => {
+                const cfg = OFFER_TYPE_CONFIG[type];
+                const active = fields.offerType === type;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setOfferType(type)}
+                    disabled={!canEdit || isPending}
+                    className={[
+                      'flex items-start gap-3 rounded-lg border p-3 text-left transition-colors',
+                      active
+                        ? 'border-green-700 bg-green-50'
+                        : 'border-gray-200 bg-white hover:border-gray-300',
+                      !canEdit ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer',
+                    ].join(' ')}
+                  >
+                    <span className="text-lg leading-none">{cfg.icon}</span>
+                    <span>
+                      <span className={`block text-sm font-medium ${active ? 'text-green-800' : 'text-gray-800'}`}>
+                        {cfg.label}
+                      </span>
+                      <span className="block text-xs text-gray-400 mt-0.5">{cfg.hint}</span>
                     </span>
-                    <span className="block text-xs text-gray-400 mt-0.5">{cfg.hint}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </Field>
 
         {/* Venue scope (only shown when retailer has 2+ locations) */}
