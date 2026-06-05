@@ -40,12 +40,12 @@ final unreadNotificationCountProvider = StreamProvider<int>((ref) async* {
   final client = ref.read(supabaseClientProvider);
 
   // ── 1. Seed with the current unread count ──────────────────────────────
-  final countResponse = await client
+  final unreadRows = await client
       .from('notifications')
-      .select('id', const FetchOptions(count: CountOption.exact))
+      .select('id')
       .eq('profile_id', profileId)
       .eq('is_read', false);
-  int count = countResponse.count ?? 0;
+  int count = (unreadRows as List).length;
   yield count;
 
   // ── 2. Subscribe to Realtime INSERTs and increment the counter ─────────

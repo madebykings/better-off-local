@@ -83,9 +83,9 @@ class _MapEventSheetState extends State<MapEventSheet> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  event.imageUrl != null
+                  widget.event.imageUrl != null
                       ? Image.network(
-                          event.imageUrl!,
+                          widget.event.imageUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => _eventPlaceholder(),
                         )
@@ -102,7 +102,7 @@ class _MapEventSheetState extends State<MapEventSheet> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        _formatEventType(event.eventType),
+                        _formatEventType(widget.event.eventType),
                         style: AppTextStyles.labelSmall.copyWith(
                           color: Colors.white,
                           fontSize: 10,
@@ -116,7 +116,7 @@ class _MapEventSheetState extends State<MapEventSheet> {
                     top: 6,
                     right: 8,
                     child: GestureDetector(
-                      onTap: onDismiss,
+                      onTap: widget.onDismiss,
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
@@ -143,7 +143,7 @@ class _MapEventSheetState extends State<MapEventSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          event.title,
+                          widget.event.title,
                           style: AppTextStyles.titleMedium,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -155,13 +155,13 @@ class _MapEventSheetState extends State<MapEventSheet> {
                                 size: 12, color: AppColors.textSecondary),
                             const SizedBox(width: 4),
                             Text(
-                              '${event.formattedDate} · ${event.formattedTime}',
+                              '${widget.event.formattedDate} · ${widget.event.formattedTime}',
                               style: AppTextStyles.labelSmall
                                   .copyWith(color: AppColors.textSecondary),
                             ),
                           ],
                         ),
-                        if (event.venueName != null) ...[
+                        if (widget.event.venueName != null) ...[
                           const SizedBox(height: 2),
                           Row(
                             children: [
@@ -170,7 +170,7 @@ class _MapEventSheetState extends State<MapEventSheet> {
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
-                                  event.venueName!,
+                                  widget.event.venueName!,
                                   style: AppTextStyles.labelSmall
                                       .copyWith(color: AppColors.textSecondary),
                                   maxLines: 1,
@@ -216,7 +216,7 @@ class _MapEventSheetState extends State<MapEventSheet> {
                       ),
                       const SizedBox(height: 6),
                       ElevatedButton(
-                        onPressed: onViewEvent,
+                        onPressed: widget.onViewEvent,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,

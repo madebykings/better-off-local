@@ -17,6 +17,7 @@ import '../../loyalty/data/loyalty_remote_data_source.dart';
 import '../../loyalty/providers/loyalty_providers.dart';
 import '../../offers/providers/offers_providers.dart';
 import '../data/redemptions_remote_data_source.dart';
+import '../domain/redemption_exception.dart';
 import '../providers/redemption_providers.dart';
 import 'redemption_controller.dart';
 

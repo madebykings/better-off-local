@@ -31,7 +31,7 @@ class AppShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
     final selectedIndex = _selectedIndex(location);
-    final unreadCount = ref.watch(unreadNotificationCountProvider);
+    final unreadCount = ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
 
     return Scaffold(
       body: child,
