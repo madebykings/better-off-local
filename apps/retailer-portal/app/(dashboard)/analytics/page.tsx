@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
 import { MetricCard } from '@better-off-local/ui';
+import { RetailerImpactCard } from '@/components/impact/RetailerImpactCard';
 
 export const metadata: Metadata = { title: 'Analytics – Retailer Portal' };
 
@@ -371,6 +372,15 @@ export default async function AnalyticsPage() {
         <p className="text-sm text-gray-500 mt-1">
           All-time performance for your offers and redemptions.
         </p>
+      </div>
+
+      {/* Your Impact */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold mb-1">Your Impact</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          How your business is contributing to the local community.
+        </p>
+        <RetailerImpactCard retailerId={retailerId} />
       </div>
 
       {/* Headline cards */}
