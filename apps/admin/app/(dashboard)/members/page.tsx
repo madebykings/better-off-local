@@ -2,17 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
+import { PageHeader, StatusBadge, EmptyState } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Members – Admin' };
-
-const STATUS_CLASSES: Record<string, string> = {
-  active:   'bg-green-100 text-green-800 border-green-200',
-  trialing: 'bg-blue-100 text-blue-800 border-blue-200',
-  past_due: 'bg-amber-100 text-amber-800 border-amber-200',
-  cancelled:'bg-red-100 text-red-800 border-red-200',
-  expired:  'bg-gray-100 text-gray-700 border-gray-200',
-  inactive: 'bg-gray-100 text-gray-500 border-gray-200',
-};
 
 function fmtDate(iso: string | null) {
   if (!iso) return '—';
@@ -53,10 +45,10 @@ export default async function MembersPage({ searchParams }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Members</h1>
-        <p className="mt-1 text-sm text-gray-500">Consumer membership accounts and billing status.</p>
-      </div>
+      <PageHeader
+        title="Members"
+        description="Consumer membership accounts and billing status."
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -86,35 +78,33 @@ export default async function MembersPage({ searchParams }: Props) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 border border-gray-200 rounded-lg bg-white">
-          <p className="text-sm">No members found.</p>
-        </div>
+        <EmptyState
+          title="No members found"
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Member</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Plan</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Renews / Ends</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Started</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((m: any) => {
-                const cls = STATUS_CLASSES[m.status] ?? STATUS_CLASSES.inactive;
-                return (
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200 bg-white">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Member</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Plan</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Renews / Ends</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Started</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((m: any) => (
                   <tr key={m.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{m.profiles?.full_name ?? '—'}</div>
                       <div className="text-xs text-gray-400 mt-0.5">{m.profiles?.email ?? '—'}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${cls}`}>
-                        {m.status.replace('_', ' ')}
-                      </span>
+                      <StatusBadge status={m.status} />
                     </td>
                     <td className="px-4 py-3 text-gray-600 capitalize">{m.plan_interval ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{fmtDate(m.current_period_end)}</td>
@@ -128,14 +118,40 @@ export default async function MembersPage({ searchParams }: Props) {
                       </Link>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400">
-            {filtered.length} member{filtered.length !== 1 ? 's' : ''}
+                ))}
+              </tbody>
+            </table>
+            <div className="px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400">
+              {filtered.length} member{filtered.length !== 1 ? 's' : ''}
+            </div>
           </div>
-        </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {filtered.map((m: any) => (
+              <div key={m.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900 truncate">{m.profiles?.full_name ?? '—'}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{m.profiles?.email ?? '—'}</p>
+                  </div>
+                  <Link href={`/members/${m.id}`} className="shrink-0 text-sm font-medium text-green-700">
+                    View →
+                  </Link>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  <StatusBadge status={m.status} />
+                  {m.plan_interval && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border bg-gray-100 text-gray-600 border-gray-200 capitalize">
+                      {m.plan_interval}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">Started {fmtDate(m.started_at)}</p>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

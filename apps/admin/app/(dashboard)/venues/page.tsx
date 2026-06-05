@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
+import { PageHeader, StatusBadge, EmptyState } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Venues – Admin' };
 
@@ -15,29 +16,6 @@ const TABS = [
   { id: 'approved', label: 'Approved' },
   { id: 'all',      label: 'All' },
 ] as const;
-
-const REVIEW_BADGES: Record<string, string> = {
-  draft:    'bg-gray-100 text-gray-600 border-gray-200',
-  pending:  'bg-amber-100 text-amber-800 border-amber-200',
-  approved: 'bg-green-100 text-green-700 border-green-200',
-  rejected: 'bg-red-100 text-red-700 border-red-200',
-};
-
-const BILLING_BADGES: Record<string, string> = {
-  free_growth_region: 'bg-blue-50 text-blue-700 border-blue-200',
-  paid_required:      'bg-amber-50 text-amber-700 border-amber-200',
-  paid:               'bg-green-50 text-green-700 border-green-200',
-  admin_waived:       'bg-purple-50 text-purple-700 border-purple-200',
-  inactive:           'bg-gray-50 text-gray-500 border-gray-200',
-};
-
-const BILLING_LABELS: Record<string, string> = {
-  free_growth_region: 'Free',
-  paid_required:      'Payment required',
-  paid:               'Paid',
-  admin_waived:       'Waived',
-  inactive:           'Inactive',
-};
 
 function formatDate(iso: string | null) {
   if (!iso) return '—';
@@ -98,12 +76,10 @@ export default async function VenuesPage({ searchParams }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Venues</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Venue listings — review and moderate what appears in consumer discovery.
-        </p>
-      </div>
+      <PageHeader
+        title="Venues"
+        description="Venue listings — review and moderate what appears in consumer discovery."
+      />
 
       {/* Tabs + search */}
       <div className="mb-4 flex items-center gap-3 flex-wrap">
@@ -135,83 +111,107 @@ export default async function VenuesPage({ searchParams }: Props) {
       </div>
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-gray-200 py-20 text-center">
-          <p className="text-3xl">📍</p>
-          <p className="mt-3 font-medium text-gray-600">No venues found</p>
-          <p className="mt-1 text-sm text-gray-400">
-            {activeTab === 'pending' ? 'No venues awaiting review.' : 'Nothing matches your filter.'}
-          </p>
-        </div>
+        <EmptyState
+          title="No venues found"
+          description={activeTab === 'pending' ? 'No venues awaiting review.' : 'Nothing matches your filter.'}
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Venue</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Retailer</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Billing</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Submitted</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {rows.map((v) => {
-                const retailer = Array.isArray(v.retailers) ? v.retailers[0] : v.retailers;
-                const address = [v.address_line_1, v.town, v.postcode].filter(Boolean).join(', ');
-                const reviewCls = REVIEW_BADGES[v.review_status] ?? REVIEW_BADGES.draft;
-                const billingCls = BILLING_BADGES[v.billing_status] ?? BILLING_BADGES.inactive;
-                const billingLabel = BILLING_LABELS[v.billing_status] ?? v.billing_status.replace(/_/g, ' ');
-                return (
-                  <tr key={v.id} className={`hover:bg-gray-50 transition-colors ${!v.is_active ? 'opacity-60' : ''}`}>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">
-                        {v.name ?? v.address_line_1 ?? 'Unnamed venue'}
-                        {v.is_primary && (
-                          <span className="ml-1.5 rounded border border-green-200 bg-green-50 px-1 py-0.5 text-xs font-medium text-green-700">Primary</span>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Venue</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Retailer</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Billing</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Submitted</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {rows.map((v) => {
+                  const retailer = Array.isArray(v.retailers) ? v.retailers[0] : v.retailers;
+                  const address = [v.address_line_1, v.town, v.postcode].filter(Boolean).join(', ');
+                  return (
+                    <tr key={v.id} className={`hover:bg-gray-50 transition-colors ${!v.is_active ? 'opacity-60' : ''}`}>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">
+                          {v.name ?? v.address_line_1 ?? 'Unnamed venue'}
+                          {v.is_primary && (
+                            <span className="ml-1.5 rounded border border-green-200 bg-green-50 px-1 py-0.5 text-xs font-medium text-green-700">Primary</span>
+                          )}
+                          {!v.is_active && (
+                            <span className="ml-1.5 rounded border border-gray-300 bg-gray-100 px-1 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
+                          )}
+                        </div>
+                        {address && <div className="text-xs text-gray-400 mt-0.5">{address}</div>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {retailer ? (
+                          <Link href={`/retailers/${retailer.id}`} className="text-green-700 hover:text-green-900 font-medium">
+                            {retailer.name}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400">—</span>
                         )}
-                        {!v.is_active && (
-                          <span className="ml-1.5 rounded border border-gray-300 bg-gray-100 px-1 py-0.5 text-xs font-medium text-gray-500">Inactive</span>
-                        )}
-                      </div>
-                      {address && <div className="text-xs text-gray-400 mt-0.5">{address}</div>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {retailer ? (
-                        <Link href={`/retailers/${retailer.id}`} className="text-green-700 hover:text-green-900 font-medium">
-                          {retailer.name}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={v.review_status} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={v.billing_status} />
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                        {formatDate(v.submitted_at ?? v.updated_at)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/venues/${v.id}`}
+                          className="font-medium text-green-700 hover:text-green-900"
+                        >
+                          Review →
                         </Link>
-                      ) : (
-                        <span className="text-gray-400">—</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {rows.map((v) => {
+              const retailer = Array.isArray(v.retailers) ? v.retailers[0] : v.retailers;
+              const address = [v.address_line_1, v.town, v.postcode].filter(Boolean).join(', ');
+              return (
+                <div key={v.id} className={`rounded-lg border border-gray-200 bg-white p-4 ${!v.is_active ? 'opacity-60' : ''}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 truncate">
+                        {v.name ?? v.address_line_1 ?? 'Unnamed venue'}
+                      </p>
+                      {address && <p className="text-xs text-gray-400 mt-0.5">{address}</p>}
+                      {retailer && (
+                        <p className="text-xs text-gray-500 mt-0.5">{retailer.name}</p>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium capitalize ${reviewCls}`}>
-                        {v.review_status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${billingCls}`}>
-                        {billingLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                      {formatDate(v.submitted_at ?? v.updated_at)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/venues/${v.id}`}
-                        className="font-medium text-green-700 hover:text-green-900"
-                      >
-                        Review →
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                    <Link href={`/venues/${v.id}`} className="shrink-0 text-sm font-medium text-green-700">
+                      Review →
+                    </Link>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    <StatusBadge status={v.review_status} />
+                    <StatusBadge status={v.billing_status} />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">{formatDate(v.submitted_at ?? v.updated_at)}</p>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

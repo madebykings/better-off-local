@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
 import { ActivationStatusCard } from '@/components/dashboard/activation_status_card';
-import { MetricCard } from '@better-off-local/ui';
+import { MetricCard, PageHeader, SectionCard, EmptyState, StatusBadge } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Dashboard – Retailer Portal' };
 
@@ -12,14 +13,6 @@ type RecentRedemption = {
   redeemed_at: string;
   offers: { title: string } | null;
   profiles: { full_name: string | null } | null;
-};
-
-const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
-  success: { label: 'Redeemed', classes: 'bg-green-100 text-green-800 border-green-200' },
-  rejected: { label: 'Rejected', classes: 'bg-red-100 text-red-800 border-red-200' },
-  expired: { label: 'Expired', classes: 'bg-gray-100 text-gray-700 border-gray-200' },
-  rule_blocked: { label: 'Blocked', classes: 'bg-amber-100 text-amber-800 border-amber-200' },
-  membership_invalid: { label: 'Membership issue', classes: 'bg-red-100 text-red-800 border-red-200' },
 };
 
 function formatDate(iso: string) {
@@ -131,14 +124,34 @@ export default async function DashboardPage() {
     { label: 'Saves', value: totalSaves, icon: <BookmarkIcon /> },
   ];
 
+  const whatsNext = (() => {
+    if (liveOffers === 0) {
+      return {
+        heading: 'Create your first offer',
+        description: "Members can't find you yet. Add at least one offer to appear in the member app.",
+        href: '/offers/new',
+        linkLabel: 'Create an offer',
+      };
+    }
+    if (totalRedemptions === 0) {
+      return {
+        heading: 'Share your listing',
+        description: 'You have live offers but no redemptions yet. Share your link with customers.',
+        href: null,
+        linkLabel: null,
+      };
+    }
+    return {
+      heading: 'Keep your offers fresh',
+      description: 'Members love new deals. Consider adding a seasonal offer.',
+      href: '/offers/new',
+      linkLabel: 'Add an offer',
+    };
+  })();
+
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Overview of your account activity.
-        </p>
-      </div>
+      <PageHeader title="Dashboard" description="Overview of your account activity." />
 
       {/* Activation status */}
       {retailer && (
@@ -162,14 +175,32 @@ export default async function DashboardPage() {
         ))}
       </div>
 
+      {/* What's next */}
+      <div className="mb-8">
+        <SectionCard title="What's next">
+          <div className="flex items-start gap-3">
+            <span className="text-green-700 text-lg leading-none mt-0.5" aria-hidden="true">→</span>
+            <div className="min-w-0">
+              <p className="font-medium text-gray-800">{whatsNext.heading}</p>
+              <p className="text-sm text-gray-500 mt-1">{whatsNext.description}</p>
+              {whatsNext.href && (
+                <Link
+                  href={whatsNext.href}
+                  className="inline-block mt-3 text-sm font-medium text-green-700 hover:text-green-900 hover:underline"
+                >
+                  {whatsNext.linkLabel}
+                </Link>
+              )}
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+
       {/* Recent redemptions */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Recent redemptions</h2>
         {recentRedemptions.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 border border-gray-200 rounded-lg">
-            <p className="text-3xl mb-2">🎫</p>
-            <p className="text-sm">No redemptions yet</p>
-          </div>
+          <EmptyState title="No redemptions yet" description="Redemptions will appear here once members start redeeming your offers." />
         ) : (
           <div className="overflow-x-auto rounded-lg border border-gray-200">
             <table className="w-full text-sm">
@@ -182,32 +213,22 @@ export default async function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {recentRedemptions.map((r) => {
-                  const badge = STATUS_LABELS[r.status] ?? {
-                    label: r.status,
-                    classes: 'bg-gray-100 text-gray-600 border-gray-200',
-                  };
-                  return (
-                    <tr key={r.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-800 max-w-[200px] truncate">
-                        {r.offers?.title ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {r.profiles?.full_name ?? '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${badge.classes}`}
-                        >
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                        {formatDate(r.redeemed_at)}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {recentRedemptions.map((r) => (
+                  <tr key={r.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-800 max-w-[200px] truncate">
+                      {r.offers?.title ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {r.profiles?.full_name ?? '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={r.status} />
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      {formatDate(r.redeemed_at)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

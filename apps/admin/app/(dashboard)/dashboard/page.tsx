@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
-import { MetricCard } from '@better-off-local/ui';
+import { MetricCard, PageHeader, SectionCard, EmptyState } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Dashboard – Admin' };
 
@@ -71,10 +71,10 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">Platform health, pending approvals, and recent activity.</p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Platform health, pending approvals, and recent activity."
+      />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-8">
         {metrics.map((m) => (
@@ -92,11 +92,11 @@ export default async function DashboardPage() {
       <div>
         <h2 className="text-lg font-semibold mb-3">Recent admin actions</h2>
         {recentActions.length === 0 ? (
-          <div className="text-center py-10 text-gray-400 border border-gray-200 rounded-lg">
-            <p className="text-sm">No admin actions recorded yet</p>
-          </div>
+          <EmptyState
+            title="No admin actions recorded yet"
+          />
         ) : (
-          <div className="rounded-lg border border-gray-200 overflow-hidden">
+          <SectionCard padding={false}>
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -117,7 +117,7 @@ export default async function DashboardPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </SectionCard>
         )}
       </div>
     </div>

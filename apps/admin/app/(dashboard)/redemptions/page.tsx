@@ -2,15 +2,16 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
+import { PageHeader, StatusBadge, EmptyState } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Redemptions – Admin' };
 
-const STATUS_CLASSES: Record<string, { label: string; cls: string }> = {
-  success:           { label: 'Success',            cls: 'bg-green-100 text-green-800 border-green-200' },
-  rejected:          { label: 'Rejected',           cls: 'bg-red-100 text-red-800 border-red-200' },
-  expired:           { label: 'Expired',            cls: 'bg-gray-100 text-gray-700 border-gray-200' },
-  rule_blocked:      { label: 'Rule blocked',       cls: 'bg-amber-100 text-amber-800 border-amber-200' },
-  membership_invalid:{ label: 'Membership invalid', cls: 'bg-red-100 text-red-800 border-red-200' },
+const STATUS_LABELS: Record<string, string> = {
+  success:            'Redeemed',
+  rejected:           'Rejected',
+  expired:            'Expired',
+  rule_blocked:       'Rule blocked',
+  membership_invalid: 'Membership issue',
 };
 
 function fmtDateTime(iso: string) {
@@ -58,12 +59,11 @@ export default async function RedemptionsPage({ searchParams }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Redemptions</h1>
-        <p className="mt-1 text-sm text-gray-500">All redemption attempts across the platform.</p>
-      </div>
+      <PageHeader
+        title="Redemptions"
+        description="All redemption attempts across the platform."
+      />
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         {statuses.map((s) => (
           <Link
@@ -75,7 +75,7 @@ export default async function RedemptionsPage({ searchParams }: Props) {
                 : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
             }`}
           >
-            {STATUS_CLASSES[s]?.label ?? s}
+            {STATUS_LABELS[s] ?? s}
           </Link>
         ))}
         <form method="get" action="/redemptions" className="ml-auto">
@@ -91,25 +91,23 @@ export default async function RedemptionsPage({ searchParams }: Props) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 border border-gray-200 rounded-lg bg-white">
-          <p className="text-sm">No redemptions found.</p>
-        </div>
+        <EmptyState title="No redemptions found." />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Time</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Member</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Offer</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Retailer</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Result</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((r: any) => {
-                const badge = STATUS_CLASSES[r.status] ?? { label: r.status, cls: 'bg-gray-100 text-gray-600 border-gray-200' };
-                return (
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200 bg-white">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Time</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Member</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Offer</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Retailer</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Result</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((r: any) => (
                   <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{fmtDateTime(r.redeemed_at)}</td>
                     <td className="px-4 py-3">
@@ -119,19 +117,37 @@ export default async function RedemptionsPage({ searchParams }: Props) {
                     <td className="px-4 py-3 text-gray-700 max-w-[160px] truncate">{r.offers?.title ?? '—'}</td>
                     <td className="px-4 py-3 text-gray-600">{r.retailers?.name ?? '—'}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${badge.cls}`}>
-                        {badge.label}
-                      </span>
+                      <StatusBadge status={r.status} label={STATUS_LABELS[r.status]} />
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400">
-            {filtered.length} redemption{filtered.length !== 1 ? 's' : ''}
+                ))}
+              </tbody>
+            </table>
+            <div className="px-4 py-2.5 border-t border-gray-100 text-xs text-gray-400">
+              {filtered.length} redemption{filtered.length !== 1 ? 's' : ''}
+            </div>
           </div>
-        </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {filtered.map((r: any) => (
+              <div key={r.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-800 truncate">{r.consumer?.full_name ?? '—'}</p>
+                    <p className="text-xs text-gray-400">{r.consumer?.email ?? ''}</p>
+                  </div>
+                  <StatusBadge status={r.status} label={STATUS_LABELS[r.status]} />
+                </div>
+                <p className="mt-2 text-sm text-gray-700 truncate">{r.offers?.title ?? '—'}</p>
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs text-gray-500">{r.retailers?.name ?? '—'}</p>
+                  <p className="text-xs text-gray-400">{fmtDateTime(r.redeemed_at)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

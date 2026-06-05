@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
+import { PageHeader, StatusBadge, EmptyState } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Redemptions – Retailer Portal' };
 
@@ -11,14 +12,6 @@ type RedemptionRow = {
   redeemed_at: string;
   offers: { title: string } | null;
   profiles: { full_name: string | null } | null;
-};
-
-const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
-  success: { label: 'Redeemed', classes: 'bg-green-100 text-green-800 border-green-200' },
-  rejected: { label: 'Rejected', classes: 'bg-red-100 text-red-800 border-red-200' },
-  expired: { label: 'Expired', classes: 'bg-gray-100 text-gray-700 border-gray-200' },
-  rule_blocked: { label: 'Blocked', classes: 'bg-amber-100 text-amber-800 border-amber-200' },
-  membership_invalid: { label: 'Membership issue', classes: 'bg-red-100 text-red-800 border-red-200' },
 };
 
 function formatDate(iso: string) {
@@ -55,38 +48,32 @@ export default async function RedemptionsPage() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Redemptions</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          All redemption attempts for your offers, most recent first.
-        </p>
-      </div>
+      <PageHeader
+        title="Redemptions"
+        description="All redemption attempts for your offers, most recent first."
+      />
 
       {rows.length === 0 ? (
-        <div className="border border-gray-200 rounded-lg py-16 text-center text-gray-400">
-          <p className="text-4xl mb-3">🎫</p>
-          <p className="font-medium text-gray-600">No redemptions yet</p>
-          <p className="text-sm mt-1">Redeemed offers will appear here.</p>
-        </div>
+        <EmptyState
+          title="No redemptions yet"
+          description="Redeemed offers will appear here."
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Offer</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Member</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Note</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {rows.map((r) => {
-                const badge = STATUS_LABELS[r.status] ?? {
-                  label: r.status,
-                  classes: 'bg-gray-100 text-gray-600 border-gray-200',
-                };
-                return (
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Offer</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Member</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Note</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {rows.map((r) => (
                   <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium text-gray-800 max-w-[200px] truncate">
                       {r.offers?.title ?? '—'}
@@ -95,11 +82,7 @@ export default async function RedemptionsPage() {
                       {r.profiles?.full_name ?? '—'}
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${badge.classes}`}
-                      >
-                        {badge.label}
-                      </span>
+                      <StatusBadge status={r.status} />
                     </td>
                     <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                       {formatDate(r.redeemed_at)}
@@ -108,11 +91,30 @@ export default async function RedemptionsPage() {
                       {r.rejection_reason ?? '—'}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {rows.map((r) => (
+              <div key={r.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="font-medium text-gray-800 min-w-0 truncate block">
+                    {r.offers?.title ?? '—'}
+                  </span>
+                  <StatusBadge status={r.status} />
+                </div>
+                <p className="text-sm text-gray-600 mt-1">{r.profiles?.full_name ?? '—'}</p>
+                <p className="text-xs text-gray-400 mt-2">{formatDate(r.redeemed_at)}</p>
+                {r.rejection_reason && (
+                  <p className="text-xs text-gray-400 mt-1 truncate">{r.rejection_reason}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
+import { PageHeader, StatusBadge, EmptyState } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Events – Admin' };
 
@@ -9,22 +10,13 @@ interface Props {
   searchParams: Promise<{ status?: string; q?: string }>;
 }
 
-const STATUS_BADGES: Record<string, string> = {
-  pending:  'bg-amber-100 text-amber-800 border-amber-200',
-  live:     'bg-green-100 text-green-800 border-green-200',
-  paused:   'bg-orange-100 text-orange-700 border-orange-200',
-  rejected: 'bg-red-100 text-red-800 border-red-200',
-  archived: 'bg-gray-200 text-gray-500 border-gray-300',
-  draft:    'bg-gray-100 text-gray-600 border-gray-200',
-};
-
-const EVENT_TYPE_BADGES: Record<string, string> = {
-  music:       'bg-purple-100 text-purple-700',
-  food:        'bg-yellow-100 text-yellow-700',
-  sport:       'bg-blue-100 text-blue-700',
-  community:   'bg-teal-100 text-teal-700',
-  arts:        'bg-pink-100 text-pink-700',
-  other:       'bg-gray-100 text-gray-600',
+const EVENT_TYPE_CLASSES: Record<string, string> = {
+  music:     'bg-purple-100 text-purple-700',
+  food:      'bg-yellow-100 text-yellow-700',
+  sport:     'bg-blue-100 text-blue-700',
+  community: 'bg-teal-100 text-teal-700',
+  arts:      'bg-pink-100 text-pink-700',
+  other:     'bg-gray-100 text-gray-600',
 };
 
 function formatDate(iso: string) {
@@ -46,7 +38,6 @@ export default async function EventsPage({ searchParams }: Props) {
   const activeTab = status ?? 'pending';
   const supabase = createServiceClient();
 
-  // Fetch pending count for badge.
   const { count: pendingCount } = await supabase
     .from('events')
     .select('id', { count: 'exact', head: true })
@@ -78,10 +69,10 @@ export default async function EventsPage({ searchParams }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Events</h1>
-        <p className="text-sm text-gray-500 mt-1">Approve, reject, pause, or archive events submitted by retailers.</p>
-      </div>
+      <PageHeader
+        title="Events"
+        description="Approve, reject, pause, or archive events submitted by retailers."
+      />
 
       <div className="flex items-center gap-3 mb-4 flex-wrap">
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1 flex-wrap">
@@ -118,68 +109,99 @@ export default async function EventsPage({ searchParams }: Props) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 border border-gray-200 rounded-lg text-gray-400">
-          <p className="text-4xl mb-3">&#128197;</p>
-          <p className="font-medium text-gray-600">No events found</p>
-        </div>
+        <EmptyState
+          icon="📅"
+          title="No events found"
+          description={activeTab === 'pending' ? 'No events awaiting review.' : 'Nothing matches your filter.'}
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Title</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Retailer</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Venue</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Type</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((e: any) => (
-                <tr key={e.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">
-                    {e.title}
-                    {e.is_featured && (
-                      <span className="ml-1.5 text-amber-500 text-xs" title="Featured">&#9733;</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {e.retailers ? (
-                      <Link href={`/retailers/${e.retailers.id}`} className="text-green-700 hover:underline text-xs">
-                        {e.retailers.name}
-                      </Link>
-                    ) : (
-                      <span className="text-gray-400">&#8212;</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
-                    {e.retailer_locations?.name ?? <span className="text-gray-400">&#8212;</span>}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
-                    {e.start_at ? formatDate(e.start_at) : <span className="text-gray-400">&#8212;</span>}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${EVENT_TYPE_BADGES[e.event_type] ?? EVENT_TYPE_BADGES.other}`}>
-                      {e.event_type}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${STATUS_BADGES[e.status] ?? ''}`}>
-                      {e.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link href={`/events/${e.id}`} className="text-sm text-green-700 hover:text-green-900 font-medium">
-                      Review &#8594;
-                    </Link>
-                  </td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Title</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Retailer</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Venue</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Type</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                  <th className="px-4 py-3"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((e: any) => (
+                  <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">
+                      {e.title}
+                      {e.is_featured && (
+                        <span className="ml-1.5 text-amber-500 text-xs" title="Featured">&#9733;</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {e.retailers ? (
+                        <Link href={`/retailers/${e.retailers.id}`} className="text-green-700 hover:underline text-xs">
+                          {e.retailers.name}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500">
+                      {e.retailer_locations?.name ?? <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      {e.start_at ? formatDate(e.start_at) : <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${EVENT_TYPE_CLASSES[e.event_type] ?? EVENT_TYPE_CLASSES.other}`}>
+                        {(e.event_type ?? 'other').replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={e.status} />
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link href={`/events/${e.id}`} className="text-sm text-green-700 hover:text-green-900 font-medium">
+                        Review →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {filtered.map((e: any) => (
+              <div key={e.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium text-gray-900 min-w-0 truncate">
+                    {e.title}
+                    {e.is_featured && <span className="ml-1 text-amber-500 text-xs">★</span>}
+                  </p>
+                  <Link href={`/events/${e.id}`} className="shrink-0 text-sm font-medium text-green-700">
+                    Review →
+                  </Link>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <StatusBadge status={e.status} />
+                  {e.event_type && (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${EVENT_TYPE_CLASSES[e.event_type] ?? EVENT_TYPE_CLASSES.other}`}>
+                      {e.event_type.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-2 text-xs text-gray-400 space-y-0.5">
+                  {e.retailers && <p>{e.retailers.name}</p>}
+                  {e.start_at && <p>{formatDate(e.start_at)}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
+import { PageHeader, StatusBadge, EmptyState } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Events – Retailer Portal' };
 
@@ -15,15 +16,6 @@ type EventRow = {
 };
 
 type LocationMap = Record<string, string>;
-
-const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
-  live:     { label: 'Live',     classes: 'bg-green-100 text-green-800 border-green-200' },
-  draft:    { label: 'Draft',    classes: 'bg-gray-100 text-gray-700 border-gray-200' },
-  pending:  { label: 'Pending',  classes: 'bg-amber-100 text-amber-800 border-amber-200' },
-  paused:   { label: 'Paused',   classes: 'bg-orange-100 text-orange-800 border-orange-200' },
-  rejected: { label: 'Rejected', classes: 'bg-red-100 text-red-800 border-red-200' },
-  archived: { label: 'Archived', classes: 'bg-gray-100 text-gray-500 border-gray-200' },
-};
 
 type Tab = 'upcoming' | 'draft' | 'pending' | 'live' | 'past';
 
@@ -118,21 +110,18 @@ export default async function EventsPage({ searchParams }: Props) {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Events</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage your events and submit them for review.
-          </p>
-        </div>
-        <Link
-          href="/events/new"
-          className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-        >
-          Create event
-        </Link>
-      </div>
+      <PageHeader
+        title="Events"
+        description="Manage your events and submit them for review."
+        action={
+          <Link
+            href="/events/new"
+            className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Create event
+          </Link>
+        }
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-200">
@@ -169,75 +158,94 @@ export default async function EventsPage({ searchParams }: Props) {
 
       {/* Content */}
       {visibleEvents.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 border border-gray-200 rounded-lg">
-          <p className="text-3xl mb-3">📅</p>
-          <p className="font-medium text-gray-600">{EMPTY_MESSAGES[activeTab]}</p>
-          {activeTab === 'upcoming' && (
-            <p className="text-sm mt-2">
-              <Link href="/events/new" className="text-green-700 hover:underline">
+        <EmptyState
+          title={EMPTY_MESSAGES[activeTab]}
+          description=""
+          action={
+            activeTab === 'upcoming' ? (
+              <Link href="/events/new" className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
                 Create your first event
               </Link>
-            </p>
-          )}
-        </div>
+            ) : undefined
+          }
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Title</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Venue</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {visibleEvents.map((ev) => {
-                const badge = STATUS_LABELS[ev.status] ?? {
-                  label: ev.status,
-                  classes: 'bg-gray-100 text-gray-600 border-gray-200',
-                };
-                const venueName = ev.venue_id
-                  ? (locationMap[ev.venue_id] ?? 'Unknown venue')
-                  : '—';
-                return (
-                  <tr key={ev.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium max-w-[220px] truncate">
-                      <Link
-                        href={`/events/${ev.id}`}
-                        className="text-gray-800 hover:text-green-700 hover:underline"
-                      >
-                        {ev.title}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
-                      {formatDateTime(ev.start_at)}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 max-w-[160px] truncate">
-                      {venueName}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${badge.classes}`}
-                      >
-                        {badge.label}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <Link
-                        href={`/events/${ev.id}`}
-                        className="text-xs font-medium text-green-700 hover:text-green-900 hover:underline"
-                      >
-                        Edit
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Title</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Venue</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {visibleEvents.map((ev) => {
+                  const venueName = ev.venue_id
+                    ? (locationMap[ev.venue_id] ?? 'Unknown venue')
+                    : '—';
+                  return (
+                    <tr key={ev.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-medium max-w-[220px] truncate">
+                        <Link
+                          href={`/events/${ev.id}`}
+                          className="text-gray-800 hover:text-green-700 hover:underline"
+                        >
+                          {ev.title}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                        {formatDateTime(ev.start_at)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 max-w-[160px] truncate">
+                        {venueName}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={ev.status} />
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <Link
+                          href={`/events/${ev.id}`}
+                          className="text-xs font-medium text-green-700 hover:text-green-900 hover:underline"
+                        >
+                          Edit
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {visibleEvents.map((ev) => {
+              const venueName = ev.venue_id
+                ? (locationMap[ev.venue_id] ?? 'Unknown venue')
+                : '—';
+              return (
+                <div key={ev.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      href={`/events/${ev.id}`}
+                      className="font-medium text-gray-800 hover:text-green-700 min-w-0 truncate block"
+                    >
+                      {ev.title}
+                    </Link>
+                    <StatusBadge status={ev.status} />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">{formatDateTime(ev.start_at)}</p>
+                  <p className="text-xs text-gray-400 mt-1">{venueName}</p>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

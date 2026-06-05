@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
+import { PageHeader, StatusBadge, EmptyState } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Offers – Retailer Portal' };
 
@@ -13,15 +14,6 @@ type OfferRow = {
   views: number;
   saves: number;
   redemptions: number;
-};
-
-const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
-  live: { label: 'Live', classes: 'bg-green-100 text-green-800 border-green-200' },
-  draft: { label: 'Draft', classes: 'bg-gray-100 text-gray-700 border-gray-200' },
-  pending: { label: 'Pending approval', classes: 'bg-amber-100 text-amber-800 border-amber-200' },
-  paused: { label: 'Paused', classes: 'bg-orange-100 text-orange-800 border-orange-200' },
-  expired: { label: 'Expired', classes: 'bg-red-100 text-red-800 border-red-200' },
-  rejected: { label: 'Rejected', classes: 'bg-red-100 text-red-800 border-red-200' },
 };
 
 function formatDate(iso: string) {
@@ -93,50 +85,51 @@ export default async function OffersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Offers</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            All your offers with view, save, and redemption counts.
-          </p>
-        </div>
-        <Link
-          href="/offers/new"
-          className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-        >
-          New offer
-        </Link>
-      </div>
+      <PageHeader
+        title="Offers"
+        description="All your offers with view, save, and redemption counts."
+        action={
+          <Link
+            href="/offers/new"
+            className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            New offer
+          </Link>
+        }
+      />
 
       {offers.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 border border-gray-200 rounded-lg">
-          <p className="text-4xl mb-3">🏷️</p>
-          <p className="font-medium text-gray-600">No offers yet</p>
-          <p className="text-sm mt-1">
-            Create your first offer to start attracting members.
-          </p>
-        </div>
+        <EmptyState
+          icon="🏷️"
+          title="No offers yet"
+          description="Create your first offer to start attracting members."
+          action={
+            <Link
+              href="/offers/new"
+              className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              New offer
+            </Link>
+          }
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Title</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Views</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Saves</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Redeemed</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Created</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {offers.map((o) => {
-                const badge = STATUS_LABELS[o.status] ?? {
-                  label: o.status,
-                  classes: 'bg-gray-100 text-gray-600 border-gray-200',
-                };
-                return (
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Title</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-600">Views</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-600">Saves</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-600">Redeemed</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Created</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {offers.map((o) => (
                   <tr key={o.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 font-medium max-w-[220px] truncate">
                       <Link
@@ -147,11 +140,7 @@ export default async function OffersPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${badge.classes}`}
-                      >
-                        {badge.label}
-                      </span>
+                      <StatusBadge status={o.status} />
                     </td>
                     <td className="px-4 py-3 text-right text-gray-600">
                       {o.views}
@@ -174,11 +163,31 @@ export default async function OffersPage() {
                       </Link>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {offers.map((o) => (
+              <div key={o.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <Link href={`/offers/${o.id}`} className="font-medium text-gray-800 hover:text-green-700 min-w-0 truncate block">
+                    {o.title}
+                  </Link>
+                  <StatusBadge status={o.status} />
+                </div>
+                <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                  <span>{o.views} views</span>
+                  <span>{o.saves} saves</span>
+                  <span>{o.redemptions} redeemed</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">{formatDate(o.created_at)}</p>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

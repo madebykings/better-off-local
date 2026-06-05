@@ -2,21 +2,13 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
+import { PageHeader, StatusBadge, EmptyState } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Loyalty – Retailer Portal' };
 
 type OfferRow = { id: string; title: string; status: string; created_at: string };
 type ConfigRow = { offer_id: string; stamps_required: number; reward_description: string; reward_type: string; min_hours_between_stamps: number };
 type CardRow = { offer_id: string; status: string };
-
-const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
-  live:     { label: 'Live',             classes: 'bg-green-100 text-green-800 border-green-200' },
-  draft:    { label: 'Draft',            classes: 'bg-gray-100 text-gray-700 border-gray-200' },
-  pending:  { label: 'Pending approval', classes: 'bg-amber-100 text-amber-800 border-amber-200' },
-  paused:   { label: 'Paused',           classes: 'bg-orange-100 text-orange-800 border-orange-200' },
-  expired:  { label: 'Expired',          classes: 'bg-red-100 text-red-800 border-red-200' },
-  rejected: { label: 'Rejected',         classes: 'bg-red-100 text-red-800 border-red-200' },
-};
 
 const COOLDOWN_LABELS: Record<number, string> = {
   0:  'No minimum',
@@ -74,35 +66,32 @@ export default async function LoyaltyPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Loyalty</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Stamp card programmes — members collect stamps and earn rewards.
-          </p>
-        </div>
-        <Link
-          href="/loyalty/new"
-          className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-        >
-          Create loyalty programme
-        </Link>
-      </div>
-
-      {offers.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 border border-gray-200 rounded-lg">
-          <p className="text-4xl mb-3">🃏</p>
-          <p className="font-medium text-gray-600">No loyalty programmes yet</p>
-          <p className="text-sm mt-1 mb-4">
-            Create a stamp card programme to reward repeat visits.
-          </p>
+      <PageHeader
+        title="Loyalty"
+        description="Stamp card programmes — members collect stamps and earn rewards."
+        action={
           <Link
             href="/loyalty/new"
-            className="inline-block text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
             Create loyalty programme
           </Link>
-        </div>
+        }
+      />
+
+      {offers.length === 0 ? (
+        <EmptyState
+          title="No loyalty programmes yet"
+          description="Create a stamp card programme to reward repeat visits."
+          action={
+            <Link
+              href="/loyalty/new"
+              className="inline-block text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Create loyalty programme
+            </Link>
+          }
+        />
       ) : (
         <>
           {/* Summary metrics */}
@@ -120,8 +109,8 @@ export default async function LoyaltyPage() {
             ))}
           </div>
 
-          {/* Per-programme table */}
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -144,19 +133,13 @@ export default async function LoyaltyPage() {
                   const issued = cards.length;
                   const active = cards.filter((c) => c.status === 'active').length;
                   const claimed = cards.filter((c) => c.status === 'claimed').length;
-                  const badge = STATUS_LABELS[offer.status] ?? {
-                    label: offer.status,
-                    classes: 'bg-gray-100 text-gray-600 border-gray-200',
-                  };
                   return (
                     <tr key={offer.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-800 max-w-[180px] truncate">
                         {offer.title}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${badge.classes}`}>
-                          {badge.label}
-                        </span>
+                        <StatusBadge status={offer.status} />
                       </td>
                       <td className="px-4 py-3 text-gray-600">
                         {cfg ? `${cfg.stamps_required} stamps` : '—'}
@@ -184,6 +167,39 @@ export default async function LoyaltyPage() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {offers.map((offer) => {
+              const cfg = configs.get(offer.id);
+              const cards = cardsByOffer.get(offer.id) ?? [];
+              const issued = cards.length;
+              const claimed = cards.filter((c) => c.status === 'claimed').length;
+              return (
+                <div key={offer.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      href={`/offers/${offer.id}`}
+                      className="font-medium text-gray-800 hover:text-green-700 min-w-0 truncate block"
+                    >
+                      {offer.title}
+                    </Link>
+                    <StatusBadge status={offer.status} />
+                  </div>
+                  {cfg && (
+                    <p className="text-xs text-gray-500 mt-2 truncate">
+                      {cfg.stamps_required} stamps — {cfg.reward_description}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">
+                    <span>{issued} cards</span>
+                    <span>{claimed} claimed</span>
+                    <span>{pct(claimed, issued)} claim rate</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </>
       )}

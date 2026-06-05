@@ -3,35 +3,13 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
 import { createRetailer, deactivateRetailer } from '@/lib/actions/admin';
+import { PageHeader, StatusBadge, SectionCard, EmptyState } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Retailers – Admin' };
 
 interface Props {
   searchParams: Promise<{ status?: string; q?: string; activation?: string }>;
 }
-
-const APPROVAL_BADGES: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-800 border-amber-200',
-  approved: 'bg-green-100 text-green-800 border-green-200',
-  rejected: 'bg-red-100 text-red-800 border-red-200',
-  suspended: 'bg-gray-200 text-gray-700 border-gray-300',
-  changes_requested: 'bg-orange-100 text-orange-700 border-orange-200',
-};
-
-const VISIBILITY_BADGES: Record<string, string> = {
-  live: 'bg-blue-100 text-blue-800 border-blue-200',
-  draft: 'bg-gray-100 text-gray-600 border-gray-200',
-  hidden: 'bg-orange-100 text-orange-700 border-orange-200',
-};
-
-const SUB_BADGES: Record<string, string> = {
-  active:   'bg-green-100 text-green-800 border-green-200',
-  inactive: 'bg-gray-100 text-gray-500 border-gray-200',
-  past_due: 'bg-amber-100 text-amber-800 border-amber-200',
-  cancelled:'bg-red-100 text-red-700 border-red-200',
-  expired:  'bg-red-100 text-red-700 border-red-200',
-  none:     'bg-gray-100 text-gray-400 border-gray-200',
-};
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -96,14 +74,12 @@ export default async function RetailersPage({ searchParams }: Props) {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Retailers</h1>
-        <p className="text-sm text-gray-500 mt-1">Review, approve, and manage all retailers on the platform.</p>
-      </div>
+      <PageHeader
+        title="Retailers"
+        description="Review, approve, and manage all retailers on the platform."
+      />
 
-      {/* Add retailer */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Add retailer</h2>
+      <SectionCard title="Add retailer">
         <form action={createRetailer} className="flex items-end gap-3 flex-wrap">
           <div>
             <label htmlFor="r-name" className="block text-xs text-gray-500 mb-1">Business name *</label>
@@ -139,10 +115,10 @@ export default async function RetailersPage({ searchParams }: Props) {
         <p className="mt-2 text-xs text-gray-400">
           Created retailers are pre-approved (draft visibility). They still need to subscribe to go live.
         </p>
-      </div>
+      </SectionCard>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
+      <div className="flex items-center gap-3 mb-4 flex-wrap mt-6">
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
           {tabs.map((t) => (
             <Link
@@ -180,74 +156,97 @@ export default async function RetailersPage({ searchParams }: Props) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 border border-gray-200 rounded-lg text-gray-400">
-          <p className="text-4xl mb-3">🏪</p>
-          <p className="font-medium text-gray-600">No retailers found</p>
-        </div>
+        <EmptyState
+          icon="🏪"
+          title="No retailers found"
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Approval</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Subscription</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Visibility</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Joined</th>
-                <th className="px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map((r) => {
-                const sub = subsByRetailerId[r.id];
-                const subStatus = sub?.status ?? 'none';
-                const subLabel = subStatus === 'none' ? 'None' : subStatus.replace('_', ' ');
-                return (
-                  <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{r.name}</div>
-                      <div className="text-xs text-gray-400">{r.slug}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${APPROVAL_BADGES[r.approval_status] ?? ''}`}>
-                        {r.approval_status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${SUB_BADGES[subStatus] ?? ''}`}>
-                        {subLabel}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${VISIBILITY_BADGES[r.visibility_status] ?? ''}`}>
-                        {r.visibility_status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(r.created_at)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <form action={deactivateRetailer}>
-                          <input type="hidden" name="id" value={r.id} />
-                          <input type="hidden" name="is_active" value={String(r.is_active)} />
-                          <button
-                            type="submit"
-                            className={`text-xs underline ${r.is_active ? 'text-red-500 hover:text-red-700' : 'text-green-700 hover:text-green-900'}`}
-                          >
-                            {r.is_active ? 'Deactivate' : 'Reactivate'}
-                          </button>
-                        </form>
-                        <Link href={`/retailers/${r.id}`}
-                          className="text-sm text-green-700 hover:text-green-900 font-medium">
-                          Review →
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Name</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Approval</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Subscription</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Visibility</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Joined</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map((r) => {
+                  const sub = subsByRetailerId[r.id];
+                  const subStatus = sub?.status ?? 'none';
+                  return (
+                    <tr key={r.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">{r.name}</div>
+                        <div className="text-xs text-gray-400">{r.slug}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={r.approval_status} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={subStatus} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <StatusBadge status={r.visibility_status} />
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatDate(r.created_at)}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <form action={deactivateRetailer}>
+                            <input type="hidden" name="id" value={r.id} />
+                            <input type="hidden" name="is_active" value={String(r.is_active)} />
+                            <button
+                              type="submit"
+                              className={`text-xs underline ${r.is_active ? 'text-red-500 hover:text-red-700' : 'text-green-700 hover:text-green-900'}`}
+                            >
+                              {r.is_active ? 'Deactivate' : 'Reactivate'}
+                            </button>
+                          </form>
+                          <Link href={`/retailers/${r.id}`}
+                            className="text-sm text-green-700 hover:text-green-900 font-medium">
+                            Review →
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {filtered.map((r) => {
+              const sub = subsByRetailerId[r.id];
+              const subStatus = sub?.status ?? 'none';
+              return (
+                <div key={r.id} className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 truncate">{r.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{r.slug}</p>
+                    </div>
+                    <Link href={`/retailers/${r.id}`} className="shrink-0 text-sm font-medium text-green-700">
+                      Review →
+                    </Link>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    <StatusBadge status={r.approval_status} />
+                    <StatusBadge status={subStatus} />
+                    <StatusBadge status={r.visibility_status} />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">{formatDate(r.created_at)}</p>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );
