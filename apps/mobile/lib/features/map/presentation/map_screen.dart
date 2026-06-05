@@ -11,9 +11,16 @@ import '../../../core/config/env.dart';
 import '../../../core/providers/analytics_provider.dart';
 import '../../../core/providers/location_provider.dart';
 import '../../../core/providers/session_provider.dart';
+import '../../../features/events/providers/events_providers.dart';
+import '../../../features/follow/providers/retailer_follows_providers.dart';
 import '../../../features/retailers/domain/retailer.dart';
+import '../domain/map_event_pin.dart';
 import '../providers/map_providers.dart';
-import 'widgets/map_offer_preview_card.dart';
+import 'widgets/map_activity_summary.dart';
+import 'widgets/map_event_sheet.dart';
+import 'widgets/map_filter_bar.dart';
+import 'widgets/map_marker_painter.dart';
+import 'widgets/map_retailer_sheet.dart';
 
 // ── Default camera: centre of Clackmannanshire ───────────────────────────────
 
@@ -35,20 +42,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   GoogleMapController? _mapController;
   final _sheetController = DraggableScrollableController();
   final _searchController = TextEditingController();
+  final _markerCache = MapMarkerCache();
   bool _hasFitBounds = false;
 
   @override
   void initState() {
     super.initState();
-    debugPrint('[MAP KEY] Dart env value=${Env.googleMapsApiKey.isEmpty ? "MISSING" : "present (${Env.googleMapsApiKey.length} chars)"}');
+    debugPrint(
+        '[MAP KEY] Dart env value=${Env.googleMapsApiKey.isEmpty ? "MISSING" : "present (${Env.googleMapsApiKey.length} chars)"}');
+    // Pre-paint custom markers; rebuild once ready for branded icons.
+    _markerCache.initialize().then((_) {
+      if (mounted) setState(() {});
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Check permission without prompting.
       ref.read(locationNotifierProvider.notifier).init();
-      // Analytics: map viewed.
       final session = ref.read(sessionProvider).valueOrNull;
-      ref
-          .read(discoveryAnalyticsProvider)
-          .logMapViewed(session?.user.id);
+      ref.read(discoveryAnalyticsProvider).logMapViewed(session?.user.id);
     });
   }
 
@@ -60,7 +69,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     super.dispose();
   }
 
-  // ── Fit all marker bounds ────────────────────────────────────────────────
+  // ── Fit all retailer marker bounds ────────────────────────────────────────
 
   void _fitMarkers(List<Retailer> retailers) {
     final mc = _mapController;
@@ -100,59 +109,118 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  // ── Marker set ───────────────────────────────────────────────────────────
+  // ── Marker set ────────────────────────────────────────────────────────────
 
   Set<Marker> _buildMarkers(
     List<Retailer> retailers,
-    String? selectedId,
+    List<MapEventPin> events,
+    String? selectedRetailerId,
+    String? selectedEventId,
     String? profileId,
+    Set<String> followedIds,
   ) {
-    debugPrint('[MAP] Building ${retailers.length} markers');
-    return {
-      for (final r in retailers)
-        Marker(
-          markerId: MarkerId(r.id),
-          position: LatLng(r.latitude!, r.longitude!),
-          icon: r.id == selectedId
-              ? BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueOrange)
-              : BitmapDescriptor.defaultMarkerWithHue(
-                  BitmapDescriptor.hueGreen),
-          infoWindow: InfoWindow(title: r.name),
-          onTap: () {
-            ref.read(mapControllerProvider.notifier).selectRetailer(r.id);
-            ref.read(discoveryAnalyticsProvider).logMarkerOpened(
-                  profileId,
-                  r.id,
-                );
-          },
+    debugPrint(
+        '[MAP] Building ${retailers.length} retailer + ${events.length} event markers');
+    final markers = <Marker>{};
+
+    for (final r in retailers) {
+      markers.add(Marker(
+        markerId: MarkerId('r_${r.id}'),
+        position: LatLng(r.latitude!, r.longitude!),
+        icon: _markerCache.getRetailerDescriptor(
+          isSelected: r.id == selectedRetailerId,
+          isFollowing: followedIds.contains(r.id),
+          isFeatured: r.isFeatured,
         ),
-    };
+        onTap: () {
+          ref.read(mapControllerProvider.notifier).selectRetailer(r.id);
+          ref.read(discoveryAnalyticsProvider).logMarkerOpened(profileId, r.id);
+        },
+      ));
+    }
+
+    for (final e in events) {
+      markers.add(Marker(
+        markerId: MarkerId('e_${e.id}'),
+        position: LatLng(e.venueLat, e.venueLng),
+        icon: _markerCache.getEventDescriptor(isSelected: e.id == selectedEventId),
+        onTap: () {
+          ref.read(mapControllerProvider.notifier).selectEvent(e.id);
+        },
+      ));
+    }
+
+    return markers;
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
+  // ── Reminder toggle ───────────────────────────────────────────────────────
+
+  Future<void> _onReminderToggled(MapEventPin event, bool enable) async {
+    final session = ref.read(sessionProvider).valueOrNull;
+    if (session == null) return;
+    try {
+      final ds = ref.read(eventsDataSourceProvider);
+      if (enable) {
+        await ds.setReminder(event.id, session.user.id);
+      } else {
+        await ds.removeReminder(event.id, session.user.id);
+      }
+      ref.invalidate(mapEventsProvider);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not update reminder. Please try again.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final locationState = ref.watch(locationNotifierProvider);
-    final retailers = ref.watch(mapRetailersProvider);
+    final retailers = ref.watch(mapFilteredRetailersProvider);
+    final events = ref.watch(mapFilteredEventsProvider);
     final retailersLoadState = ref.watch(mapRetailersLoadStateProvider);
     final selectedRetailer = ref.watch(selectedMapRetailerProvider);
+    final selectedEvent = ref.watch(selectedMapEventProvider);
     final mapState = ref.watch(mapControllerProvider);
     final session = ref.watch(sessionProvider).valueOrNull;
     final profileId = session?.user.id;
+    final followedIds = ref.watch(followedRetailerIdsProvider);
 
-    // Fit bounds once when retailers first load.
-    ref.listen<List<Retailer>>(mapRetailersProvider, (_, next) {
+    final totalOffers =
+        retailers.fold<int>(0, (sum, r) => sum + r.activeOfferCount);
+
+    // Fit bounds once on first retailer load.
+    ref.listen<List<Retailer>>(mapFilteredRetailersProvider, (_, next) {
       if (!_hasFitBounds && next.isNotEmpty && _mapController != null) {
         _hasFitBounds = true;
         _fitMarkers(next);
       }
     });
 
-    // Expand sheet when a marker is selected.
+    // Expand sheet when a retailer marker is selected.
     ref.listen<String?>(
       mapControllerProvider.select((s) => s.selectedRetailerId),
+      (prev, next) {
+        if (next != null && next != prev) {
+          _sheetController.animateTo(
+            0.42,
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOut,
+          );
+        }
+      },
+    );
+
+    // Expand sheet when an event marker is selected.
+    ref.listen<String?>(
+      mapControllerProvider.select((s) => s.selectedEventId),
       (prev, next) {
         if (next != null && next != prev) {
           _sheetController.animateTo(
@@ -168,12 +236,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // ── Map ──────────────────────────────────────────────────────
+          // ── Map ────────────────────────────────────────────────────────
           GoogleMap(
             onMapCreated: (controller) {
               _mapController = controller;
               debugPrint('[MAP] onMapCreated fired');
-              final current = ref.read(mapRetailersProvider);
+              final current = ref.read(mapFilteredRetailersProvider);
               if (!_hasFitBounds && current.isNotEmpty) {
                 _hasFitBounds = true;
                 _fitMarkers(current);
@@ -181,36 +249,61 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             },
             onCameraMove: (_) {},
             initialCameraPosition: _kDefaultCamera,
-            markers: _buildMarkers(retailers, mapState.selectedRetailerId, profileId),
+            markers: _buildMarkers(
+              retailers,
+              events,
+              mapState.selectedRetailerId,
+              mapState.selectedEventId,
+              profileId,
+              followedIds,
+            ),
             myLocationEnabled: locationState.isGranted,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
             mapToolbarEnabled: false,
-            // Pad map so bottom sheet doesn't cover markers at default zoom.
+            // Extra top padding for the taller overlay (search + filter + summary).
             padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + 64,
+              top: MediaQuery.of(context).padding.top + 148,
               bottom: MediaQuery.of(context).size.height * 0.14,
             ),
-            onTap: (_) => ref.read(mapControllerProvider.notifier).clearSelection(),
+            onTap: (_) =>
+                ref.read(mapControllerProvider.notifier).clearSelection(),
           ),
 
-          // ── Search overlay ───────────────────────────────────────────
+          // ── Search + filter bar + activity summary ──────────────────────
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-              child: _SearchBar(
-                controller: _searchController,
-                onChanged: (q) =>
-                    ref.read(mapControllerProvider.notifier).setSearchQuery(q),
-                onClear: () {
-                  _searchController.clear();
-                  ref.read(mapControllerProvider.notifier).setSearchQuery('');
-                },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _SearchBar(
+                    controller: _searchController,
+                    onChanged: (q) =>
+                        ref.read(mapControllerProvider.notifier).setSearchQuery(q),
+                    onClear: () {
+                      _searchController.clear();
+                      ref.read(mapControllerProvider.notifier).setSearchQuery('');
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  MapFilterBar(
+                    activeFilter: mapState.activeFilter,
+                    onFilterChanged: (f) =>
+                        ref.read(mapControllerProvider.notifier).setFilter(f),
+                  ),
+                  const SizedBox(height: 6),
+                  MapActivitySummary(
+                    retailerCount: retailers.length,
+                    offerCount: totalOffers,
+                    eventCount: events.length,
+                  ),
+                ],
               ),
             ),
           ),
 
-          // ── Retailer bottom sheet ─────────────────────────────────────
+          // ── Bottom sheet ──────────────────────────────────────────────
           Positioned.fill(
             child: DraggableScrollableSheet(
               controller: _sheetController,
@@ -230,15 +323,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   scrollController: scrollController,
                   retailers: retailers,
                   selectedRetailer: selectedRetailer,
+                  selectedEvent: selectedEvent,
+                  activeFilter: mapState.activeFilter,
+                  eventCount: events.length,
                   locationState: locationState,
                   profileId: profileId,
                   isLoading: retailersLoadState is AsyncLoading,
                   onDismissSelected: () =>
                       ref.read(mapControllerProvider.notifier).clearSelection(),
                   onRetailerTap: (r) {
-                    // Select the retailer (highlights its marker + shows preview).
-                    ref.read(mapControllerProvider.notifier).selectRetailer(r.id);
-                    // Pan map to the pin so the user can see it highlighted.
+                    ref
+                        .read(mapControllerProvider.notifier)
+                        .selectRetailer(r.id);
                     if (r.latitude != null && r.longitude != null) {
                       _mapController?.animateCamera(
                         CameraUpdate.newLatLng(
@@ -258,13 +354,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           );
                         }
                       : null,
+                  onViewEvent: selectedEvent != null
+                      ? () => context.push(
+                            RouteNames.communityEventDetail
+                                .replaceAll(':eventId', selectedEvent.id),
+                          )
+                      : null,
+                  onReminderToggled: selectedEvent != null
+                      ? (v) => _onReminderToggled(selectedEvent, v)
+                      : (_) {},
                   onEnableLocation: locationState.isDenied &&
-                          locationState.status ==
-                              LocationStatus.deniedForever
-                      ? () =>
-                          ref.read(locationNotifierProvider.notifier).openSettings()
-                      : () =>
-                          ref.read(locationNotifierProvider.notifier).requestAndFetch(),
+                          locationState.status == LocationStatus.deniedForever
+                      ? () => ref
+                          .read(locationNotifierProvider.notifier)
+                          .openSettings()
+                      : () => ref
+                          .read(locationNotifierProvider.notifier)
+                          .requestAndFetch(),
                 );
               },
             ),
@@ -283,7 +389,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 child: const Icon(Icons.my_location, size: 20),
               ),
             ),
-
         ],
       ),
     );
@@ -349,8 +454,8 @@ class _SearchBarState extends State<_SearchBar> {
         style: AppTextStyles.bodyMedium,
         decoration: InputDecoration(
           hintText: 'Search retailers, offers, categories…',
-          hintStyle: AppTextStyles.bodyMedium
-              .copyWith(color: AppColors.textDisabled),
+          hintStyle:
+              AppTextStyles.bodyMedium.copyWith(color: AppColors.textDisabled),
           prefixIcon: const Icon(Icons.search,
               color: AppColors.textDisabled, size: 20),
           suffixIcon: _hasText
@@ -369,9 +474,7 @@ class _SearchBarState extends State<_SearchBar> {
   }
 }
 
-// ── Bottom sheet content ──────────────────────────────────────────────────────
-
-// ── Error sheet — shown when the retailer fetch fails ─────────────────────────
+// ── Error sheet ───────────────────────────────────────────────────────────────
 
 class _RetailersErrorSheet extends StatelessWidget {
   const _RetailersErrorSheet({
@@ -393,19 +496,7 @@ class _RetailersErrorSheet extends StatelessWidget {
       child: CustomScrollView(
         controller: scrollController,
         slivers: [
-          SliverToBoxAdapter(
-            child: Center(
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 10),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ),
+          SliverToBoxAdapter(child: const _DragHandle()),
           SliverFillRemaining(
             hasScrollBody: false,
             child: Padding(
@@ -451,32 +542,55 @@ class _BottomSheet extends StatelessWidget {
     required this.scrollController,
     required this.retailers,
     required this.selectedRetailer,
+    required this.selectedEvent,
+    required this.activeFilter,
+    required this.eventCount,
     required this.locationState,
     required this.profileId,
     required this.isLoading,
     required this.onDismissSelected,
     required this.onRetailerTap,
     required this.onViewSelected,
+    required this.onViewEvent,
+    required this.onReminderToggled,
     required this.onEnableLocation,
   });
 
   final ScrollController scrollController;
   final List<Retailer> retailers;
   final Retailer? selectedRetailer;
+  final MapEventPin? selectedEvent;
+  final MapFilter activeFilter;
+  final int eventCount;
   final LocationState locationState;
   final String? profileId;
   final bool isLoading;
   final VoidCallback onDismissSelected;
-  /// Selects a retailer from the list (highlights its marker).
   final ValueChanged<Retailer> onRetailerTap;
-  /// Navigates to the selected retailer's detail page from the preview card.
   final VoidCallback? onViewSelected;
+  final VoidCallback? onViewEvent;
+  final ValueChanged<bool> onReminderToggled;
   final VoidCallback onEnableLocation;
 
   @override
   Widget build(BuildContext context) {
-    final showNudge =
-        locationState.isInitial || locationState.isDenied;
+    final showNudge = locationState.isInitial || locationState.isDenied;
+    final bool showingSelectedEvent =
+        selectedEvent != null && selectedRetailer == null;
+
+    final String countText;
+    if (isLoading) {
+      countText = '';
+    } else if (activeFilter == MapFilter.events) {
+      countText = eventCount == 0
+          ? 'No events found'
+          : '$eventCount ${eventCount == 1 ? 'event' : 'events'} on map';
+    } else {
+      countText = retailers.isEmpty
+          ? 'No places found'
+          : '${retailers.length} '
+              '${retailers.length == 1 ? 'place' : 'places'} on map';
+    }
 
     return Material(
       color: Colors.white,
@@ -487,33 +601,32 @@ class _BottomSheet extends StatelessWidget {
       child: CustomScrollView(
         controller: scrollController,
         slivers: [
-          // Drag handle
-          SliverToBoxAdapter(
-            child: Center(
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 10),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+          SliverToBoxAdapter(child: const _DragHandle()),
+
+          // Selected event card
+          if (showingSelectedEvent)
+            SliverToBoxAdapter(
+              child: MapEventSheet(
+                event: selectedEvent!,
+                hasReminder: selectedEvent!.hasReminder,
+                onDismiss: onDismissSelected,
+                onViewEvent: onViewEvent ?? () {},
+                onReminderToggled: onReminderToggled,
               ),
             ),
-          ),
 
-          // Selected retailer preview
+          // Selected retailer card
           if (selectedRetailer != null)
             SliverToBoxAdapter(
-              child: MapRetailerPreviewCard(
+              child: MapRetailerSheet(
                 retailer: selectedRetailer!,
                 onDismiss: onDismissSelected,
                 onView: onViewSelected,
               ),
             ),
 
-          // Location nudge
-          if (showNudge && selectedRetailer == null)
+          // Location nudge (only when nothing selected)
+          if (showNudge && selectedRetailer == null && selectedEvent == null)
             SliverToBoxAdapter(
               child: _LocationNudge(
                 isDeniedForever:
@@ -522,44 +635,60 @@ class _BottomSheet extends StatelessWidget {
               ),
             ),
 
-          // Retailer count header
+          // Count header
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: isLoading
                   ? const SizedBox(
                       height: 16,
-                      width: 16,
-                      child: Center(
-                        child: LinearProgressIndicator(),
-                      ),
+                      child: Center(child: LinearProgressIndicator()),
                     )
                   : Text(
-                      retailers.isEmpty
-                          ? 'No retailers found'
-                          : '${retailers.length} '
-                              '${retailers.length == 1 ? 'place' : 'places'} on map',
+                      countText,
                       style: AppTextStyles.labelSmall
                           .copyWith(color: AppColors.textSecondary),
                     ),
             ),
           ),
 
-          // Retailer list
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, i) => _RetailerListTile(
-                  retailer: retailers[i],
-                  isSelected: retailers[i].id == selectedRetailer?.id,
-                  onTap: () => onRetailerTap(retailers[i]),
+          // Retailer list (hidden when events-only filter active)
+          if (activeFilter != MapFilter.events)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) => _RetailerListTile(
+                    retailer: retailers[i],
+                    isSelected: retailers[i].id == selectedRetailer?.id,
+                    onTap: () => onRetailerTap(retailers[i]),
+                  ),
+                  childCount: retailers.length,
                 ),
-                childCount: retailers.length,
               ),
             ),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Drag handle ───────────────────────────────────────────────────────────────
+
+class _DragHandle extends StatelessWidget {
+  const _DragHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        width: 36,
+        height: 4,
+        decoration: BoxDecoration(
+          color: AppColors.border,
+          borderRadius: BorderRadius.circular(2),
+        ),
       ),
     );
   }
@@ -689,7 +818,7 @@ class _RetailerListTile extends StatelessWidget {
       km < 1.0 ? '${(km * 1000).round()}m' : '${km.toStringAsFixed(1)}km';
 }
 
-// ── Logo badge (shared) ───────────────────────────────────────────────────────
+// ── Logo badge ────────────────────────────────────────────────────────────────
 
 class _LogoBadge extends StatelessWidget {
   const _LogoBadge({required this.logoUrl, required this.name});
@@ -734,4 +863,3 @@ class _Initials extends StatelessWidget {
         ),
       );
 }
-
