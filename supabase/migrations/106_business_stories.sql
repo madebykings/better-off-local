@@ -11,10 +11,14 @@ create table if not exists business_stories (
   updated_at timestamptz not null default now()
 );
 
-create index business_stories_retailer_idx on business_stories (retailer_id, created_at desc);
-create index business_stories_active_idx on business_stories (expires_at) where expires_at is not null;
+create index if not exists business_stories_retailer_idx on business_stories (retailer_id, created_at desc);
+create index if not exists business_stories_active_idx on business_stories (expires_at) where expires_at is not null;
 
 alter table business_stories enable row level security;
+
+drop policy if exists "members_read_active_stories" on business_stories;
+drop policy if exists "retailer_manage_own_stories" on business_stories;
+drop policy if exists "admin_read_all_stories" on business_stories;
 
 -- Authenticated members can read stories for live retailers (not expired)
 create policy "members_read_active_stories" on business_stories

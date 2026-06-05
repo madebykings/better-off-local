@@ -50,15 +50,25 @@ function inputCls(hasError: boolean) {
 
 export type StoryFormProps = {
   action: (formData: FormData) => Promise<void>;
+  initialTitle?: string;
+  initialContent?: string;
+  initialExpiresAt?: string;
+  submitLabel?: string;
 };
 
 // ---------------------------------------------------------------------------
 // StoryForm
 // ---------------------------------------------------------------------------
 
-export function StoryForm({ action }: StoryFormProps) {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+export function StoryForm({
+  action,
+  initialTitle = '',
+  initialContent = '',
+  initialExpiresAt,
+  submitLabel = 'Post story',
+}: StoryFormProps) {
+  const [title, setTitle] = useState(initialTitle);
+  const [content, setContent] = useState(initialContent);
   const [titleError, setTitleError] = useState('');
   const [contentError, setContentError] = useState('');
   const [pending, setPending] = useState(false);
@@ -164,30 +174,32 @@ export function StoryForm({ action }: StoryFormProps) {
           <input
             type="date"
             name="expires_at"
+            defaultValue={initialExpiresAt ? initialExpiresAt.slice(0, 10) : undefined}
             className={inputCls(false)}
             disabled={pending}
           />
         </Field>
 
-        {/* Notify followers */}
-        <div className="flex items-start gap-3">
+        {/* Notify followers — dispatch not yet wired; disabled until follower system ships */}
+        <div className="flex items-start gap-3 opacity-50">
           <input
             id="notify_followers"
             type="checkbox"
             name="notify_followers"
             value="on"
-            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-green-700/30 cursor-pointer"
-            disabled={pending}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-green-700/30 cursor-not-allowed"
+            disabled
           />
           <div>
             <label
               htmlFor="notify_followers"
-              className="text-sm font-medium text-gray-700 cursor-pointer"
+              className="text-sm font-medium text-gray-700 cursor-not-allowed"
             >
-              Notify followers
+              Notify followers{' '}
+              <span className="text-xs font-normal text-gray-400">(coming soon)</span>
             </label>
             <p className="mt-0.5 text-xs text-gray-400">
-              Send a notification to members who follow your business.
+              Member notifications will be available in a future update.
             </p>
           </div>
         </div>
@@ -201,7 +213,7 @@ export function StoryForm({ action }: StoryFormProps) {
           className="rounded-lg bg-green-800 px-5 py-2 text-sm font-semibold text-white
                      hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {pending ? 'Posting…' : 'Post story'}
+          {pending ? 'Saving…' : submitLabel}
         </button>
         <Link
           href="/stories"
