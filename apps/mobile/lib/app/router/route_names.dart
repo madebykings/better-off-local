@@ -25,6 +25,12 @@ abstract class RouteNames {
   static const offerDetail = '/explore/offer/:offerId';
   static const retailerDetail = '/explore/retailer/:retailerId';
 
+  // Community hub
+  static const community = '/community';
+  static const communityEventDetail = '/community/events/:eventId';
+  static const memberImpact = '/community/impact';
+  static const regionImpact = '/community/region-impact';
+
   // Nested under account
   static const settings = '/account/settings';
   static const savings = '/account/savings';

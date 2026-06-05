@@ -82,6 +82,10 @@ class _NotificationTile extends ConsumerWidget {
         return Icons.card_giftcard_outlined;
       case NotificationType.region:
         return Icons.map_outlined;
+      case NotificationType.eventReminder:
+        return Icons.event_outlined;
+      case NotificationType.communityMilestone:
+        return Icons.emoji_events_outlined;
       case NotificationType.system:
         return Icons.info_outline;
     }
@@ -105,6 +109,15 @@ class _NotificationTile extends ConsumerWidget {
         context.push(RouteNames.referral);
       case NotificationType.region:
         context.push(RouteNames.regionProgress);
+      case NotificationType.eventReminder:
+        final eventId = notification.payload?['event_id'] as String?;
+        if (eventId != null) {
+          context.push(
+            RouteNames.communityEventDetail.replaceAll(':eventId', eventId),
+          );
+        }
+      case NotificationType.communityMilestone:
+        context.push(RouteNames.community);
       case NotificationType.system:
         break;
     }

@@ -8,6 +8,8 @@ enum NotificationType {
   referral,
   region,
   businessUpdate,
+  eventReminder,
+  communityMilestone,
 }
 
 class AppNotification extends Equatable {

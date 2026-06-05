@@ -8,6 +8,10 @@ import '../../features/memberships/domain/membership.dart';
 import '../../features/memberships/providers/membership_providers.dart';
 import '../../features/profile/providers/profile_providers.dart';
 
+import '../../features/community/presentation/community_screen.dart';
+import '../../features/events/presentation/event_detail_screen.dart';
+import '../../features/impact/presentation/member_impact_screen.dart';
+import '../../features/impact/presentation/region_impact_screen.dart';
 import '../../features/follow/presentation/following_screen.dart';
 import '../../features/loyalty/presentation/my_loyalty_cards_screen.dart';
 import '../../features/referral/presentation/referral_screen.dart';
@@ -130,6 +134,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           RouteNames.home,
           RouteNames.explore,
           RouteNames.map,
+          RouteNames.community,
           RouteNames.favourites,
           RouteNames.notifications,
           RouteNames.redemptionHistory,
@@ -140,6 +145,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         final isOnMembershipGatedRoute =
             membershipGatedRoutes.contains(state.matchedLocation) ||
             state.matchedLocation.startsWith(RouteNames.explore + '/') ||
+            state.matchedLocation.startsWith(RouteNames.community + '/') ||
             state.matchedLocation.startsWith('/redemptions/');
 
         if (isOnMembershipGatedRoute) {
@@ -245,6 +251,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: RouteNames.card,
             builder: (context, state) => const MembershipCardScreen(),
+          ),
+          GoRoute(
+            path: RouteNames.community,
+            builder: (context, state) => const CommunityScreen(),
+            routes: [
+              GoRoute(
+                path: 'events/:eventId',
+                builder: (context, state) => EventDetailScreen(
+                  eventId: state.pathParameters['eventId']!,
+                ),
+              ),
+              GoRoute(
+                path: 'impact',
+                builder: (context, state) => const MemberImpactScreen(),
+              ),
+              GoRoute(
+                path: 'region-impact',
+                builder: (context, state) => const RegionImpactScreen(),
+              ),
+            ],
           ),
           GoRoute(
             path: RouteNames.account,

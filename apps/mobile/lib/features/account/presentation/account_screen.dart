@@ -86,6 +86,24 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
           _SectionCard(
             children: [
               _NavTile(
+                icon: Icons.card_membership_outlined,
+                label: 'My card',
+                onTap: () => context.go(RouteNames.card),
+              ),
+              const _Divider(),
+              _NavTile(
+                icon: Icons.insights_outlined,
+                label: 'My Impact',
+                onTap: () => context.push(RouteNames.memberImpact),
+              ),
+              const _Divider(),
+              _NavTile(
+                icon: Icons.public_outlined,
+                label: 'Region Impact',
+                onTap: () => context.push(RouteNames.regionImpact),
+              ),
+              const _Divider(),
+              _NavTile(
                 icon: Icons.favorite_border,
                 label: 'Favourites',
                 onTap: () => context.push(RouteNames.favourites),
