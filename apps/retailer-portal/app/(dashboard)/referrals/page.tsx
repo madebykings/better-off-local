@@ -204,7 +204,7 @@ export default async function ReferralsPage() {
                       <td className="px-4 py-3 text-right text-gray-500">{pct(converted, invited)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <Link
-                          href={`/offers/${offer.id}`}
+                          href={`/referrals/${offer.id}`}
                           className="text-xs font-medium text-green-700 hover:text-green-900 hover:underline"
                         >
                           Edit
@@ -260,7 +260,7 @@ export default async function ReferralsPage() {
                   </div>
                   <div className="pt-1">
                     <Link
-                      href={`/offers/${offer.id}`}
+                      href={`/referrals/${offer.id}`}
                       className="text-xs font-medium text-green-700 hover:text-green-900 hover:underline"
                     >
                       Edit campaign

@@ -156,13 +156,21 @@ export default async function EventsPage({ searchParams }: Props) {
         })}
       </div>
 
+      {/* Draft tab guidance */}
+      {activeTab === 'draft' && visibleEvents.length > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span className="font-medium">Draft events aren't visible to members.</span>{' '}
+          Open each event to review details and submit for review.
+        </div>
+      )}
+
       {/* Content */}
       {visibleEvents.length === 0 ? (
         <EmptyState
           title={EMPTY_MESSAGES[activeTab]}
           description=""
           action={
-            activeTab === 'upcoming' ? (
+            activeTab === 'upcoming' || activeTab === 'draft' ? (
               <Link href="/events/new" className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
                 Create your first event
               </Link>
@@ -212,7 +220,7 @@ export default async function EventsPage({ searchParams }: Props) {
                           href={`/events/${ev.id}`}
                           className="text-xs font-medium text-green-700 hover:text-green-900 hover:underline"
                         >
-                          Edit
+                          {ev.status === 'draft' ? 'Edit & submit' : 'Edit'}
                         </Link>
                       </td>
                     </tr>

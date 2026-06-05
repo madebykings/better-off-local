@@ -51,8 +51,38 @@ class RedemptionConfirmationScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.xxl),
               PrimaryButton(
-                label: 'Back to home',
+                label: 'Discover more offers',
                 onPressed: () => context.go(RouteNames.home),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              // Loyalty suggestion nudge
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.loyalty_outlined,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'Many retailers offer loyalty stamp cards — collect stamps and earn free rewards.',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               TextButton(

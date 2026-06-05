@@ -582,8 +582,7 @@ class _CommunityActivitySection extends ConsumerWidget {
       error: (_, __) => const SizedBox.shrink(),
       data: (activity) {
         if (activity.isEmpty) return const SizedBox.shrink();
-        final shown = activity.take(8).toList();
-        final hasMore = activity.length > 8;
+        final shown = activity.take(10).toList();
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -600,16 +599,6 @@ class _CommunityActivitySection extends ConsumerWidget {
                 return _ActivityItem(data: data);
               },
             ),
-            if (hasMore)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.pagePadding,
-                ),
-                child: TextButton(
-                  onPressed: () {},
-                  child: const Text('View all'),
-                ),
-              ),
             const SizedBox(height: AppSpacing.sectionGap),
           ],
         );

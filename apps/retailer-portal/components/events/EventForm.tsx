@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import type { EventFields } from '@/lib/actions/events';
+import { StickyActionBar, GuidanceCard } from '@better-off-local/ui';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -21,6 +22,16 @@ const EVENT_TYPES = [
 ] as const;
 
 const SUMMARY_MAX = 160;
+
+const TABS = [
+  { id: 'basics', label: 'Basics' },
+  { id: 'date-venue', label: 'Date & Venue' },
+  { id: 'booking-images', label: 'Booking & Images' },
+  { id: 'preview', label: 'Preview' },
+  { id: 'review', label: 'Review' },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
 
 // ---------------------------------------------------------------------------
 // Field component
@@ -115,6 +126,7 @@ export function EventForm({
   });
   const [localErrors, setLocalErrors] = useState<Partial<Record<keyof EventFields, string>>>({});
   const [imagePreviewError, setImagePreviewError] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>('basics');
 
   const errors: Partial<Record<keyof EventFields, string>> = {
     ...localErrors,
@@ -165,203 +177,306 @@ export function EventForm({
     !imagePreviewError &&
     (fields.imageUrl.startsWith('http://') || fields.imageUrl.startsWith('https://'));
 
-  return (
-    <div className="max-w-2xl space-y-6">
-      {/* Title */}
-      <Field label="Title" required error={errors.title}>
-        <input
-          type="text"
-          value={fields.title}
-          onChange={set('title')}
-          placeholder="e.g. Live Jazz Evening"
-          maxLength={120}
-          className={inputCls(!!errors.title)}
-          disabled={isSubmitting}
-        />
-      </Field>
+  const selectedVenue = venues.find((v) => v.id === fields.venueId);
 
-      {/* Short summary */}
-      <Field
-        label="Short summary"
-        hint="Shown in event cards"
-        error={errors.shortSummary}
-      >
-        <div className="relative">
-          <input
-            type="text"
-            value={fields.shortSummary}
-            onChange={set('shortSummary')}
-            placeholder="e.g. An evening of live jazz in the heart of Alloa"
-            maxLength={SUMMARY_MAX}
-            className={inputCls(!!errors.shortSummary)}
-            disabled={isSubmitting}
-          />
-          <span
+  return (
+    <div className="max-w-2xl">
+      {/* Tab bar */}
+      <div className="flex overflow-x-auto border-b border-gray-200 scrollbar-none mb-6">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
             className={[
-              'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs tabular-nums',
-              summaryCount > 140 ? 'text-amber-500' : 'text-gray-300',
+              'shrink-0 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap',
+              activeTab === tab.id
+                ? 'border-b-2 border-green-700 text-green-800 -mb-px'
+                : 'text-gray-500 hover:text-gray-700 hover:border-b-2 hover:border-gray-300 -mb-px',
             ].join(' ')}
           >
-            {summaryCount}/{SUMMARY_MAX}
-          </span>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab panels — hidden class preserves React state across tab switches */}
+
+      {/* Basics */}
+      <div className={activeTab === 'basics' ? 'space-y-6' : 'hidden'}>
+        <Field label="Title" required error={errors.title}>
+          <input
+            type="text"
+            value={fields.title}
+            onChange={set('title')}
+            placeholder="e.g. Live Jazz Evening"
+            maxLength={120}
+            className={inputCls(!!errors.title)}
+            disabled={isSubmitting}
+          />
+        </Field>
+
+        <Field
+          label="Short summary"
+          hint="Shown in event cards"
+          error={errors.shortSummary}
+        >
+          <div className="relative">
+            <input
+              type="text"
+              value={fields.shortSummary}
+              onChange={set('shortSummary')}
+              placeholder="e.g. An evening of live jazz in the heart of Alloa"
+              maxLength={SUMMARY_MAX}
+              className={inputCls(!!errors.shortSummary)}
+              disabled={isSubmitting}
+            />
+            <span
+              className={[
+                'pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs tabular-nums',
+                summaryCount > 140 ? 'text-amber-500' : 'text-gray-300',
+              ].join(' ')}
+            >
+              {summaryCount}/{SUMMARY_MAX}
+            </span>
+          </div>
+        </Field>
+
+        <Field label="Description" error={errors.description}>
+          <textarea
+            value={fields.description}
+            onChange={set('description')}
+            placeholder="Tell members more about this event — what to expect, who it's for, any requirements."
+            rows={4}
+            className={[inputCls(!!errors.description), 'resize-none'].join(' ')}
+            disabled={isSubmitting}
+          />
+        </Field>
+
+        <Field label="Event type" required error={errors.eventType}>
+          <select
+            value={fields.eventType}
+            onChange={set('eventType')}
+            className={inputCls(!!errors.eventType) + ' cursor-pointer'}
+            disabled={isSubmitting}
+          >
+            <option value="">Select event type…</option>
+            {EVENT_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      {/* Date & Venue */}
+      <div className={activeTab === 'date-venue' ? 'space-y-6' : 'hidden'}>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Start date" required error={errors.startDate}>
+            <input
+              type="date"
+              value={fields.startDate}
+              onChange={set('startDate')}
+              className={inputCls(!!errors.startDate)}
+              disabled={isSubmitting}
+            />
+          </Field>
+          <Field label="Start time" required error={errors.startTime}>
+            <input
+              type="time"
+              value={fields.startTime}
+              onChange={set('startTime')}
+              className={inputCls(!!errors.startTime)}
+              disabled={isSubmitting}
+            />
+          </Field>
         </div>
-      </Field>
 
-      {/* Description */}
-      <Field label="Description" error={errors.description}>
-        <textarea
-          value={fields.description}
-          onChange={set('description')}
-          placeholder="Tell members more about this event — what to expect, who it's for, any requirements."
-          rows={4}
-          className={[inputCls(!!errors.description), 'resize-none'].join(' ')}
-          disabled={isSubmitting}
-        />
-      </Field>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="End date" hint="Optional" error={errors.endDate}>
+            <input
+              type="date"
+              value={fields.endDate}
+              onChange={set('endDate')}
+              min={fields.startDate || undefined}
+              className={inputCls(!!errors.endDate)}
+              disabled={isSubmitting}
+            />
+          </Field>
+          <Field label="End time" hint="Optional">
+            <input
+              type="time"
+              value={fields.endTime}
+              onChange={set('endTime')}
+              className={inputCls(false)}
+              disabled={isSubmitting}
+            />
+          </Field>
+        </div>
 
-      {/* Event type */}
-      <Field label="Event type" required error={errors.eventType}>
-        <select
-          value={fields.eventType}
-          onChange={set('eventType')}
-          className={inputCls(!!errors.eventType) + ' cursor-pointer'}
-          disabled={isSubmitting}
+        <Field label="Venue" hint="Where the event is taking place">
+          <select
+            value={fields.venueId}
+            onChange={set('venueId')}
+            className={inputCls(false) + ' cursor-pointer'}
+            disabled={isSubmitting}
+          >
+            <option value="">No specific venue</option>
+            {venues.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+                {v.address_line1 ? ` — ${v.address_line1}` : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+
+      {/* Booking & Images */}
+      <div className={activeTab === 'booking-images' ? 'space-y-6' : 'hidden'}>
+        <Field
+          label="Image URL"
+          hint="Paste a public image URL (e.g. from your storage bucket)"
+          error={errors.imageUrl}
         >
-          <option value="">Select event type…</option>
-          {EVENT_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      {/* Start date + time */}
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Start date" required error={errors.startDate}>
           <input
-            type="date"
-            value={fields.startDate}
-            onChange={set('startDate')}
-            className={inputCls(!!errors.startDate)}
+            type="url"
+            value={fields.imageUrl}
+            onChange={set('imageUrl')}
+            placeholder="https://…"
+            className={inputCls(!!errors.imageUrl)}
             disabled={isSubmitting}
           />
+          {showImagePreview && (
+            <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={fields.imageUrl}
+                alt="Event image preview"
+                className="w-full max-h-40 object-cover"
+                onError={() => setImagePreviewError(true)}
+              />
+            </div>
+          )}
         </Field>
-        <Field label="Start time" required error={errors.startTime}>
+
+        <Field
+          label="Booking URL"
+          hint="External link for tickets or sign-up (optional)"
+          error={errors.bookingUrl}
+        >
           <input
-            type="time"
-            value={fields.startTime}
-            onChange={set('startTime')}
-            className={inputCls(!!errors.startTime)}
+            type="url"
+            value={fields.bookingUrl}
+            onChange={set('bookingUrl')}
+            placeholder="https://…"
+            className={inputCls(!!errors.bookingUrl)}
             disabled={isSubmitting}
           />
         </Field>
       </div>
 
-      {/* End date + time */}
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="End date" hint="Optional" error={errors.endDate}>
-          <input
-            type="date"
-            value={fields.endDate}
-            onChange={set('endDate')}
-            min={fields.startDate || undefined}
-            className={inputCls(!!errors.endDate)}
-            disabled={isSubmitting}
-          />
-        </Field>
-        <Field label="End time" hint="Optional">
-          <input
-            type="time"
-            value={fields.endTime}
-            onChange={set('endTime')}
-            className={inputCls(false)}
-            disabled={isSubmitting}
-          />
-        </Field>
-      </div>
-
-      {/* Venue */}
-      <Field label="Venue" hint="Where the event is taking place">
-        <select
-          value={fields.venueId}
-          onChange={set('venueId')}
-          className={inputCls(false) + ' cursor-pointer'}
-          disabled={isSubmitting}
-        >
-          <option value="">No specific venue</option>
-          {venues.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.name}
-              {v.address_line1 ? ` — ${v.address_line1}` : ''}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      {/* Image URL */}
-      <Field
-        label="Image URL"
-        hint="Paste a public image URL (e.g. from your storage bucket)"
-        error={errors.imageUrl}
-      >
-        <input
-          type="url"
-          value={fields.imageUrl}
-          onChange={set('imageUrl')}
-          placeholder="https://…"
-          className={inputCls(!!errors.imageUrl)}
-          disabled={isSubmitting}
-        />
-        {showImagePreview && (
-          <div className="mt-2 overflow-hidden rounded-lg border border-gray-200">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+      {/* Preview */}
+      <div className={activeTab === 'preview' ? '' : 'hidden'}>
+        <p className="mb-4 text-sm text-gray-500">
+          This is how your event will appear to members in the app.
+        </p>
+        <div className="max-w-sm rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          {showImagePreview ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={fields.imageUrl}
-              alt="Event image preview"
-              className="w-full max-h-40 object-cover"
+              alt="Event preview"
+              className="w-full h-36 object-cover"
               onError={() => setImagePreviewError(true)}
             />
+          ) : (
+            <div className="w-full h-36 bg-gray-100 flex items-center justify-center text-3xl">
+              📅
+            </div>
+          )}
+          <div className="p-4">
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">
+              {fields.eventType || 'Event'}
+            </span>
+            <p className="font-semibold text-gray-900 mt-2">
+              {fields.title || 'Event title'}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {fields.shortSummary || 'Short summary appears here'}
+            </p>
+            {fields.startDate && (
+              <p className="text-xs text-gray-400 mt-2">
+                📅{' '}
+                {new Date(fields.startDate).toLocaleDateString('en-GB', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+                {fields.startTime && ` at ${fields.startTime}`}
+              </p>
+            )}
+            {selectedVenue && (
+              <p className="text-xs text-gray-400 mt-1">
+                📍 {selectedVenue.name}
+                {selectedVenue.address_line1 ? `, ${selectedVenue.address_line1}` : ''}
+              </p>
+            )}
           </div>
-        )}
-      </Field>
+        </div>
+      </div>
 
-      {/* Booking URL */}
-      <Field
-        label="Booking URL"
-        hint="External link for tickets or sign-up (optional)"
-        error={errors.bookingUrl}
-      >
-        <input
-          type="url"
-          value={fields.bookingUrl}
-          onChange={set('bookingUrl')}
-          placeholder="https://…"
-          className={inputCls(!!errors.bookingUrl)}
-          disabled={isSubmitting}
+      {/* Review */}
+      <div className={activeTab === 'review' ? 'space-y-6' : 'hidden'}>
+        <GuidanceCard
+          icon="ℹ️"
+          heading="Review process"
+          body="Submitted events are reviewed by our team within 2 business days. Once approved, your event will be visible to members."
         />
-      </Field>
 
-      {/* Actions */}
-      <div className="flex items-center gap-3 border-t border-gray-100 pt-6">
-        <button
-          type="button"
-          onClick={() => handleAction('draft')}
-          disabled={isSubmitting}
-          className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700
-                     hover:bg-gray-50 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isSubmitting ? 'Saving…' : 'Save as draft'}
-        </button>
-        <button
-          type="button"
-          onClick={() => handleAction('submit')}
-          disabled={isSubmitting}
-          className="rounded-lg bg-green-800 px-5 py-2.5 text-sm font-semibold text-white
-                     hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isSubmitting ? 'Submitting…' : 'Submit for review'}
-        </button>
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-gray-700">Ready to publish?</p>
+          <p className="text-sm text-gray-500">
+            Save as a draft to continue editing later, or submit for review when your event details are complete.
+          </p>
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => handleAction('draft')}
+              disabled={isSubmitting}
+              className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-medium text-gray-700
+                         hover:bg-gray-50 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? 'Saving…' : 'Save as draft'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleAction('submit')}
+              disabled={isSubmitting}
+              className="rounded-lg bg-green-800 px-5 py-2.5 text-sm font-semibold text-white
+                         hover:opacity-90 transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? 'Submitting…' : 'Submit for review'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky action bar — visible on all tabs except Review */}
+      <div className={activeTab === 'review' ? 'hidden' : ''}>
+        <StickyActionBar>
+          <button
+            type="button"
+            onClick={() => handleAction('draft')}
+            disabled={isSubmitting}
+            className="rounded-lg border border-gray-200 px-5 py-2 text-sm font-medium text-gray-700
+                       hover:bg-gray-50 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSubmitting ? 'Saving…' : 'Save draft'}
+          </button>
+        </StickyActionBar>
       </div>
     </div>
   );

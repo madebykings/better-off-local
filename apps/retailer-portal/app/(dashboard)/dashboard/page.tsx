@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
 import { ActivationStatusCard } from '@/components/dashboard/activation_status_card';
+import { ProfileCompletionCard, type CompletionItem } from '@/components/dashboard/profile_completion_card';
 import { MetricCard, PageHeader, SectionCard, EmptyState, StatusBadge } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Dashboard – Retailer Portal' };
@@ -28,53 +29,86 @@ export default async function DashboardPage() {
   const { retailerId } = await requireRetailerUser();
   const supabase = createServiceClient();
 
-  const [retailerResult, subscriptionResult, liveOffersResult, redemptionsResult, viewsResult, savesResult, recentResult] =
-    await Promise.all([
-      supabase
-        .from('retailers')
-        .select('approval_status, visibility_status, review_notes')
-        .eq('id', retailerId)
-        .single(),
-      supabase
-        .from('retailer_subscriptions')
-        .select('status, current_period_end')
-        .eq('retailer_id', retailerId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from('offers')
-        .select('id', { count: 'exact', head: true })
-        .eq('retailer_id', retailerId)
-        .eq('status', 'live'),
-      supabase
-        .from('redemptions')
-        .select('id', { count: 'exact', head: true })
-        .eq('retailer_id', retailerId)
-        .eq('status', 'success'),
-      supabase
-        .from('offer_views')
-        .select('id', { count: 'exact', head: true })
-        .eq('retailer_id', retailerId),
-      supabase
-        .from('favourites')
-        .select('id', { count: 'exact', head: true })
-        .eq('retailer_id', retailerId),
-      supabase
-        .from('redemptions')
-        .select('id, status, redeemed_at, offers(title), profiles!redemptions_profile_id_fkey(full_name)')
-        .eq('retailer_id', retailerId)
-        .order('redeemed_at', { ascending: false })
-        .limit(5),
-    ]);
+  const [
+    retailerResult,
+    subscriptionResult,
+    liveOffersResult,
+    redemptionsResult,
+    viewsResult,
+    savesResult,
+    recentResult,
+    anyOfferResult,
+    loyaltyResult,
+    referralResult,
+    eventsResult,
+  ] = await Promise.all([
+    supabase
+      .from('retailers')
+      .select('approval_status, visibility_status, review_notes, description')
+      .eq('id', retailerId)
+      .single(),
+    supabase
+      .from('retailer_subscriptions')
+      .select('status, current_period_end')
+      .eq('retailer_id', retailerId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('offers')
+      .select('id', { count: 'exact', head: true })
+      .eq('retailer_id', retailerId)
+      .eq('status', 'live'),
+    supabase
+      .from('redemptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('retailer_id', retailerId)
+      .eq('status', 'success'),
+    supabase
+      .from('offer_views')
+      .select('id', { count: 'exact', head: true })
+      .eq('retailer_id', retailerId),
+    supabase
+      .from('favourites')
+      .select('id', { count: 'exact', head: true })
+      .eq('retailer_id', retailerId),
+    supabase
+      .from('redemptions')
+      .select('id, status, redeemed_at, offers(title), profiles!redemptions_profile_id_fkey(full_name)')
+      .eq('retailer_id', retailerId)
+      .order('redeemed_at', { ascending: false })
+      .limit(5),
+    // Any offer at all (for completion check)
+    supabase
+      .from('offers')
+      .select('id', { count: 'exact', head: true })
+      .eq('retailer_id', retailerId),
+    // Growth opportunities: loyalty programme
+    supabase
+      .from('offers')
+      .select('id', { count: 'exact', head: true })
+      .eq('retailer_id', retailerId)
+      .eq('offer_type', 'loyalty_visits'),
+    // Growth opportunities: referral campaign
+    supabase
+      .from('offers')
+      .select('id', { count: 'exact', head: true })
+      .eq('retailer_id', retailerId)
+      .eq('offer_type', 'venue_referral'),
+    // Growth opportunities: events
+    supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .eq('retailer_id', retailerId),
+  ]);
 
   const retailer = retailerResult.data;
   const subscription = subscriptionResult.data;
 
-  // Fetch primary venue billing status for growth-region handling
+  // Fetch primary venue (billing status + profile completion fields)
   const { data: primaryVenue } = await supabase
     .from('retailer_locations')
-    .select('billing_status')
+    .select('billing_status, logo_url, cover_image_url, opening_hours_json, review_status, description')
     .eq('retailer_id', retailerId)
     .eq('is_primary', true)
     .eq('is_active', true)
@@ -85,6 +119,71 @@ export default async function DashboardPage() {
   const totalViews = viewsResult.count ?? 0;
   const totalSaves = savesResult.count ?? 0;
   const recentRedemptions = (recentResult.data ?? []) as unknown as RecentRedemption[];
+
+  const visibilityStatus = retailer?.visibility_status ?? 'pending';
+  const isLive = visibilityStatus === 'live';
+
+  // ── Profile completion ─────────────────────────────────────────────────────
+
+  const hasLogo        = !!primaryVenue?.logo_url;
+  const hasCover       = !!primaryVenue?.cover_image_url;
+  const hasHours       = !!primaryVenue?.opening_hours_json && Object.keys(primaryVenue.opening_hours_json as object).length > 0;
+  const venueSubmitted = primaryVenue?.review_status === 'approved' || primaryVenue?.review_status === 'pending';
+  const hasFirstOffer  = (anyOfferResult.count ?? 0) > 0;
+  const hasDescription =
+    !!(retailer?.description?.trim()) ||
+    !!(primaryVenue?.description?.trim());
+
+  const completionItems: CompletionItem[] = [
+    { label: 'Add a logo',             done: hasLogo,        href: '/profile' },
+    { label: 'Add a cover image',      done: hasCover,       href: '/profile' },
+    { label: 'Set your opening hours', done: hasHours,       href: '/profile' },
+    { label: 'Submit your venue',      done: venueSubmitted, href: '/profile' },
+    { label: 'Create your first offer',done: hasFirstOffer,  href: '/offers/new' },
+    { label: 'Write a description',    done: hasDescription, href: '/profile' },
+  ];
+
+  const completionScore = Math.round(
+    (completionItems.filter((i) => i.done).length / completionItems.length) * 100,
+  );
+
+  // ── Growth opportunities ───────────────────────────────────────────────────
+
+  const hasLoyalty  = (loyaltyResult.count ?? 0) > 0;
+  const hasReferral = (referralResult.count ?? 0) > 0;
+  const hasEvents   = (eventsResult.count ?? 0) > 0;
+
+  type GrowthOpportunity = {
+    icon: string;
+    heading: string;
+    body: string;
+    ctaLabel: string;
+    ctaHref: string;
+  };
+
+  const growthOpportunities: GrowthOpportunity[] = [
+    !hasLoyalty && {
+      icon: '🃏',
+      heading: 'Start a loyalty programme',
+      body: 'Stamp card programmes bring customers back. Businesses with loyalty generate more repeat visits.',
+      ctaLabel: 'Create loyalty programme',
+      ctaHref: '/loyalty/new',
+    },
+    !hasReferral && {
+      icon: '🤝',
+      heading: 'Launch a refer-a-friend campaign',
+      body: 'Let your customers do the marketing. Referral campaigns are your lowest-cost growth channel.',
+      ctaLabel: 'Create referral campaign',
+      ctaHref: '/referrals/new',
+    },
+    !hasEvents && {
+      icon: '📅',
+      heading: 'Host your first event',
+      body: 'Events attract new faces and keep regulars engaged. Featured events get more visibility in the app.',
+      ctaLabel: 'Create an event',
+      ctaHref: '/events/new',
+    },
+  ].filter(Boolean) as GrowthOpportunity[];
 
   function TagIcon() {
     return (
@@ -159,13 +258,18 @@ export default async function DashboardPage() {
           <ActivationStatusCard
             approvalStatus={retailer.approval_status as 'pending' | 'approved' | 'rejected' | 'suspended' | 'changes_requested'}
             subscriptionStatus={(subscription?.status ?? null) as 'inactive' | 'active' | 'past_due' | 'cancelled' | 'expired' | null}
-            visibilityStatus={retailer.visibility_status}
+            visibilityStatus={visibilityStatus}
             periodEnd={subscription?.current_period_end ?? null}
             billingStatus={(primaryVenue?.billing_status ?? null) as string | null}
             reviewNotes={(retailer as any).review_notes ?? null}
             liveOfferCount={liveOffers}
           />
         </div>
+      )}
+
+      {/* Profile completion — only shown to non-live retailers */}
+      {!isLive && (
+        <ProfileCompletionCard score={completionScore} items={completionItems} />
       )}
 
       {/* Metrics */}
@@ -175,26 +279,58 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* What's next */}
-      <div className="mb-8">
-        <SectionCard title="What's next">
-          <div className="flex items-start gap-3">
-            <span className="text-green-700 text-lg leading-none mt-0.5" aria-hidden="true">→</span>
-            <div className="min-w-0">
-              <p className="font-medium text-gray-800">{whatsNext.heading}</p>
-              <p className="text-sm text-gray-500 mt-1">{whatsNext.description}</p>
-              {whatsNext.href && (
-                <Link
-                  href={whatsNext.href}
-                  className="inline-block mt-3 text-sm font-medium text-green-700 hover:text-green-900 hover:underline"
+      {/* Growth opportunities — only shown to live retailers with missing features */}
+      {isLive && growthOpportunities.length > 0 && (
+        <div className="mb-8">
+          <SectionCard title="Grow your business">
+            <div className="space-y-3">
+              {growthOpportunities.map((opp) => (
+                <div
+                  key={opp.ctaHref}
+                  className="flex items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3.5"
                 >
-                  {whatsNext.linkLabel}
-                </Link>
-              )}
+                  <span className="text-lg leading-none mt-0.5 shrink-0" aria-hidden="true">
+                    {opp.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800">{opp.heading}</p>
+                    <p className="mt-0.5 text-sm text-gray-500 leading-relaxed">{opp.body}</p>
+                    <Link
+                      href={opp.ctaHref}
+                      className="mt-2 inline-block text-sm font-medium text-green-700 hover:text-green-900 hover:underline"
+                    >
+                      {opp.ctaLabel} →
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        </SectionCard>
-      </div>
+          </SectionCard>
+        </div>
+      )}
+
+      {/* What's next — only shown to live retailers */}
+      {isLive && (
+        <div className="mb-8">
+          <SectionCard title="What's next">
+            <div className="flex items-start gap-3">
+              <span className="text-green-700 text-lg leading-none mt-0.5" aria-hidden="true">→</span>
+              <div className="min-w-0">
+                <p className="font-medium text-gray-800">{whatsNext.heading}</p>
+                <p className="text-sm text-gray-500 mt-1">{whatsNext.description}</p>
+                {whatsNext.href && (
+                  <Link
+                    href={whatsNext.href}
+                    className="inline-block mt-3 text-sm font-medium text-green-700 hover:text-green-900 hover:underline"
+                  >
+                    {whatsNext.linkLabel}
+                  </Link>
+                )}
+              </div>
+            </div>
+          </SectionCard>
+        </div>
+      )}
 
       {/* Recent redemptions */}
       <div>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getPrevStep, getNextStep } from '@/lib/onboarding/steps';
 import { type RedemptionRule } from '@/lib/utils/redemption_rules';
 import {
-  OFFER_TYPES,
+  STANDARD_OFFER_TYPES,
   type FirstOfferFields,
   type OfferType,
   computeValueText,
@@ -555,7 +555,7 @@ export function FirstOfferForm({
           <div>
             <p className="mb-2 text-sm font-medium text-gray-700">Offer type</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {OFFER_TYPES.map((type) => {
+              {STANDARD_OFFER_TYPES.map((type) => {
                 const config = OFFER_TYPE_CONFIG[type];
                 const active = fields.offerType === type;
                 return (

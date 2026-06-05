@@ -156,7 +156,7 @@ export default async function LoyaltyPage() {
                       <td className="px-4 py-3 text-right text-gray-500">{pct(claimed, issued)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <Link
-                          href={`/offers/${offer.id}`}
+                          href={`/loyalty/${offer.id}`}
                           className="text-xs font-medium text-green-700 hover:text-green-900 hover:underline"
                         >
                           Edit
@@ -180,7 +180,7 @@ export default async function LoyaltyPage() {
                 <div key={offer.id} className="rounded-lg border border-gray-200 bg-white p-4">
                   <div className="flex items-start justify-between gap-2">
                     <Link
-                      href={`/offers/${offer.id}`}
+                      href={`/loyalty/${offer.id}`}
                       className="font-medium text-gray-800 hover:text-green-700 min-w-0 truncate block"
                     >
                       {offer.title}
