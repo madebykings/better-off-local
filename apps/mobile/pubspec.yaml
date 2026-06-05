@@ -99,6 +99,7 @@ flutter:
     - assets/images/
     - assets/splash/
     - assets/branding/
+    - assets/map/
   # fonts:
   #   - family: Inter
   #     fonts:

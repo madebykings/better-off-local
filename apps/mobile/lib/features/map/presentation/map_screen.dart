@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -44,12 +45,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   final _searchController = TextEditingController();
   final _markerCache = MapMarkerCache();
   bool _hasFitBounds = false;
+  String? _mapStyleJson;
 
   @override
   void initState() {
     super.initState();
     debugPrint(
         '[MAP KEY] Dart env value=${Env.googleMapsApiKey.isEmpty ? "MISSING" : "present (${Env.googleMapsApiKey.length} chars)"}');
+    rootBundle.loadString('assets/map/bol_map_style.json').then((style) {
+      _mapStyleJson = style;
+    }).catchError((Object e) {
+      debugPrint('[MAP] Failed to load map style asset: $e');
+    });
     // Pre-paint custom markers; rebuild once ready for branded icons.
     _markerCache.initialize().then((_) {
       if (mounted) setState(() {});
@@ -243,6 +250,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             onMapCreated: (controller) {
               _mapController = controller;
               debugPrint('[MAP] onMapCreated fired');
+              final style = _mapStyleJson;
+              if (style != null) {
+                controller.setMapStyle(style).catchError((Object e) {
+                  debugPrint('[MAP] setMapStyle failed: $e');
+                });
+              }
               final current = ref.read(mapFilteredRetailersProvider);
               if (!_hasFitBounds && current.isNotEmpty) {
                 _hasFitBounds = true;
