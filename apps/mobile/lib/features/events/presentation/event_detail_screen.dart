@@ -140,7 +140,7 @@ class _EventDetailViewState extends ConsumerState<_EventDetailView> {
                   if (event.endAt != null) ...[
                     _InfoRow(
                       icon: Icons.access_time_outlined,
-                      text: 'Ends ${Event._formattedTimeFrom(event.endAt!)}',
+                      text: 'Ends ${_formattedTime(event.endAt!)}',
                     ),
                     const SizedBox(height: 8),
                   ],
@@ -380,13 +380,11 @@ class _EventHeroPlaceholder extends StatelessWidget {
   }
 }
 
-// Extension to allow access to static helper from within file.
-extension on Event {
-  static String _formattedTimeFrom(DateTime dt) {
-    final d = dt.toLocal();
-    final h = d.hour > 12 ? d.hour - 12 : (d.hour == 0 ? 12 : d.hour);
-    final m = d.minute.toString().padLeft(2, '0');
-    final ampm = d.hour >= 12 ? 'pm' : 'am';
-    return '$h:${m}$ampm';
-  }
+// Free-standing helper — formats a DateTime as a 12-hour time string.
+String _formattedTime(DateTime dt) {
+  final d = dt.toLocal();
+  final h = d.hour > 12 ? d.hour - 12 : (d.hour == 0 ? 12 : d.hour);
+  final m = d.minute.toString().padLeft(2, '0');
+  final ampm = d.hour >= 12 ? 'pm' : 'am';
+  return '$h:${m}$ampm';
 }
