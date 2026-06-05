@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../debug/presentation/firebase_diagnostics_screen.dart';
 import '../../notifications/providers/notification_preferences_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -62,6 +64,23 @@ class SettingsScreen extends ConsumerWidget {
               style: TextStyle(color: Colors.grey),
             ),
           ),
+
+          // Debug-only section — stripped from release builds via kDebugMode.
+          if (kDebugMode) ...[
+            const _SectionHeader('Developer'),
+            ListTile(
+              leading: const Icon(Icons.bug_report_outlined),
+              title: const Text('Firebase Diagnostics'),
+              subtitle: const Text('Push, Analytics, Crashlytics status'),
+              trailing: const Icon(Icons.chevron_right, size: 18),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                  builder: (_) => const FirebaseDiagnosticsScreen(),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
