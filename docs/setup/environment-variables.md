@@ -32,7 +32,7 @@ Set in `.env.local` (local) or Vercel environment variables (production).
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL (public) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key (public) |
-| `NEXT_PUBLIC_APP_URL` | Yes | Portal public URL, e.g. `https://portal.betterofflocal.com` |
+| `NEXT_PUBLIC_APP_URL` | Yes | Portal public URL, e.g. `https://portal.betterofflocal.co.uk` |
 | `SUPABASE_URL` | Yes | Supabase project URL (server-side) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key — never expose to browser |
 | `STRIPE_SECRET_KEY` | Yes | Stripe secret key for checkout + portal sessions |
@@ -49,7 +49,7 @@ Set in `.env.local` (local) or Vercel environment variables (production).
 | `SUPABASE_URL` | Yes | Supabase project URL (server-side) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key |
 | `RESEND_API_KEY` | **Yes — retailer emails** | Resend API key (`re_...`). Without this, retailer approval/rejection emails are silently skipped. Get one at resend.com. |
-| `RESEND_FROM_EMAIL` | **Yes — retailer emails** | Verified sender address in your Resend account, e.g. `hello@betterofflocal.com`. Domain must be verified with Resend. |
+| `RESEND_FROM_EMAIL` | **Yes — retailer emails** | Verified sender address in your Resend account, e.g. `hello@betterofflocal.co.uk`. Domain must be verified with Resend. |
 
 ---
 
@@ -68,7 +68,7 @@ Set via `supabase secrets set` or the Supabase dashboard.
 | `STRIPE_PRICE_ID_ANNUAL` | Yes | Stripe price ID for annual consumer membership |
 | `STRIPE_RETAILER_ANNUAL_PRICE_ID` | Yes | Stripe price ID for retailer annual subscription |
 | `APP_SCHEME` | No | Deep link scheme, default `betterofflocal` |
-| `APP_UNIVERSAL_LINK_DOMAIN` | No | Universal link domain, e.g. `app.betterofflocal.com` |
+| `APP_UNIVERSAL_LINK_DOMAIN` | No | Universal link domain, e.g. `betterofflocal.co.uk` |
 | `RETAILER_PORTAL_URL` | No | Retailer portal URL for redirect links |
 | `RETAILER_GRACE_DAYS` | No | Grace period after subscription expires (default `0`) |
 
@@ -115,8 +115,8 @@ https://<domain>/.well-known/assetlinks.json
 Both Apple App Store and Google Play require working privacy policy and terms
 links. These must be live at:
 
-- `https://betterofflocal.com/privacy`
-- `https://betterofflocal.com/terms`
+- `https://betterofflocal.co.uk/privacy`
+- `https://betterofflocal.co.uk/terms`
 
 These URLs are hardcoded in `apps/mobile/lib/core/constants/app_constants.dart`.
 If the domain changes, update that file before submission.

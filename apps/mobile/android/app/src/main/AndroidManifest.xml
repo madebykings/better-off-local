@@ -72,7 +72,7 @@
                 <data android:scheme="betterofflocal"/>
             </intent-filter>
 
-            <!-- ── HTTPS App Links: betterofflocal.com ───────────────────── -->
+            <!-- ── HTTPS App Links: betterofflocal.co.uk ─────────────────── -->
             <!-- Enables verified Android App Links so HTTPS URLs open directly -->
             <!-- in the app without a chooser dialog. Required for deferred     -->
             <!-- deep links (e.g. venue referral landing page → install → open).-->
@@ -81,7 +81,7 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="betterofflocal.com"/>
+                <data android:scheme="https" android:host="betterofflocal.co.uk"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

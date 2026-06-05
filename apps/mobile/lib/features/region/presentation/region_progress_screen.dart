@@ -350,7 +350,7 @@ class _StatsBody extends StatelessWidget {
     Share.share(
       'I\'m part of Better Off Local in ${region.name} — supporting local businesses and saving money at the same time. '
       '${region.activeMemberCount} members and growing!\n'
-      'Join us: https://betterofflocal.com/join',
+      'Join us: https://betterofflocal.co.uk/join',
       subject: 'Join Better Off Local in ${region.name}',
     );
   }

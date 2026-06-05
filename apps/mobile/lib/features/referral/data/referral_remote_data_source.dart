@@ -29,7 +29,7 @@ class ReferralRemoteDataSource {
     if (codeResult == null) return null;
 
     final code = codeResult['code'] as String;
-    final referralUrl = 'https://betterofflocal.com/join?ref=$code';
+    final referralUrl = 'https://betterofflocal.co.uk/join?ref=$code';
 
     // Count attributed invitations for this member's code
     final referralCodeResult = await _client

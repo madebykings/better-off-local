@@ -43,7 +43,7 @@ class VenueReferralRemoteDataSource {
 
     String shareUrl = '';
     if (token.isNotEmpty) {
-      shareUrl = 'https://betterofflocal.com/venue-referral?t=$token';
+      shareUrl = 'https://betterofflocal.co.uk/venue-referral?t=$token';
       if (platformCode != null && platformCode.isNotEmpty) {
         shareUrl += '&ref=$platformCode';
       }

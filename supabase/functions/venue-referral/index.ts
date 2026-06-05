@@ -13,7 +13,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
  * Deployment note:
  *   This function is deployed at
  *     https://<project>.supabase.co/functions/v1/venue-referral
- *   betterofflocal.com/venue-referral should proxy or redirect to this URL.
+ *   betterofflocal.co.uk/venue-referral should proxy or redirect to this URL.
  *
  * Required env vars: none (public, no auth).
  *

@@ -39,7 +39,7 @@ In **Authentication → URL Configuration**:
 - **Redirect URLs**: add all allowed redirect origins:
   - `https://portal.betterofflocal.co.uk/**`
   - `https://admin.betterofflocal.co.uk/**`
-  - `https://app.betterofflocal.co.uk/**`
+  - `https://betterofflocal.co.uk/**`
   - `betterofflocal://` (Flutter custom scheme fallback)
 
 ### Link the Supabase CLI
@@ -164,7 +164,7 @@ supabase secrets set RETAILER_GRACE_DAYS=7
 
 # Deep links — universal links (HTTPS) take priority; custom scheme is the fallback
 # Set APP_UNIVERSAL_LINK_DOMAIN once AASA / DAL files are hosted (see section 10)
-supabase secrets set APP_UNIVERSAL_LINK_DOMAIN=app.betterofflocal.co.uk
+supabase secrets set APP_UNIVERSAL_LINK_DOMAIN=betterofflocal.co.uk
 supabase secrets set APP_SCHEME=betterofflocal
 ```
 
@@ -335,27 +335,27 @@ Flutter handles incoming URIs via the `app_links` package. The custom scheme mus
 
 ### iOS Universal Links (AASA)
 
-To use HTTPS universal links (`https://app.betterofflocal.co.uk/...`):
+To use HTTPS universal links (`https://betterofflocal.co.uk/...`):
 
 1. Host the Apple App Site Association file at:
    ```
-   https://app.betterofflocal.co.uk/.well-known/apple-app-site-association
-   https://app.betterofflocal.co.uk/apple-app-site-association
+   https://betterofflocal.co.uk/.well-known/apple-app-site-association
+   https://betterofflocal.co.uk/apple-app-site-association
    ```
 2. The file must be served with `Content-Type: application/json` (no `.json` extension).
 3. Include your app's team ID and bundle identifier in the `applinks` section.
-4. Enable the **Associated Domains** capability in Xcode with `applinks:app.betterofflocal.co.uk`.
+4. Enable the **Associated Domains** capability in Xcode with `applinks:betterofflocal.co.uk`.
 
 Once hosted and verified, update the edge function secret:
 ```bash
-supabase secrets set APP_UNIVERSAL_LINK_DOMAIN=app.betterofflocal.co.uk
+supabase secrets set APP_UNIVERSAL_LINK_DOMAIN=betterofflocal.co.uk
 ```
 
 ### Android App Links (Digital Asset Links)
 
 1. Host the DAL file at:
    ```
-   https://app.betterofflocal.co.uk/.well-known/assetlinks.json
+   https://betterofflocal.co.uk/.well-known/assetlinks.json
    ```
 2. Include your app's `package_name` and `sha256_cert_fingerprints` (from Play Console or `keytool`).
 3. Add an `intent-filter` in `AndroidManifest.xml` with `autoVerify="true"`.
@@ -363,7 +363,7 @@ supabase secrets set APP_UNIVERSAL_LINK_DOMAIN=app.betterofflocal.co.uk
 ### Stripe redirect deep link
 
 The consumer checkout success URL is currently configured as either:
-- `https://app.betterofflocal.co.uk/subscription-success` (when `APP_UNIVERSAL_LINK_DOMAIN` is set)
+- `https://betterofflocal.co.uk/subscription-success` (when `APP_UNIVERSAL_LINK_DOMAIN` is set)
 - `betterofflocal://subscription-success` (custom scheme fallback)
 
 The Flutter app routes this URI to the post-payment confirmation screen.

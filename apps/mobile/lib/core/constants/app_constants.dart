@@ -22,6 +22,6 @@ abstract class AppConstants {
   static const String appVersion = '1.0.0';
 
   // Legal URLs — update before store release
-  static const String privacyPolicyUrl = 'https://betterofflocal.com/privacy';
-  static const String termsUrl = 'https://betterofflocal.com/terms';
+  static const String privacyPolicyUrl = 'https://betterofflocal.co.uk/privacy';
+  static const String termsUrl = 'https://betterofflocal.co.uk/terms';
 }

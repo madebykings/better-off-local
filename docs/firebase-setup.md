@@ -116,11 +116,11 @@ This is governed by the `try/catch` with 10-second timeout in `lib/app/bootstrap
 
 ## Android App Links (assetlinks.json)
 
-Required for verified HTTPS deep links (`https://betterofflocal.com/...`).
+Required for verified HTTPS deep links (`https://betterofflocal.co.uk/...`).
 
 The app already handles the routing — you just need the server-side file.
 
-Deploy to: `https://betterofflocal.com/.well-known/assetlinks.json`
+Deploy to: `https://betterofflocal.co.uk/.well-known/assetlinks.json`
 
 ```json
 [{
@@ -143,9 +143,9 @@ Get the SHA-256: `keytool -list -v -keystore your-release.keystore -alias your-a
 
 Required for verified HTTPS deep links on iOS.
 
-`ios/Runner/Runner.entitlements` already contains `applinks:betterofflocal.com`.
+`ios/Runner/Runner.entitlements` already contains `applinks:betterofflocal.co.uk`. ✓
 
-Deploy to: `https://betterofflocal.com/.well-known/apple-app-site-association`
+Deploy to: `https://betterofflocal.co.uk/.well-known/apple-app-site-association`
 
 ```json
 {

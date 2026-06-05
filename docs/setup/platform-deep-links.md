@@ -25,7 +25,7 @@ Inside the `<activity>` element, add two `<intent-filter>` blocks:
     <category android:name="android.intent.category.BROWSABLE" />
     <data
         android:scheme="https"
-        android:host="app.betterofflocal.co.uk" />
+        android:host="betterofflocal.co.uk" />
 </intent-filter>
 
 <!-- Custom scheme fallback -->
@@ -40,7 +40,7 @@ Inside the `<activity>` element, add two `<intent-filter>` blocks:
 ### Digital Asset Links file
 
 Host this file at:
-`https://app.betterofflocal.co.uk/.well-known/assetlinks.json`
+`https://betterofflocal.co.uk/.well-known/assetlinks.json`
 
 ```json
 [
@@ -102,14 +102,14 @@ Create this file if it does not exist, then add it to the Xcode project:
 <dict>
     <key>com.apple.developer.associated-domains</key>
     <array>
-        <string>applinks:app.betterofflocal.co.uk</string>
+        <string>applinks:betterofflocal.co.uk</string>
     </array>
 </dict>
 </plist>
 ```
 
 In Xcode: Signing & Capabilities → + Capability → Associated Domains.
-Add `applinks:app.betterofflocal.co.uk`. Xcode will create / update the
+Add `applinks:betterofflocal.co.uk`. Xcode will create / update the
 entitlements file automatically.
 
 ### Apple App Site Association (AASA) file
@@ -117,8 +117,8 @@ entitlements file automatically.
 Host this file at **both** URLs (Apple checks both with and without the
 `.well-known` path):
 
-- `https://app.betterofflocal.co.uk/.well-known/apple-app-site-association`
-- `https://app.betterofflocal.co.uk/apple-app-site-association`
+- `https://betterofflocal.co.uk/.well-known/apple-app-site-association`
+- `https://betterofflocal.co.uk/apple-app-site-association`
 
 The file must be served with `Content-Type: application/json` and **must not**
 be compressed (no gzip).
@@ -150,7 +150,7 @@ the Apple Developer portal under Membership).
 Once the AASA and DAL files are hosted and verified, set:
 
 ```bash
-supabase secrets set APP_UNIVERSAL_LINK_DOMAIN=app.betterofflocal.co.uk
+supabase secrets set APP_UNIVERSAL_LINK_DOMAIN=betterofflocal.co.uk
 ```
 
 Until then, leave it unset and the edge function will fall back to:

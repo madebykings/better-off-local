@@ -122,7 +122,7 @@ class _AppState extends ConsumerState<App> {
   /// Routes an incoming deep link URI to the correct screen.
   ///
   /// Normalises both link types to a path string before switching:
-  ///   Universal link  — https://app.betterofflocal.co.uk/subscription-success
+  ///   Universal link  — https://betterofflocal.co.uk/subscription-success
   ///                     → uri.path == '/subscription-success'
   ///   Custom scheme   — betterofflocal://subscription-success
   ///                     → uri.host == 'subscription-success', uri.path == ''

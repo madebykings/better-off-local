@@ -43,7 +43,7 @@ native platform directories if they don't exist, then apply the config below.
 - Set category: **Lifestyle** or **Shopping**
 - Upload screenshots (6.7", 6.1", 5.5", iPad 12.9")
 - Write app description emphasising local community value
-- Add Privacy Policy URL: `https://betterofflocal.com/privacy`
+- Add Privacy Policy URL: `https://betterofflocal.co.uk/privacy`
 - Enable push notifications entitlement
 
 ---
@@ -99,7 +99,7 @@ android {
 - Create app with package `com.betterofflocal.app`
 - Set category: **Lifestyle**
 - Upload signed AAB (`flutter build appbundle --release --dart-define=...`)
-- Add privacy policy URL: `https://betterofflocal.com/privacy`
+- Add privacy policy URL: `https://betterofflocal.co.uk/privacy`
 - Complete data safety form (location data collected, not shared with third parties)
 - Enable Firebase Cloud Messaging for push notifications
 
@@ -135,8 +135,8 @@ flutter build appbundle \
 
 ## Pre-release Checklist
 
-- [ ] Privacy Policy live at `https://betterofflocal.com/privacy`
-- [ ] Terms & Conditions live at `https://betterofflocal.com/terms`
+- [ ] Privacy Policy live at `https://betterofflocal.co.uk/privacy`
+- [ ] Terms & Conditions live at `https://betterofflocal.co.uk/terms`
 - [ ] App version set to `1.0.0+1` in `pubspec.yaml`
 - [ ] All `--dart-define` values set in CI/CD secrets
 - [ ] Push notification certificates/keys configured in Supabase dashboard

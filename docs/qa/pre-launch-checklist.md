@@ -66,7 +66,7 @@ Executable by a human tester. Each item includes the user journey, expected resu
 | # | Step | Expected result | Verify |
 |---|------|-----------------|--------|
 | 5.1 | Navigate to Refer a Friend | Screen loads with referral code and "Give a month, get a month" hero | App |
-| 5.2 | Copy referral link | Link copied to clipboard: `https://betterofflocal.com/join?ref=CODE` | Clipboard |
+| 5.2 | Copy referral link | Link copied to clipboard: `https://betterofflocal.co.uk/join?ref=CODE` | Clipboard |
 | 5.3 | Share referral link | Share sheet opens with pre-filled message | App |
 | 5.4 | New user signs up via referral link | `profiles.referred_by_code_id` set; `referral_invitations` row created | Supabase |
 | 5.5 | Referred user completes first payment | `referral_rewards` row created with status `pending` | Supabase: `referral_rewards` |
