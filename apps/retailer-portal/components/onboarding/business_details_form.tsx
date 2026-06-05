@@ -8,6 +8,7 @@ import {
   draftSaveBusinessDetails,
   type BusinessDetailsFields,
 } from '@/lib/actions/onboarding';
+import { PARTNER_TYPE_OPTIONS, getPartnerTerms } from '@/lib/partner_type';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -37,7 +38,7 @@ type FormErrors = Partial<Record<keyof BusinessDetailsFields, string>>;
 function validate(fields: BusinessDetailsFields): FormErrors {
   const errors: FormErrors = {};
   if (fields.name.trim().length < 2) {
-    errors.name = 'Business name is required (at least 2 characters).';
+    errors.name = 'Name is required (at least 2 characters).';
   }
   if (fields.shortDescription.trim().length < 10) {
     errors.shortDescription = 'Short description must be at least 10 characters.';
@@ -289,6 +290,7 @@ export function BusinessDetailsForm({
   }
 
   const shortDescCount = (fields.shortDescription ?? '').length;
+  const terms = getPartnerTerms(fields.partnerType);
 
   return (
     <div className="grid grid-cols-1 gap-x-14 gap-y-10 lg:grid-cols-[1fr_320px]">
@@ -303,7 +305,24 @@ export function BusinessDetailsForm({
           </div>
         )}
 
-        <Field id="name" label="Business name" required error={errors.name}>
+        <Field id="partnerType" label="What type of organisation are you?" required>
+          <select
+            id="partnerType"
+            value={fields.partnerType}
+            onChange={setField('partnerType')}
+            className={inputCls(false) + ' cursor-pointer'}
+            disabled={isPending}
+          >
+            <option value="">Select a type…</option>
+            {PARTNER_TYPE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field id="name" label={`${terms.entity} name`} required error={errors.name}>
           <input
             id="name"
             type="text"

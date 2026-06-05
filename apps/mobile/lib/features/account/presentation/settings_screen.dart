@@ -24,18 +24,18 @@ class SettingsScreen extends ConsumerWidget {
 
           const _SectionHeader('Notifications'),
           const _DbNotifPrefTile(
-            title: 'New offers from followed businesses',
-            subtitle: 'Notified when a business you follow goes live',
+            title: 'New offers from followed partners',
+            subtitle: 'Notified when a local partner you follow goes live',
             column: 'new_offers',
           ),
           const _DbNotifPrefTile(
             title: 'Loyalty programmes',
-            subtitle: 'New loyalty card programmes from local businesses',
+            subtitle: 'New loyalty card programmes from local partners',
             column: 'loyalty_programmes',
           ),
           const _DbNotifPrefTile(
             title: 'Referral campaigns',
-            subtitle: 'Referral offer campaigns from businesses you follow',
+            subtitle: 'Referral offer campaigns from local partners you follow',
             column: 'referral_campaigns',
           ),
 

@@ -3,6 +3,7 @@ import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
 import { MetricCard, PageHeader, SectionCard, GuidanceCard } from '@better-off-local/ui';
 import { RetailerImpactCard } from '@/components/impact/RetailerImpactCard';
+import { getPartnerTerms } from '@/lib/partner_type';
 
 export const metadata: Metadata = { title: 'Analytics – Retailer Portal' };
 
@@ -242,10 +243,10 @@ export default async function AnalyticsPage() {
       .eq('is_primary', true)
       .maybeSingle(),
 
-    // Health score: retailer description
+    // Health score: retailer description + partner type
     supabase
       .from('retailers')
-      .select('description')
+      .select('description, partner_type')
       .eq('id', retailerId)
       .single(),
 
@@ -420,8 +421,9 @@ export default async function AnalyticsPage() {
     opening_hours_json: unknown;
     description: string | null;
   } | null;
-  const retailerDescription =
-    (retailerDescriptionResult.data as { description: string | null } | null)?.description ?? null;
+  const retailerDescriptionRow = retailerDescriptionResult.data as { description: string | null; partner_type: string | null } | null;
+  const retailerDescription = retailerDescriptionRow?.description ?? null;
+  const terms = getPartnerTerms(retailerDescriptionRow?.partner_type);
   const eventsCount = eventsCountResult.count ?? 0;
 
   const hasLiveOffers = liveOfferCount > 0;
@@ -441,7 +443,7 @@ export default async function AnalyticsPage() {
     { label: 'Loyalty programme', met: hasLoyalty, points: 15, href: '/offers/new?type=loyalty_visits' },
     { label: 'Referral campaign', met: hasReferral, points: 15, href: '/offers/new?type=venue_referral' },
     { label: 'Events listed', met: hasEvents, points: 10, href: '/events' },
-    { label: 'Business description', met: hasDescription, points: 15, href: '/settings/profile' },
+    { label: terms.descriptionLabel, met: hasDescription, points: 15, href: '/settings/profile' },
     { label: 'Logo uploaded', met: hasLogo, points: 15, href: '/settings/profile' },
     { label: 'Opening hours set', met: hasOpeningHours, points: 10, href: '/settings/profile' },
   ];
@@ -480,7 +482,7 @@ export default async function AnalyticsPage() {
       />
 
       {/* ── Business Health Score ── */}
-      <SectionCard title="Business Health Score">
+      <SectionCard title={terms.healthLabel}>
         <div className="flex flex-col md:flex-row md:items-start gap-6">
           {/* Score display */}
           <div className="shrink-0 text-center md:text-left">
@@ -676,10 +678,10 @@ export default async function AnalyticsPage() {
       </SectionCard>
 
       {/* ── Customer Acquisition ── */}
-      <SectionCard title="Customer Acquisition">
+      <SectionCard title={`${terms.customer} Acquisition`}>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <MetricCard label="New customers" value={newCustomers} />
-          <MetricCard label="Repeat customers" value={returningCustomers} />
+          <MetricCard label={`New ${terms.customers.toLowerCase()}`} value={newCustomers} />
+          <MetricCard label={`Repeat ${terms.customers.toLowerCase()}`} value={returningCustomers} />
           <MetricCard label="Repeat visit rate" value={repeatVisitRate} />
           <MetricCard label="Unique members" value={uniqueMembers} />
           <MetricCard label="Referral invitations" value={totalInvitesSent} />

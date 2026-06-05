@@ -14,6 +14,7 @@ export interface BusinessDetailsFields {
   shortDescription: string; // → retailers.short_description
   businessType: string;
   phone: string;
+  partnerType: string;
 }
 
 export interface BusinessDetailsActionResult {
@@ -137,6 +138,7 @@ export async function saveBusinessDetails(
         short_description: fields.shortDescription.trim(),
         business_type: fields.businessType || null,
         phone: fields.phone.trim() || null,
+        partner_type: fields.partnerType || 'business',
         ...(shouldAdvance ? { onboarding_step: 'branding' } : {}),
         updated_at: new Date().toISOString(),
       })
@@ -158,6 +160,7 @@ export async function saveBusinessDetails(
         short_description: fields.shortDescription.trim(),
         business_type: fields.businessType || null,
         phone: fields.phone.trim() || null,
+        partner_type: fields.partnerType || 'business',
         onboarding_step: 'branding',
       })
       .select('id')
@@ -213,6 +216,7 @@ export async function draftSaveBusinessDetails(
         short_description: fields.shortDescription.trim() || null,
         business_type: fields.businessType || null,
         phone: fields.phone.trim() || null,
+        partner_type: fields.partnerType || 'business',
         updated_at: new Date().toISOString(),
       })
       .eq('id', existingRetailerId);
@@ -238,6 +242,7 @@ export async function draftSaveBusinessDetails(
         short_description: fields.shortDescription.trim() || null,
         business_type: fields.businessType || null,
         phone: fields.phone.trim() || null,
+        partner_type: fields.partnerType || 'business',
         onboarding_step: 'business-details',
       })
       .select('id')

@@ -5,6 +5,7 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { ActivationStatusCard } from '@/components/dashboard/activation_status_card';
 import { ProfileCompletionCard, type CompletionItem } from '@/components/dashboard/profile_completion_card';
 import { MetricCard, PageHeader, SectionCard, EmptyState, StatusBadge } from '@better-off-local/ui';
+import { getPartnerTerms } from '@/lib/partner_type';
 
 export const metadata: Metadata = { title: 'Dashboard – Retailer Portal' };
 
@@ -44,7 +45,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase
       .from('retailers')
-      .select('approval_status, visibility_status, review_notes, description')
+      .select('approval_status, visibility_status, review_notes, description, partner_type')
       .eq('id', retailerId)
       .single(),
     supabase
@@ -104,6 +105,7 @@ export default async function DashboardPage() {
 
   const retailer = retailerResult.data;
   const subscription = subscriptionResult.data;
+  const terms = getPartnerTerms((retailer as any)?.partner_type);
 
   // Fetch primary venue (billing status + profile completion fields)
   const { data: primaryVenue } = await supabase
@@ -165,14 +167,14 @@ export default async function DashboardPage() {
     !hasLoyalty && {
       icon: '🃏',
       heading: 'Start a loyalty programme',
-      body: 'Stamp card programmes bring customers back. Businesses with loyalty generate more repeat visits.',
+      body: `Stamp card programmes bring ${terms.customers.toLowerCase()} back. Partners with loyalty generate more repeat visits.`,
       ctaLabel: 'Create loyalty programme',
       ctaHref: '/loyalty/new',
     },
     !hasReferral && {
       icon: '🤝',
       heading: 'Launch a refer-a-friend campaign',
-      body: 'Let your customers do the marketing. Referral campaigns are your lowest-cost growth channel.',
+      body: `Let your ${terms.customers.toLowerCase()} do the marketing. Referral campaigns are your lowest-cost growth channel.`,
       ctaLabel: 'Create referral campaign',
       ctaHref: '/referrals/new',
     },
@@ -282,7 +284,7 @@ export default async function DashboardPage() {
       {/* Growth opportunities — only shown to live retailers with missing features */}
       {isLive && growthOpportunities.length > 0 && (
         <div className="mb-8">
-          <SectionCard title="Grow your business">
+          <SectionCard title={`Grow your ${terms.entity.toLowerCase()}`}>
             <div className="space-y-3">
               {growthOpportunities.map((opp) => (
                 <div

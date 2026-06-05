@@ -13,11 +13,12 @@ export default async function BusinessDetailsPage() {
     shortDescription: retailer?.short_description ?? '',
     businessType: retailer?.business_type ?? '',
     phone: retailer?.phone ?? '',
+    partnerType: retailer?.partner_type ?? '',
   };
 
   return (
     <StepWrapper
-      title="Tell us about your business"
+      title="Tell us about your organisation"
       subtitle="This is what members will see when they discover you on Better Off Local."
       wide
     >

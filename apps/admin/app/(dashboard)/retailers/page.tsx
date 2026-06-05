@@ -5,6 +5,22 @@ import { createServiceClient } from '@/lib/supabase/service';
 import { createRetailer, deactivateRetailer } from '@/lib/actions/admin';
 import { PageHeader, StatusBadge, SectionCard, EmptyState } from '@better-off-local/ui';
 
+const PARTNER_TYPE_BADGE: Record<string, string> = {
+  business:         'bg-blue-50 text-blue-700 border-blue-200',
+  club:             'bg-green-50 text-green-700 border-green-200',
+  charity:          'bg-purple-50 text-purple-700 border-purple-200',
+  community_group:  'bg-amber-50 text-amber-700 border-amber-200',
+  organisation:     'bg-gray-50 text-gray-600 border-gray-200',
+};
+
+const PARTNER_TYPE_LABELS: Record<string, string> = {
+  business:         'Business',
+  club:             'Club',
+  charity:          'Charity',
+  community_group:  'Community Group',
+  organisation:     'Organisation',
+};
+
 export const metadata: Metadata = { title: 'Retailers – Admin' };
 
 interface Props {
@@ -31,7 +47,7 @@ export default async function RetailersPage({ searchParams }: Props) {
 
   let query = supabase
     .from('retailers')
-    .select('id, name, slug, approval_status, visibility_status, is_active, created_at')
+    .select('id, name, slug, approval_status, visibility_status, is_active, partner_type, created_at')
     .order('created_at', { ascending: false });
 
   if (status && status !== 'all') query = query.eq('approval_status', status);
@@ -182,7 +198,19 @@ export default async function RetailersPage({ searchParams }: Props) {
                   return (
                     <tr key={r.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">{r.name}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-gray-900">{r.name}</span>
+                          {(() => {
+                            const pt = (r as any).partner_type ?? 'business';
+                            if (pt === 'business') return null;
+                            const cls = PARTNER_TYPE_BADGE[pt] ?? PARTNER_TYPE_BADGE.organisation;
+                            return (
+                              <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium ${cls}`}>
+                                {PARTNER_TYPE_LABELS[pt] ?? pt}
+                              </span>
+                            );
+                          })()}
+                        </div>
                         <div className="text-xs text-gray-400">{r.slug}</div>
                       </td>
                       <td className="px-4 py-3">
@@ -240,6 +268,16 @@ export default async function RetailersPage({ searchParams }: Props) {
                     <StatusBadge status={r.approval_status} />
                     <StatusBadge status={subStatus} />
                     <StatusBadge status={r.visibility_status} />
+                    {(() => {
+                      const pt = (r as any).partner_type ?? 'business';
+                      if (pt === 'business') return null;
+                      const cls = PARTNER_TYPE_BADGE[pt] ?? PARTNER_TYPE_BADGE.organisation;
+                      return (
+                        <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium ${cls}`}>
+                          {PARTNER_TYPE_LABELS[pt] ?? pt}
+                        </span>
+                      );
+                    })()}
                   </div>
                   <p className="text-xs text-gray-400 mt-2">{formatDate(r.created_at)}</p>
                 </div>

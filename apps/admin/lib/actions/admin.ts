@@ -574,6 +574,7 @@ export async function updateRetailerDetails(formData: FormData): Promise<void> {
       phone:            (formData.get('phone')          as string | null)?.trim() || null,
       email:            (formData.get('email')          as string | null)?.trim() || null,
       business_type:    (formData.get('business_type') as string | null)?.trim() || null,
+      partner_type:     (formData.get('partner_type') as string | null)?.trim() || 'business',
       updated_at:       new Date().toISOString(),
     })
     .eq('id', retailerId);

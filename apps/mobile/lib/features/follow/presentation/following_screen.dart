@@ -19,7 +19,7 @@ class FollowingScreen extends ConsumerWidget {
       body: retailersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) =>
-            const Center(child: Text('Unable to load followed businesses')),
+            const Center(child: Text('Unable to load followed partners')),
         data: (rows) {
           if (rows.isEmpty) {
             return const Center(
@@ -32,7 +32,7 @@ class FollowingScreen extends ConsumerWidget {
                         size: 48, color: AppColors.textDisabled),
                     SizedBox(height: 16),
                     Text(
-                      'Not following any businesses yet',
+                      'Not following any local partners yet',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -42,7 +42,7 @@ class FollowingScreen extends ConsumerWidget {
                     ),
                     SizedBox(height: 8),
                     Text(
-                      'Follow a business from its profile page to get notified when new offers go live.',
+                      'Follow a local partner from its profile page to get notified when new offers go live.',
                       style: TextStyle(
                           fontSize: 13, color: AppColors.textSecondary),
                       textAlign: TextAlign.center,

@@ -135,7 +135,7 @@ export function StoryForm({
         </Field>
 
         {/* Content */}
-        <Field label="Content" required hint="Share what's happening at your business.">
+        <Field label="Content" required hint="Share what's happening.">
           <div className="relative">
             <textarea
               name="content"

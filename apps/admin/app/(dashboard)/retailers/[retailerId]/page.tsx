@@ -3,6 +3,30 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth/require_admin';
 import { createServiceClient } from '@/lib/supabase/service';
+
+const PARTNER_TYPE_OPTIONS = [
+  { value: 'business',        label: 'Local business' },
+  { value: 'club',            label: 'Sports club' },
+  { value: 'charity',         label: 'Charity' },
+  { value: 'community_group', label: 'Community group' },
+  { value: 'organisation',    label: 'Other organisation' },
+];
+
+const PARTNER_TYPE_BADGE: Record<string, string> = {
+  business:         'bg-blue-50 text-blue-700 border-blue-200',
+  club:             'bg-green-50 text-green-700 border-green-200',
+  charity:          'bg-purple-50 text-purple-700 border-purple-200',
+  community_group:  'bg-amber-50 text-amber-700 border-amber-200',
+  organisation:     'bg-gray-50 text-gray-600 border-gray-200',
+};
+
+const PARTNER_TYPE_LABELS: Record<string, string> = {
+  business:         'Business',
+  club:             'Club',
+  charity:          'Charity',
+  community_group:  'Community Group',
+  organisation:     'Organisation',
+};
 import {
   updateRetailerDetails,
   setVenueAllowanceOverride,
@@ -64,7 +88,7 @@ export default async function RetailerDetailPage({ params }: Props) {
   ] = await Promise.all([
     supabase
       .from('retailers')
-      .select('id, name, slug, tagline, short_description, description, contact_name, phone, email, business_type, approval_status, visibility_status, is_active, created_at, updated_at')
+      .select('id, name, slug, tagline, short_description, description, contact_name, phone, email, business_type, partner_type, approval_status, visibility_status, is_active, created_at, updated_at')
       .eq('id', retailerId)
       .single(),
     supabase
@@ -121,6 +145,15 @@ export default async function RetailerDetailPage({ params }: Props) {
           <span className="text-gray-300">/</span>
           <h1 className="text-2xl font-semibold">{retailer.name}</h1>
           <AccountStatusBadge isActive={retailer.is_active} approvalStatus={retailer.approval_status} />
+          {(() => {
+            const pt = (retailer as any).partner_type ?? 'business';
+            const cls = PARTNER_TYPE_BADGE[pt] ?? PARTNER_TYPE_BADGE.organisation;
+            return (
+              <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${cls}`}>
+                {PARTNER_TYPE_LABELS[pt] ?? pt}
+              </span>
+            );
+          })()}
         </div>
       </div>
 
@@ -348,6 +381,18 @@ export default async function RetailerDetailPage({ params }: Props) {
                 placeholder="e.g. Food & Drink"
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700"
               />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Partner type</label>
+              <select
+                name="partner_type"
+                defaultValue={(retailer as any).partner_type ?? 'business'}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-700 bg-white"
+              >
+                {PARTNER_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div>

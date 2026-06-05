@@ -218,7 +218,7 @@ class _ImpactBody extends StatelessWidget {
           // ── Top businesses ─────────────────────────────────────────────────
           if (impact.topBusinesses.isNotEmpty) ...[
             const SizedBox(height: 24),
-            Text('Top Businesses', style: AppTextStyles.titleMedium),
+            Text('Top Partners', style: AppTextStyles.titleMedium),
             const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(

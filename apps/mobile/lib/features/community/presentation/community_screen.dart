@@ -794,7 +794,7 @@ class _BusinessStoriesSection extends ConsumerWidget {
               padding: EdgeInsets.symmetric(
                 horizontal: AppSpacing.pagePadding,
               ),
-              child: SectionHeader(title: 'Business Updates'),
+              child: SectionHeader(title: 'Local Updates'),
             ),
             SizedBox(
               height: 144,

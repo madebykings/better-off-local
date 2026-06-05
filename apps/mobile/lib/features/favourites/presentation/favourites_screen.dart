@@ -53,7 +53,7 @@ class _FavouritesScreenState extends ConsumerState<FavouritesScreen>
           controller: _tabController,
           tabs: const [
             Tab(text: 'Offers'),
-            Tab(text: 'Retailers'),
+            Tab(text: 'Partners'),
           ],
         ),
       ),
@@ -156,8 +156,8 @@ class _FavouriteRetailersTab extends ConsumerWidget {
         if (retailers.isEmpty) {
           return const _EmptyState(
             icon: Icons.storefront_outlined,
-            message: 'No saved retailers yet',
-            subtitle: 'Tap the heart on any retailer to save it here.',
+            message: 'No saved partners yet',
+            subtitle: 'Tap the heart on any listing to save it here.',
           );
         }
 
