@@ -42,6 +42,9 @@ class _NoOpNotificationService implements NotificationService {
   Stream<RemoteMessage> get onMessage => Stream.empty();
 
   @override
+  Stream<RemoteMessage> get onMessageOpenedApp => Stream.empty();
+
+  @override
   Future<RemoteMessage?> getInitialMessage() async => null;
 
   @override

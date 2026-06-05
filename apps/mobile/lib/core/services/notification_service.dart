@@ -24,6 +24,10 @@ abstract class NotificationService {
   /// notification.
   Future<RemoteMessage?> getInitialMessage();
 
+  /// Fires when the user taps a system notification while the app is in the
+  /// background (background → foreground transition).
+  Stream<RemoteMessage> get onMessageOpenedApp;
+
   /// Emits the route payload string when the user taps a foreground local
   /// notification (Android only — iOS uses system presentation).  The payload
   /// is the value of the FCM message's `data['route']` field.

@@ -54,6 +54,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         '[MAP KEY] Dart env value=${Env.googleMapsApiKey.isEmpty ? "MISSING" : "present (${Env.googleMapsApiKey.length} chars)"}');
     rootBundle.loadString('assets/map/bol_map_style.json').then((style) {
       _mapStyleJson = style;
+      // Apply immediately if onMapCreated already fired (resolves the race
+      // where the map controller is ready before the asset Future completes).
+      _mapController?.setMapStyle(style).catchError((Object e) {
+        debugPrint('[MAP] setMapStyle (deferred) failed: $e');
+      });
     }).catchError((Object e) {
       debugPrint('[MAP] Failed to load map style asset: $e');
     });

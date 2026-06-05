@@ -141,5 +141,9 @@ class FirebaseNotificationServiceImpl implements NotificationService {
   Stream<RemoteMessage> get onMessage => FirebaseMessaging.onMessage;
 
   @override
+  Stream<RemoteMessage> get onMessageOpenedApp =>
+      FirebaseMessaging.onMessageOpenedApp;
+
+  @override
   Future<RemoteMessage?> getInitialMessage() => _messaging.getInitialMessage();
 }

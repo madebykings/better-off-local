@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -25,7 +25,7 @@ class _AppState extends ConsumerState<App> {
   final _secureStorage = const FlutterSecureStorage();
   StreamSubscription<Uri>? _linkSub;
   StreamSubscription<String?>? _notifTapSub;
-  StreamSubscription<RemoteMessage>? _bgNotifSub;
+  StreamSubscription<dynamic>? _bgNotifSub;
 
   @override
   void initState() {
@@ -54,16 +54,21 @@ class _AppState extends ConsumerState<App> {
 
     // 2. Background→foreground tap (user tapped a system notification while app
     //    was in background; FCM delivers the triggering message here).
-    _bgNotifSub = FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    _bgNotifSub = notifSvc.onMessageOpenedApp.listen((message) {
       _navigateFromNotification(message.data['route'] as String?);
     });
 
     // 3. Terminated-state tap (app was not running; launched by notification tap).
-    //    Delay until after the first frame so the router is fully initialised.
+    //    Deferred to the next frame so all GoRouter redirects (auth gate, region
+    //    selection, paywall) have settled before we push a new route on top.
     unawaited(
       notifSvc.getInitialMessage().then((message) {
         if (message != null && mounted) {
-          _navigateFromNotification(message.data['route'] as String?);
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _navigateFromNotification(message.data['route'] as String?);
+            }
+          });
         }
       }).catchError((Object e) {
         debugPrint('[App] getInitialMessage error (non-fatal): $e');

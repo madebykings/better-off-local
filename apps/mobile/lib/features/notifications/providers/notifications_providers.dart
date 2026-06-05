@@ -44,7 +44,7 @@ final unreadNotificationCountProvider = StreamProvider<int>((ref) async* {
       .from('notifications')
       .select('id')
       .eq('profile_id', profileId)
-      .eq('is_read', false);
+      .isFilter('read_at', null);
   int count = (unreadRows as List).length;
   yield count;
 
