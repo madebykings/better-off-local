@@ -42,6 +42,20 @@ class CommunityRemoteDataSource {
     return List<Map<String, dynamic>>.from(rows as List);
   }
 
+  Future<List<Map<String, dynamic>>> getBusinessStories(String regionId) async {
+    final rows = await _client
+        .from('business_stories')
+        .select(
+          'id, title, content, image_url, created_at, retailers!inner(id, name, logo_url, retailer_locations!inner(region_id))',
+        )
+        .eq('retailers.retailer_locations.region_id', regionId)
+        .eq('retailers.retailer_locations.is_primary', true)
+        .or('expires_at.is.null,expires_at.gt.${DateTime.now().toIso8601String()}')
+        .order('created_at', ascending: false)
+        .limit(8);
+    return List<Map<String, dynamic>>.from(rows as List);
+  }
+
   Future<List<Map<String, dynamic>>> getFeaturedRetailers(
       String regionId) async {
     final rows = await _client

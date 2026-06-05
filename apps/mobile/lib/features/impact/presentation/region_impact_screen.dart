@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
 import '../../../core/providers/supabase_provider.dart';
+import '../../region/domain/region.dart';
 import '../../region/providers/region_providers.dart';
 import '../domain/region_impact.dart';
 import '../providers/impact_providers.dart';
@@ -101,6 +102,7 @@ class _RegionImpactView extends ConsumerWidget {
         ),
         data: (impact) => _ImpactBody(
           impact: impact,
+          regionId: regionId,
           onRefresh: () async {
             ref.invalidate(regionImpactProvider(regionId));
           },
@@ -117,10 +119,12 @@ class _RegionImpactView extends ConsumerWidget {
 class _ImpactBody extends StatelessWidget {
   const _ImpactBody({
     required this.impact,
+    required this.regionId,
     required this.onRefresh,
   });
 
   final RegionImpact impact;
+  final String regionId;
   final Future<void> Function() onRefresh;
 
   @override
@@ -326,6 +330,10 @@ class _ImpactBody extends StatelessWidget {
             value: impact.formattedSavings,
             label: 'saved by members shopping local',
           ),
+
+          // ── Region leaderboard ─────────────────────────────────────────────
+          const SizedBox(height: 28),
+          _RegionLeaderboard(currentRegionId: regionId),
 
           const SizedBox(height: 32),
         ],
@@ -596,6 +604,168 @@ class _ShimmerBoxState extends State<_ShimmerBox>
           borderRadius: BorderRadius.circular(widget.borderRadius),
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Region leaderboard
+// ---------------------------------------------------------------------------
+
+class _RegionLeaderboard extends ConsumerWidget {
+  const _RegionLeaderboard({required this.currentRegionId});
+
+  final String currentRegionId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final regionsAsync = ref.watch(activeRegionsProvider);
+
+    return regionsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (regions) {
+        if (regions.length < 2) return const SizedBox.shrink();
+
+        final sorted = [...regions]
+          ..sort((a, b) => b.activeMemberCount.compareTo(a.activeMemberCount));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Region Comparison',
+              style: AppTextStyles.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: sorted.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, i) {
+                  final region = sorted[i];
+                  final isCurrent = region.id == currentRegionId;
+                  return Container(
+                    color: isCurrent
+                        ? AppColors.primary.withValues(alpha: 0.04)
+                        : null,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 24,
+                          height: 24,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: isCurrent
+                                ? AppColors.primary.withValues(alpha: 0.12)
+                                : AppColors.background,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${i + 1}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: isCurrent
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    region.name,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: isCurrent
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: isCurrent
+                                          ? AppColors.primary
+                                          : AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  if (isCurrent) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(4),
+                                      ),
+                                      child: const Text(
+                                        'You',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${region.activeRetailerCount} businesses · ${region.liveOfferCount} offers',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textDisabled,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '${region.activeMemberCount}',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: isCurrent
+                                    ? AppColors.primary
+                                    : AppColors.textPrimary,
+                              ),
+                            ),
+                            const Text(
+                              'members',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textDisabled,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

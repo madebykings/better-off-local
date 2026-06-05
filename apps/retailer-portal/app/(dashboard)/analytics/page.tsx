@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
-import { MetricCard } from '@better-off-local/ui';
+import { MetricCard, PageHeader, SectionCard, GuidanceCard } from '@better-off-local/ui';
 import { RetailerImpactCard } from '@/components/impact/RetailerImpactCard';
 
 export const metadata: Metadata = { title: 'Analytics – Retailer Portal' };
@@ -29,6 +29,10 @@ type ScanRow = {
   scanner: { full_name: string | null } | null;
 };
 
+type RedemptionValueRow = {
+  offers: { estimated_saving_pence: number | null } | { estimated_saving_pence: number | null }[] | null;
+};
+
 const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
   success: { label: 'Redeemed', classes: 'bg-green-100 text-green-800 border-green-200' },
   rejected: { label: 'Rejected', classes: 'bg-red-100 text-red-800 border-red-200' },
@@ -51,6 +55,22 @@ function formatTime(iso: string) {
 function pct(numerator: number, denominator: number): string {
   if (denominator === 0) return '—';
   return `${Math.round((numerator / denominator) * 100)}%`;
+}
+
+function formatPounds(pence: number): string {
+  const pounds = pence / 100;
+  return `£${pounds.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function sumSavings(rows: RedemptionValueRow[]): number {
+  return rows.reduce((acc, r) => {
+    const o = r.offers;
+    if (!o) return acc;
+    if (Array.isArray(o)) {
+      return acc + o.reduce((s, x) => s + (x.estimated_saving_pence ?? 0), 0);
+    }
+    return acc + (o.estimated_saving_pence ?? 0);
+  }, 0);
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -82,6 +102,11 @@ export default async function AnalyticsPage() {
     loyaltyCardsResult,
     loyaltyOffersResult,
     venueReferralOffersResult,
+    allRedemptionValueResult,
+    monthRedemptionValueResult,
+    primaryVenueResult,
+    retailerDescriptionResult,
+    eventsCountResult,
   ] = await Promise.all([
     // Headline: total offer views at this retailer
     supabase
@@ -193,10 +218,45 @@ export default async function AnalyticsPage() {
       .eq('retailer_id', retailerId)
       .eq('offer_type', 'venue_referral')
       .in('status', ['live', 'paused', 'expired']),
+
+    // Value generated: all successful redemptions with saving value
+    supabase
+      .from('redemptions')
+      .select('offers!inner(estimated_saving_pence)')
+      .eq('retailer_id', retailerId)
+      .eq('status', 'success'),
+
+    // Value generated: this month only
+    supabase
+      .from('redemptions')
+      .select('offers!inner(estimated_saving_pence)')
+      .eq('retailer_id', retailerId)
+      .eq('status', 'success')
+      .gte('redeemed_at', monthStart.toISOString()),
+
+    // Health score: primary venue (logo, opening hours)
+    supabase
+      .from('retailer_locations')
+      .select('logo_url, opening_hours_json, description')
+      .eq('retailer_id', retailerId)
+      .eq('is_primary', true)
+      .maybeSingle(),
+
+    // Health score: retailer description
+    supabase
+      .from('retailers')
+      .select('description')
+      .eq('id', retailerId)
+      .single(),
+
+    // Health score: events count
+    supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .eq('retailer_id', retailerId),
   ]);
 
   // ── Venue referral share links ────────────────────────────────────────────
-  // Count distinct share tokens (= links shared) per retailer
   const vrShareLinksResult = await supabase
     .from('venue_referral_share_tokens')
     .select('offer_id')
@@ -239,16 +299,23 @@ export default async function AnalyticsPage() {
     if (count === 1) newCustomers++;
     else returningCustomers++;
   }
-  const repeatVisitPct =
+  const repeatVisitRate =
     uniqueMembers > 0
       ? `${Math.round((returningCustomers / uniqueMembers) * 100)}%`
-      : '—';
+      : '0%';
+
+  // ── Value generated ───────────────────────────────────────────────────────
+
+  const allValueRows = (allRedemptionValueResult.data ?? []) as RedemptionValueRow[];
+  const monthValueRows = (monthRedemptionValueResult.data ?? []) as RedemptionValueRow[];
+  const lifetimeValuePence = sumSavings(allValueRows);
+  const monthValuePence = sumSavings(monthValueRows);
 
   // ── Per-offer breakdown ───────────────────────────────────────────────────
 
   const offers = (offersResult.data ?? []) as unknown as OfferRow[];
+  const liveOfferCount = offers.filter((o) => o.status === 'live').length;
 
-  // Build count maps: offer_id → count
   const viewsByOffer = new Map<string, number>();
   for (const r of (viewsPerOfferResult.data ?? []) as { offer_id: string }[]) {
     viewsByOffer.set(r.offer_id, (viewsByOffer.get(r.offer_id) ?? 0) + 1);
@@ -288,7 +355,6 @@ export default async function AnalyticsPage() {
   const completedCards = loyaltyCards.filter((c) => c.status === 'completed').length;
   const claimedRewards = loyaltyCards.filter((c) => c.status === 'claimed').length;
 
-  // Per-loyalty-offer breakdown
   const loyaltyCardsByOffer = new Map<string, LoyaltyCardRow[]>();
   for (const card of loyaltyCards) {
     const existing = loyaltyCardsByOffer.get(card.offer_id) ?? [];
@@ -314,7 +380,6 @@ export default async function AnalyticsPage() {
   const totalInvitesSent = vrInvitations.length;
   const totalRewardsUnlocked = vrRewards.filter((r) => r.status === 'unlocked').length;
   const totalRewardsRedeemed = vrRewards.filter((r) => r.status === 'redeemed').length;
-  // was_existing_member breakdown (null = pre-migration row, excluded from breakdown)
   const newBolMembersReferred = vrInvitations.filter((r) => r.was_existing_member === false).length;
   const existingBolMembersReferred = vrInvitations.filter((r) => r.was_existing_member === true).length;
 
@@ -348,34 +413,249 @@ export default async function AnalyticsPage() {
     return { ...o, links, invited, newBol, converted, unlocked, redeemed, conversionPct: pct(converted, invited) };
   });
 
-  // ── Headline card definitions ─────────────────────────────────────────────
+  // ── Business Health Score ─────────────────────────────────────────────────
 
-  const headlineCards = [
-    { label: 'Offer views', value: totalViews },
-    { label: 'Saves', value: totalSaves },
-    { label: 'QR generated', value: totalTokens },
-    { label: 'Successful redemptions', value: totalSuccessful },
-    { label: 'Unique members', value: uniqueMembers },
-    { label: 'Claimed today', value: claimedToday },
-    { label: 'Claimed this month', value: claimedMonth },
-    { label: 'New customers', value: newCustomers },
-    { label: 'Returning customers', value: returningCustomers },
-    { label: 'Repeat visit %', value: repeatVisitPct },
-  ] as const;
+  const primaryVenue = primaryVenueResult.data as {
+    logo_url: string | null;
+    opening_hours_json: unknown;
+    description: string | null;
+  } | null;
+  const retailerDescription =
+    (retailerDescriptionResult.data as { description: string | null } | null)?.description ?? null;
+  const eventsCount = eventsCountResult.count ?? 0;
+
+  const hasLiveOffers = liveOfferCount > 0;
+  const hasLoyalty = loyaltyOffers.length > 0;
+  const hasReferral = venueReferralOffers.length > 0;
+  const hasEvents = eventsCount > 0;
+  const hasDescription = !!(retailerDescription && retailerDescription.trim().length > 0);
+  const hasLogo = !!(primaryVenue?.logo_url && primaryVenue.logo_url.trim().length > 0);
+  const hasOpeningHours = !!(
+    primaryVenue?.opening_hours_json &&
+    typeof primaryVenue.opening_hours_json === 'object' &&
+    Object.keys(primaryVenue.opening_hours_json as object).length > 0
+  );
+
+  const healthComponents = [
+    { label: 'Live offers', met: hasLiveOffers, points: 20, href: '/offers' },
+    { label: 'Loyalty programme', met: hasLoyalty, points: 15, href: '/offers/new?type=loyalty_visits' },
+    { label: 'Referral campaign', met: hasReferral, points: 15, href: '/offers/new?type=venue_referral' },
+    { label: 'Events listed', met: hasEvents, points: 10, href: '/events' },
+    { label: 'Business description', met: hasDescription, points: 15, href: '/settings/profile' },
+    { label: 'Logo uploaded', met: hasLogo, points: 15, href: '/settings/profile' },
+    { label: 'Opening hours set', met: hasOpeningHours, points: 10, href: '/settings/profile' },
+  ];
+
+  const healthScore = healthComponents.reduce((acc, c) => acc + (c.met ? c.points : 0), 0);
+
+  const healthColor =
+    healthScore >= 80
+      ? { bar: 'bg-green-500', text: 'text-green-700', badge: 'bg-green-100 text-green-800 border-green-200' }
+      : healthScore >= 50
+      ? { bar: 'bg-amber-400', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-800 border-amber-200' }
+      : { bar: 'bg-red-500', text: 'text-red-700', badge: 'bg-red-100 text-red-800 border-red-200' };
+
+  const healthLabel = healthScore >= 80 ? 'Great' : healthScore >= 50 ? 'Good' : 'Needs work';
+
+  const recommendations = healthComponents.filter((c) => !c.met);
+
+  // ── Success Journey Tier ──────────────────────────────────────────────────
+
+  type Tier = { label: string; min: number; max: number };
+  const tiers: Tier[] = [
+    { label: 'Getting Started', min: 0, max: 39 },
+    { label: 'Growing', min: 40, max: 69 },
+    { label: 'Established', min: 70, max: 89 },
+    { label: 'Power User', min: 90, max: 100 },
+  ];
+  const currentTierIndex = tiers.findIndex((t) => healthScore >= t.min && healthScore <= t.max);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Analytics</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          All-time performance for your offers and redemptions.
-        </p>
-      </div>
+    <div className="space-y-8">
+      <PageHeader
+        title="Analytics"
+        description="Performance and health overview for your business on Better Off Local."
+      />
 
-      {/* Your Impact */}
-      <div className="mb-8">
+      {/* ── Business Health Score ── */}
+      <SectionCard title="Business Health Score">
+        <div className="flex flex-col md:flex-row md:items-start gap-6">
+          {/* Score display */}
+          <div className="shrink-0 text-center md:text-left">
+            <div className={`text-6xl font-bold tabular-nums ${healthColor.text}`}>
+              {healthScore}
+            </div>
+            <div className="text-sm text-gray-500 mt-1">out of 100</div>
+            <span
+              className={`mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${healthColor.badge}`}
+            >
+              {healthLabel}
+            </span>
+          </div>
+
+          {/* Progress bar + checklist */}
+          <div className="flex-1 min-w-0">
+            <div className="h-3 rounded-full bg-gray-100 overflow-hidden mb-5">
+              <div
+                className={`h-full rounded-full transition-all ${healthColor.bar}`}
+                style={{ width: `${healthScore}%` }}
+              />
+            </div>
+            <ul className="space-y-2">
+              {healthComponents.map((c) => (
+                <li key={c.label} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={`text-base leading-none ${c.met ? 'text-green-500' : 'text-gray-300'}`}
+                      aria-hidden="true"
+                    >
+                      {c.met ? '✓' : '✗'}
+                    </span>
+                    <span className={c.met ? 'text-gray-700' : 'text-gray-400'}>{c.label}</span>
+                  </span>
+                  <span className={`tabular-nums text-xs font-medium ${c.met ? 'text-green-600' : 'text-gray-400'}`}>
+                    +{c.points}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* Recommendations */}
+        {recommendations.length > 0 && (
+          <div className="mt-6 border-t border-gray-100 pt-5">
+            <p className="text-sm font-semibold text-gray-700 mb-3">Recommendations</p>
+            <div className="space-y-2">
+              {recommendations.map((r) => (
+                <GuidanceCard
+                  key={r.label}
+                  heading={r.label}
+                  body={`Add +${r.points} points to your health score.`}
+                  cta={{ label: 'Set up now', href: r.href }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
+      {/* ── Success Journey ── */}
+      <SectionCard title="Success Journey">
+        <div className="space-y-3">
+          <div className="grid grid-cols-4 gap-2">
+            {tiers.map((tier, i) => {
+              const isActive = i === currentTierIndex;
+              const isPast = i < currentTierIndex;
+              return (
+                <div
+                  key={tier.label}
+                  className={`rounded-lg px-3 py-2.5 text-center border transition-colors ${
+                    isActive
+                      ? 'bg-indigo-600 border-indigo-600 text-white'
+                      : isPast
+                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                      : 'bg-gray-50 border-gray-200 text-gray-400'
+                  }`}
+                >
+                  <div className="text-xs font-semibold leading-tight">{tier.label}</div>
+                  <div className="text-xs mt-0.5 opacity-70">{tier.min}–{tier.max}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="relative h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-indigo-500 transition-all"
+              style={{ width: `${healthScore}%` }}
+            />
+          </div>
+          <p className="text-sm text-gray-500">
+            You are currently at the{' '}
+            <span className="font-medium text-gray-700">
+              {tiers[currentTierIndex]?.label ?? 'Getting Started'}
+            </span>{' '}
+            stage with a health score of {healthScore}/100.
+            {currentTierIndex < tiers.length - 1 && (
+              <> Reach {tiers[currentTierIndex + 1]?.min} to unlock the next stage.</>
+            )}
+          </p>
+        </div>
+      </SectionCard>
+
+      {/* ── Value Generated ── */}
+      <SectionCard title="Value Generated for Members">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+          <div>
+            <div className="text-4xl font-bold text-gray-900 tabular-nums">
+              {lifetimeValuePence > 0 ? formatPounds(lifetimeValuePence) : '—'}
+            </div>
+            <p className="text-sm text-gray-500 mt-1">generated for members lifetime</p>
+          </div>
+          <div className="sm:border-l sm:border-gray-200 sm:pl-6 space-y-1">
+            <div className="text-sm text-gray-600">
+              <span className="font-semibold text-gray-900">
+                {monthValuePence > 0 ? formatPounds(monthValuePence) : '—'}
+              </span>{' '}
+              this month
+            </div>
+            <div className="text-sm text-gray-600">
+              <span className="font-semibold text-gray-900">{totalSuccessful}</span> total redemptions
+            </div>
+          </div>
+        </div>
+        {lifetimeValuePence === 0 && totalSuccessful === 0 && (
+          <p className="mt-4 text-sm text-gray-400">
+            Value will appear once members start redeeming your offers.
+          </p>
+        )}
+      </SectionCard>
+
+      {/* ── Feature Adoption ── */}
+      <SectionCard title="Feature Adoption">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Active</p>
+            {healthComponents.filter((c) => c.met).length === 0 ? (
+              <p className="text-sm text-gray-400">No features active yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {healthComponents
+                  .filter((c) => c.met)
+                  .map((c) => (
+                    <li key={c.label} className="flex items-center gap-2 text-sm text-gray-700">
+                      <span className="text-green-500 text-base leading-none" aria-hidden="true">✓</span>
+                      {c.label}
+                    </li>
+                  ))}
+              </ul>
+            )}
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Suggested next steps</p>
+            {recommendations.length === 0 ? (
+              <p className="text-sm text-gray-500">All features active — your profile is complete.</p>
+            ) : (
+              <ul className="space-y-2">
+                {recommendations.map((r) => (
+                  <li key={r.label} className="flex items-center gap-2 text-sm">
+                    <span className="text-gray-300 text-base leading-none" aria-hidden="true">✗</span>
+                    <a href={r.href} className="text-indigo-600 hover:underline">
+                      {r.label}
+                    </a>
+                    <span className="text-xs text-gray-400">(+{r.points} pts)</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </SectionCard>
+
+      {/* ── Your Impact ── */}
+      <div>
         <h2 className="text-lg font-semibold mb-1">Your Impact</h2>
         <p className="text-sm text-gray-500 mb-4">
           How your business is contributing to the local community.
@@ -383,15 +663,32 @@ export default async function AnalyticsPage() {
         <RetailerImpactCard retailerId={retailerId} />
       </div>
 
-      {/* Headline cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 mb-8">
-        {headlineCards.map((card) => (
-          <MetricCard key={card.label} label={card.label} value={card.value} />
-        ))}
-      </div>
+      {/* ── Member Engagement ── */}
+      <SectionCard title="Member Engagement">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <MetricCard label="Offer views" value={totalViews} />
+          <MetricCard label="Offer saves" value={totalSaves} />
+          <MetricCard label="QR codes generated" value={totalTokens} />
+          <MetricCard label="Redemptions today" value={claimedToday} />
+          <MetricCard label="Redemptions this month" value={claimedMonth} />
+          <MetricCard label="Redemptions all time" value={totalSuccessful} />
+        </div>
+      </SectionCard>
 
-      {/* Per-offer breakdown */}
-      <div className="mb-8">
+      {/* ── Customer Acquisition ── */}
+      <SectionCard title="Customer Acquisition">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <MetricCard label="New customers" value={newCustomers} />
+          <MetricCard label="Repeat customers" value={returningCustomers} />
+          <MetricCard label="Repeat visit rate" value={repeatVisitRate} />
+          <MetricCard label="Unique members" value={uniqueMembers} />
+          <MetricCard label="Referral invitations" value={totalInvitesSent} />
+          <MetricCard label="Referral conversions" value={totalRewardsUnlocked + totalRewardsRedeemed} />
+        </div>
+      </SectionCard>
+
+      {/* ── Per-offer breakdown ── */}
+      <div>
         <h2 className="text-lg font-semibold mb-3">Per offer</h2>
         {offerBreakdown.length === 0 ? (
           <div className="border border-gray-200 rounded-lg py-12 text-center">
@@ -433,9 +730,9 @@ export default async function AnalyticsPage() {
         )}
       </div>
 
-      {/* Loyalty stamp cards */}
+      {/* ── Loyalty stamp cards ── */}
       {(totalCardsIssued > 0 || loyaltyOffers.length > 0) && (
-        <div className="mb-8">
+        <div>
           <h2 className="text-lg font-semibold mb-3">Loyalty stamp cards</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-5">
             <MetricCard label="Cards issued" value={totalCardsIssued} />
@@ -474,9 +771,9 @@ export default async function AnalyticsPage() {
         </div>
       )}
 
-      {/* Venue referral rewards */}
+      {/* ── Venue referral rewards ── */}
       {(totalLinksShared > 0 || totalInvitesSent > 0 || venueReferralOffers.length > 0) && (
-        <div className="mb-8">
+        <div>
           <h2 className="text-lg font-semibold mb-3">Venue referral rewards</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 mb-5">
             <MetricCard label="Links shared" value={totalLinksShared} />
@@ -524,7 +821,7 @@ export default async function AnalyticsPage() {
         </div>
       )}
 
-      {/* Recent scans */}
+      {/* ── Recent scans ── */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Recent scans</h2>
         {recentScans.length === 0 ? (

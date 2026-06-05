@@ -5,7 +5,58 @@ import { updateRegion, createRegion, updateRegionDetails } from '@/lib/actions/a
 
 export const metadata: Metadata = { title: 'Regions – Admin' };
 
-function ProgressBar({ value, max }: { value: number; max: number }) {
+// ─── Launch readiness constants ───────────────────────────────────────────────
+
+const BUSINESS_TARGET = 100;
+const OFFER_TARGET = 250;
+const MEMBER_CHECKLIST_TARGET = 1000;
+
+// ─── Launch readiness helpers ─────────────────────────────────────────────────
+
+function computeReadiness(
+  activeRetailerCount: number,
+  liveOfferCount: number,
+  activeMemberCount: number,
+  memberThreshold: number,
+): number {
+  const businessPts = Math.min(25, (activeRetailerCount / BUSINESS_TARGET) * 25);
+  const offerPts = Math.min(25, (liveOfferCount / OFFER_TARGET) * 25);
+  const memberPts = Math.min(30, (activeMemberCount / Math.max(memberThreshold, 1)) * 30);
+  const activityPts = activeRetailerCount > 0 && liveOfferCount > 0 ? 20 : 0;
+  return Math.round(businessPts + offerPts + memberPts + activityPts);
+}
+
+function readinessLabel(score: number): 'Launch ready' | 'Almost ready' | 'Building' {
+  if (score >= 80) return 'Launch ready';
+  if (score >= 50) return 'Almost ready';
+  return 'Building';
+}
+
+function readinessColors(score: number): { bar: string; text: string; badge: string } {
+  if (score >= 80) {
+    return {
+      bar: 'bg-green-500',
+      text: 'text-green-600',
+      badge: 'bg-green-100 text-green-700 border-green-200',
+    };
+  }
+  if (score >= 50) {
+    return {
+      bar: 'bg-amber-400',
+      text: 'text-amber-600',
+      badge: 'bg-amber-100 text-amber-700 border-amber-200',
+    };
+  }
+  return {
+    bar: 'bg-blue-400',
+    text: 'text-blue-600',
+    badge: 'bg-blue-100 text-blue-700 border-blue-200',
+  };
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function MemberProgressBar({ value, max }: { value: number; max: number }) {
   const pct = Math.min(100, Math.round((value / Math.max(max, 1)) * 100));
   const cls = pct >= 100 ? 'bg-green-600' : pct >= 60 ? 'bg-amber-500' : 'bg-blue-500';
   return (
@@ -17,6 +68,116 @@ function ProgressBar({ value, max }: { value: number; max: number }) {
     </div>
   );
 }
+
+function ReadinessProgressBar({ score, barColor }: { score: number; barColor: string }) {
+  return (
+    <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+      <div
+        className={`h-full rounded-full transition-all ${barColor}`}
+        style={{ width: `${score}%` }}
+      />
+    </div>
+  );
+}
+
+function ChecklistItem({
+  label,
+  current,
+  target,
+}: {
+  label: string;
+  current: number;
+  target: number;
+}) {
+  const done = current >= target;
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      {done ? (
+        <svg
+          className="w-3.5 h-3.5 text-green-600 shrink-0"
+          fill="none"
+          viewBox="0 0 16 16"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l3.5 3.5L13 4.5" />
+        </svg>
+      ) : (
+        <span className="w-3.5 h-3.5 rounded border border-gray-300 shrink-0 inline-block" />
+      )}
+      <span className={done ? 'text-gray-400 line-through' : 'text-gray-600'}>
+        {label}
+        <span className="ml-1 tabular-nums text-gray-400">
+          ({current.toLocaleString()} / {target.toLocaleString()})
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function LaunchReadinessSection({
+  activeRetailerCount,
+  liveOfferCount,
+  activeMemberCount,
+  memberThreshold,
+}: {
+  activeRetailerCount: number;
+  liveOfferCount: number;
+  activeMemberCount: number;
+  memberThreshold: number;
+}) {
+  const score = computeReadiness(
+    activeRetailerCount,
+    liveOfferCount,
+    activeMemberCount,
+    memberThreshold,
+  );
+  const label = readinessLabel(score);
+  const colors = readinessColors(score);
+
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 mb-4">
+      {/* Score + badge row */}
+      <div className="flex items-center justify-between gap-4 mb-2">
+        <div className="flex items-center gap-3">
+          <span className={`text-3xl font-bold tabular-nums leading-none ${colors.text}`}>
+            {score}%
+          </span>
+          <span
+            className={`text-xs font-medium px-2 py-0.5 rounded-full border ${colors.badge}`}
+          >
+            {label}
+          </span>
+        </div>
+        <span className="text-xs text-gray-400 shrink-0">Launch readiness</span>
+      </div>
+
+      {/* Readiness progress bar */}
+      <ReadinessProgressBar score={score} barColor={colors.bar} />
+
+      {/* Checklist */}
+      <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
+        <ChecklistItem
+          label="100 businesses"
+          current={activeRetailerCount}
+          target={BUSINESS_TARGET}
+        />
+        <ChecklistItem
+          label="1,000 members"
+          current={activeMemberCount}
+          target={MEMBER_CHECKLIST_TARGET}
+        />
+        <ChecklistItem
+          label="250 live offers"
+          current={liveOfferCount}
+          target={OFFER_TARGET}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function RegionsPage() {
   await requireAdmin();
@@ -86,7 +247,12 @@ export default async function RegionsPage() {
       ) : (
         <div className="space-y-4">
           {regions.map((r: any) => {
-            const atThreshold = (r.active_member_count ?? 0) >= r.member_threshold;
+            const activeMemberCount: number = r.active_member_count ?? 0;
+            const payingMemberCount: number = r.paying_member_count ?? 0;
+            const activeRetailerCount: number = r.active_retailer_count ?? 0;
+            const liveOfferCount: number = r.live_offer_count ?? 0;
+            const atThreshold = activeMemberCount >= r.member_threshold;
+
             return (
               <div
                 key={r.id}
@@ -94,6 +260,7 @@ export default async function RegionsPage() {
                   r.is_active ? 'border-gray-200' : 'border-gray-100 opacity-60'
                 }`}
               >
+                {/* ── Header: name + member count ── */}
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
                     <div className="flex items-center gap-2">
@@ -114,29 +281,45 @@ export default async function RegionsPage() {
 
                   <div className="text-right shrink-0">
                     <p className="text-2xl font-bold text-gray-900 tabular-nums">
-                      {r.active_member_count ?? 0}
-                      <span className="text-sm font-normal text-gray-400"> / {r.member_threshold}</span>
+                      {activeMemberCount}
+                      <span className="text-sm font-normal text-gray-400">
+                        {' '}/ {r.member_threshold}
+                      </span>
                     </p>
                     <p className="text-xs text-gray-400">
-                      {r.paying_member_count ?? 0} paying · {r.active_member_count ?? 0} active
+                      {payingMemberCount} paying · {activeMemberCount} active
                     </p>
                   </div>
                 </div>
 
-                <ProgressBar value={r.active_member_count ?? 0} max={r.member_threshold} />
+                {/* ── Launch Readiness Score ── */}
+                <LaunchReadinessSection
+                  activeRetailerCount={activeRetailerCount}
+                  liveOfferCount={liveOfferCount}
+                  activeMemberCount={activeMemberCount}
+                  memberThreshold={r.member_threshold}
+                />
 
+                {/* ── Member threshold progress bar ── */}
+                <MemberProgressBar value={activeMemberCount} max={r.member_threshold} />
+
+                {/* ── Stats grid ── */}
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-lg bg-gray-50 px-3 py-2">
                     <p className="text-xs text-gray-400">Live retailers</p>
-                    <p className="font-medium text-gray-800">{r.active_retailer_count ?? 0}</p>
+                    <p className="font-medium text-gray-800">{activeRetailerCount}</p>
                   </div>
                   <div className="rounded-lg bg-gray-50 px-3 py-2">
                     <p className="text-xs text-gray-400">Live offers</p>
-                    <p className="font-medium text-gray-800">{r.live_offer_count ?? 0}</p>
+                    <p className="font-medium text-gray-800">{liveOfferCount}</p>
                   </div>
                 </div>
 
-                <form action={updateRegionDetails} className="mt-4 border-t border-gray-100 pt-4 space-y-3">
+                {/* ── Edit form ── */}
+                <form
+                  action={updateRegionDetails}
+                  className="mt-4 border-t border-gray-100 pt-4 space-y-3"
+                >
                   <input type="hidden" name="region_id" value={r.id} />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>

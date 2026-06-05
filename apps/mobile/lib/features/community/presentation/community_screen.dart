@@ -30,6 +30,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
     ref.invalidate(communitySavingsProvider(regionId));
     ref.invalidate(communityHighlightsProvider(regionId));
     ref.invalidate(communityActivityProvider(regionId));
+    ref.invalidate(businessStoriesProvider(regionId));
   }
 
   @override
@@ -77,6 +78,9 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
 
                 // ── Section 4: New Businesses ────────────────────────────
                 _NewBusinessesSection(regionId: regionId),
+
+                // ── Section 4b: Business Stories ─────────────────────────
+                _BusinessStoriesSection(regionId: regionId),
 
                 // ── Section 5: Local Highlights ──────────────────────────
                 _LocalHighlightsSection(regionId: regionId),
@@ -759,6 +763,172 @@ class _MyImpactCta extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Section 4b: Business Stories
+// ---------------------------------------------------------------------------
+
+class _BusinessStoriesSection extends ConsumerWidget {
+  const _BusinessStoriesSection({required this.regionId});
+
+  final String regionId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final storiesAsync = ref.watch(businessStoriesProvider(regionId));
+
+    return storiesAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (stories) {
+        if (stories.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.pagePadding,
+              ),
+              child: SectionHeader(title: 'Business Updates'),
+            ),
+            SizedBox(
+              height: 144,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.pagePadding,
+                ),
+                itemCount: stories.length,
+                itemBuilder: (context, i) => Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _StoryCard(story: stories[i]),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sectionGap),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StoryCard extends StatelessWidget {
+  const _StoryCard({required this.story});
+
+  final Map<String, dynamic> story;
+
+  static String _relativeTime(String? iso) {
+    if (iso == null) return '';
+    try {
+      final dt = DateTime.parse(iso);
+      final diff = DateTime.now().difference(dt);
+      if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+      if (diff.inHours < 24) return '${diff.inHours}h ago';
+      if (diff.inDays == 1) return 'Yesterday';
+      if (diff.inDays < 7) return '${diff.inDays}d ago';
+      return '${dt.day} ${_month(dt.month)}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  static String _month(int m) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return months[m];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = story['title'] as String? ?? '';
+    final content = story['content'] as String? ?? '';
+    final createdAt = story['created_at'] as String?;
+    final retailer = story['retailers'] as Map<String, dynamic>?;
+    final retailerName = retailer?['name'] as String? ?? '';
+    final timeLabel = _relativeTime(createdAt);
+
+    return Container(
+      width: 240,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.storefront_outlined,
+                  size: 14,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  retailerName,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (timeLabel.isNotEmpty)
+                Text(
+                  timeLabel,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textDisabled,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Expanded(
+            child: Text(
+              content,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -36,3 +36,9 @@ final newRetailersProvider =
   (ref, regionId) =>
       ref.read(communityDataSourceProvider).getNewRetailers(regionId),
 );
+
+final businessStoriesProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>(
+  (ref, regionId) =>
+      ref.read(communityDataSourceProvider).getBusinessStories(regionId),
+);

@@ -54,6 +54,12 @@ class _SavingsData {
     return redemptions.where((r) => r.redeemedAt.isAfter(monthStart)).length;
   }
 
+  int get thisYearCount {
+    final now = DateTime.now();
+    final yearStart = DateTime(now.year, 1, 1);
+    return redemptions.where((r) => r.redeemedAt.isAfter(yearStart)).length;
+  }
+
   int get totalSavingsPence {
     int total = 0;
     for (final r in redemptions) {
@@ -76,8 +82,22 @@ class _SavingsData {
     return total;
   }
 
+  int get thisYearSavingsPence {
+    final now = DateTime.now();
+    final yearStart = DateTime(now.year, 1, 1);
+    int total = 0;
+    for (final r in redemptions) {
+      if (r.redeemedAt.isAfter(yearStart)) {
+        final p = r.savingPence;
+        if (p != null) total += p;
+      }
+    }
+    return total;
+  }
+
   String get totalSavingsDisplay => _fmtPence(totalSavingsPence);
   String get thisMonthSavingsDisplay => _fmtPence(thisMonthSavingsPence);
+  String get thisYearSavingsDisplay => _fmtPence(thisYearSavingsPence);
 
   String get averageSavingDisplay {
     final redeemed = redemptions.where((r) => r.savingPence != null).toList();
@@ -259,10 +279,12 @@ class _SavingsBody extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             _StatCard(
-              value: data.averageSavingDisplay,
-              label: 'Per redemption',
-              sub: 'average saving',
-              color: const Color(0xFF059669),
+              value: data.thisYearSavingsPence > 0
+                  ? data.thisYearSavingsDisplay
+                  : '${data.thisYearCount}',
+              label: 'This year',
+              sub: data.thisYearSavingsPence > 0 ? 'saved' : 'offers redeemed',
+              color: const Color(0xFF7C3AED),
             ),
           ],
         ),
@@ -270,23 +292,59 @@ class _SavingsBody extends StatelessWidget {
         Row(
           children: [
             _StatCard(
+              value: data.averageSavingDisplay,
+              label: 'Per redemption',
+              sub: 'average saving',
+              color: const Color(0xFF059669),
+            ),
+            const SizedBox(width: 12),
+            _StatCard(
               value: '${data.totalCount}',
               label: 'All time',
               sub: 'offers redeemed',
               color: AppColors.primary,
             ),
-            const SizedBox(width: 12),
-            if (data.topRetailerName != null)
-              _StatCard(
-                value: '⭐',
-                label: 'Top retailer',
-                sub: data.topRetailerName!,
-                color: const Color(0xFFF59E0B),
-              )
-            else
-              const Expanded(child: SizedBox()),
           ],
         ),
+
+        // ── Milestones ───────────────────────────────────────────────────────
+        if (data.totalSavingsPence > 0) ...[
+          const SizedBox(height: 28),
+          Text('Savings milestones', style: AppTextStyles.titleMedium),
+          const SizedBox(height: 12),
+          _MilestonesPanel(totalPence: data.totalSavingsPence),
+        ],
+
+        if (data.topRetailerName != null) ...[
+          const SizedBox(height: 28),
+          Text('Your favourite spot', style: AppTextStyles.titleMedium),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.25),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.star_outlined,
+                    color: Color(0xFFF59E0B), size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    data.topRetailerName!,
+                    style: AppTextStyles.titleMedium,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
 
         const SizedBox(height: 28),
         Text('Redemption history', style: AppTextStyles.titleMedium),
@@ -397,6 +455,143 @@ class _SavingsBody extends StatelessWidget {
     return '${dt.day} ${months[dt.month]}';
   }
 }
+
+// ---------------------------------------------------------------------------
+// Milestones panel
+// ---------------------------------------------------------------------------
+
+class _MilestonesPanel extends StatelessWidget {
+  const _MilestonesPanel({required this.totalPence});
+
+  final int totalPence;
+
+  static const _milestones = [100, 250, 500, 1000, 2500, 5000];
+
+  @override
+  Widget build(BuildContext context) {
+    final totalPounds = totalPence / 100;
+
+    // Find the next milestone to achieve
+    int? nextMilestone;
+    for (final m in _milestones) {
+      if (totalPounds < m) {
+        nextMilestone = m;
+        break;
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ..._milestones.map((milestone) {
+            final achieved = totalPounds >= milestone;
+            final isNext = milestone == nextMilestone;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: achieved
+                          ? AppColors.primary.withValues(alpha: 0.12)
+                          : isNext
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.1)
+                              : AppColors.background,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      achieved
+                          ? Icons.check_circle_rounded
+                          : isNext
+                              ? Icons.radio_button_unchecked
+                              : Icons.lock_outline,
+                      size: 16,
+                      color: achieved
+                          ? AppColors.primary
+                          : isNext
+                              ? const Color(0xFFF59E0B)
+                              : AppColors.textDisabled,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      '£$milestone saved',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: achieved || isNext
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: achieved
+                            ? AppColors.textPrimary
+                            : isNext
+                                ? const Color(0xFFF59E0B)
+                                : AppColors.textDisabled,
+                      ),
+                    ),
+                  ),
+                  if (achieved)
+                    const Text(
+                      'Achieved ✓',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  else if (isNext) ...[
+                    Text(
+                      '£${(milestone - totalPounds).ceil()} to go',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFFF59E0B),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+          if (nextMilestone != null) ...[
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: (totalPounds / nextMilestone).clamp(0.0, 1.0),
+                backgroundColor: AppColors.background,
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Color(0xFFF59E0B)),
+                minHeight: 6,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '£${totalPounds.toStringAsFixed(totalPounds.truncateToDouble() == totalPounds ? 0 : 2)} of £$nextMilestone',
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textDisabled,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Stat card
+// ---------------------------------------------------------------------------
 
 class _StatCard extends StatelessWidget {
   const _StatCard({
