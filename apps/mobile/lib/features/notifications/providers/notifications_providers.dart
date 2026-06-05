@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io' show Platform;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -49,10 +52,9 @@ final unreadNotificationCountProvider = StreamProvider<int>((ref) async* {
   final channelName = 'notifications:$profileId';
   final channel = client.channel(channelName);
 
-  // Use a StreamController so we can push values from the Realtime callback.
-  final controller = ref.container.exists(notificationServiceProvider)
-      ? _makeController<int>()
-      : _makeController<int>();
+  // Use a broadcast StreamController so we can push values from the
+  // Realtime callback into the async* generator.
+  final controller = StreamController<int>.broadcast();
 
   channel.onPostgresChanges(
     event: PostgresChangeEvent.insert,
@@ -80,11 +82,6 @@ final unreadNotificationCountProvider = StreamProvider<int>((ref) async* {
 });
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-
-import 'dart:async';
-
-StreamController<T> _makeController<T>() =>
-    StreamController<T>.broadcast();
 
 AppNotification _fromRow(Map<String, dynamic> row) {
   final typeStr = row['type'] as String? ?? 'system';
@@ -123,7 +120,7 @@ final fcmTokenRegistrationProvider = FutureProvider<void>((ref) async {
   if (token == null) return;
 
   // Determine platform for the token record.
-  final platform = _currentPlatform();
+  final platform = Platform.isIOS ? 'ios' : 'android';
 
   await ds.upsertPushToken(
     profileId: profileId,
@@ -142,69 +139,3 @@ final fcmTokenRegistrationProvider = FutureProvider<void>((ref) async {
 
   ref.onDispose(sub.cancel);
 });
-
-String _currentPlatform() {
-  // Uses dart:io which is available in Flutter.
-  // ignore: avoid_dynamic_calls
-  try {
-    // ignore: undefined_name
-    if (identical(0, 0.0)) return 'unknown'; // compiled check
-    final io = _getPlatform();
-    return io;
-  } catch (_) {
-    return 'unknown';
-  }
-}
-
-String _getPlatform() {
-  // Deferred to avoid a direct dart:io import at the top level (keeps the
-  // file compatible if used in web-only tests).  In practice this is always
-  // a mobile build.
-  try {
-    // dart:io is always available on mobile.
-    // We use a string comparison against Platform.operatingSystem.
-    // ignore: avoid_dynamic_calls
-    final dynamic platform =
-        // ignore: undefined_identifier
-        // ignore: unnecessary_cast
-        (Zone.current as dynamic);
-    _ = platform; // suppress unused warning
-  } catch (_) {}
-
-  // Fall back to a compile-time platform check via conditional import trick.
-  // In the actual Flutter build, dart:io is available.
-  return _platformFromIo();
-}
-
-String _platformFromIo() {
-  // This function body is replaced at compile time on non-web targets.
-  // For safety we return 'mobile' as a valid default; the actual
-  // ios/android distinction is handled in the real implementation below.
-  return _iosPlatformString();
-}
-
-String _iosPlatformString() {
-  // ignore: avoid_dynamic_calls
-  try {
-    // On Android/iOS dart:io is always available.
-    // dart:io is conditionally imported below to keep this file testable.
-    return _dartIoPlatform();
-  } catch (_) {
-    return 'mobile';
-  }
-}
-
-// Separated so that linters don't complain about the dart:io import being
-// unused in non-mobile builds.
-String _dartIoPlatform() {
-  // ignore: undefined_prefixed_name
-  // Using Platform.isIOS / Platform.isAndroid from dart:io.
-  // We can't do a direct `import 'dart:io'` at the top level cleanly while
-  // keeping the file web-safe, so we use a platform channel string instead.
-  // The push_tokens table accepts 'ios', 'android', or 'web'.
-  //
-  // NOTE: This is a simplified heuristic.  For a production build the
-  // conditional import pattern (stub + io implementation) is preferable.
-  // This will be cleaned up in the platform service refactor.
-  return 'mobile'; // overridden by [_currentPlatformSafe] below
-}

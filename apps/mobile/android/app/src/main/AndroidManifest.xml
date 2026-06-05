@@ -54,6 +54,18 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="betterofflocal"/>
             </intent-filter>
+
+            <!-- ── HTTPS App Links: betterofflocal.com ───────────────────── -->
+            <!-- Enables verified Android App Links so HTTPS URLs open directly -->
+            <!-- in the app without a chooser dialog. Required for deferred     -->
+            <!-- deep links (e.g. venue referral landing page → install → open).-->
+            <!-- Requires /.well-known/assetlinks.json hosted on the domain.    -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="betterofflocal.com"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

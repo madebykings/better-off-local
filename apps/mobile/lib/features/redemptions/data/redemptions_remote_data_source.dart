@@ -86,6 +86,30 @@ class RedemptionsRemoteDataSource {
     }
   }
 
+  /// Calls `get_offer_availability` RPC and returns the `availability_state`
+  /// string (e.g. 'available', 'already_redeemed', 'offer_unavailable').
+  /// Returns null on any error so callers can treat it as indeterminate.
+  Future<String?> checkOfferAvailability({
+    required String offerId,
+    required String consumerId,
+  }) async {
+    try {
+      final rows = await _client.rpc(
+        'get_offer_availability',
+        params: {
+          'p_offer_id': offerId,
+          'p_consumer_id': consumerId,
+        },
+      );
+      if (rows is List && rows.isNotEmpty) {
+        return rows.first['availability_state'] as String?;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Fetches the authenticated user's redemption history with offer and
   /// retailer details, most recent first, limited to 50 entries.
   Future<List<Map<String, dynamic>>> fetchRedemptionHistory(

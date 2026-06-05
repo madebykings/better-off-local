@@ -354,6 +354,14 @@ async function handleMemberReferralReward(
     }
 
     console.log('[referral-member] pending reward created', { referrerProfileId, rewardId: reward.id });
+
+    // Notify the referrer — non-critical: failure must not roll back the reward.
+    try {
+      await supabase.rpc('notify_referral_reward', { p_consumer_id: referrerProfileId });
+    } catch (notifyErr) {
+      const notifyMsg = notifyErr instanceof Error ? notifyErr.message : String(notifyErr);
+      console.warn('[referral-member] notification failed (reward still created)', { error: notifyMsg });
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[referral-member] unexpected error', { error: msg });

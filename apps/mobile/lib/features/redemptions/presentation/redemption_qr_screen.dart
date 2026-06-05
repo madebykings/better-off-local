@@ -50,6 +50,18 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
   /// Prevents multiple concurrent silent refresh calls for the same token.
   bool _silentRefreshAttempted = false;
 
+  // ── Venue referral polling ────────────────────────────────────────────────
+
+  /// True when a pre-flight check confirms the reward was already redeemed
+  /// before the consumer opened this screen.
+  bool _venueReferralAlreadyRedeemed = false;
+
+  /// True when polling detects the retailer has just scanned and confirmed.
+  bool _venueReferralConfirmed = false;
+
+  /// Background poll timer for venue_referral offers.
+  Timer? _venueReferralPollTimer;
+
   // ── Loyalty stamp polling ─────────────────────────────────────────────────
 
   /// Background poll timer; null when not a loyalty offer or stamp detected.
@@ -69,7 +81,27 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // H-4: pre-flight availability check for venue_referral offers.
+      // If the consumer's reward was already redeemed, show a clear message
+      // instead of generating a QR code that the server will reject.
+      final offer = ref.read(offerProvider(widget.offerId)).valueOrNull;
+      if (offer?.offerType == 'venue_referral') {
+        final profileId =
+            ref.read(supabaseClientProvider).auth.currentUser?.id;
+        if (profileId != null) {
+          final state = await ref
+              .read(redemptionsRemoteDataSourceProvider)
+              .checkOfferAvailability(
+                offerId: widget.offerId,
+                consumerId: profileId,
+              );
+          if (state == 'already_redeemed' && mounted) {
+            setState(() => _venueReferralAlreadyRedeemed = true);
+            return;
+          }
+        }
+      }
       ref
           .read(redemptionControllerProvider.notifier)
           .requestToken(widget.offerId);
@@ -80,6 +112,7 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
   void dispose() {
     _countdownTimer?.cancel();
     _loyaltyPollTimer?.cancel();
+    _venueReferralPollTimer?.cancel();
     super.dispose();
   }
 
@@ -172,6 +205,40 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
     });
   }
 
+  // ── Venue referral polling ────────────────────────────────────────────────
+
+  /// H-3: starts a 3-second poll loop that checks offer availability.
+  /// When the retailer scans the QR and marks the reward redeemed, the state
+  /// transitions to 'already_redeemed' and we show the success view.
+  void _startVenueReferralPolling() {
+    _venueReferralPollTimer?.cancel();
+    final profileId = ref.read(supabaseClientProvider).auth.currentUser?.id;
+    if (profileId == null) return;
+
+    _venueReferralPollTimer =
+        Timer.periodic(const Duration(seconds: 3), (_) async {
+      if (!mounted) {
+        _venueReferralPollTimer?.cancel();
+        return;
+      }
+      try {
+        final state = await ref
+            .read(redemptionsRemoteDataSourceProvider)
+            .checkOfferAvailability(
+              offerId: widget.offerId,
+              consumerId: profileId,
+            );
+        if (state == 'already_redeemed' && mounted) {
+          _venueReferralPollTimer?.cancel();
+          _countdownTimer?.cancel();
+          setState(() => _venueReferralConfirmed = true);
+        }
+      } catch (_) {
+        // Silently swallow — poll until token expires or screen is dismissed.
+      }
+    });
+  }
+
   /// Called when the user taps "Get next stamp code" or "Get reward code".
   /// Updates the baseline to the current count then requests a fresh token.
   void _onGetNextStampCode() {
@@ -189,6 +256,60 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
         .read(redemptionControllerProvider.notifier)
         .refreshToken(widget.offerId);
     // ref.listen restarts polling when the new RedemptionQRReady arrives.
+  }
+
+  /// Called when the user taps "Start new card" after a loyalty reward is claimed.
+  /// Calls the reset_loyalty_card RPC, invalidates the loyalty cards list,
+  /// shows a success snackbar, then transitions to a fresh token request.
+  Future<void> _onStartNewCard() async {
+    final profileId =
+        ref.read(supabaseClientProvider).auth.currentUser?.id;
+    if (profileId == null) return;
+
+    try {
+      await ref
+          .read(redemptionsRemoteDataSourceProvider)
+          .resetLoyaltyCard(offerId: widget.offerId, consumerId: profileId);
+
+      // Invalidate so the loyalty cards list refreshes on next read.
+      ref.invalidate(myLoyaltyCardsProvider);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('New card started! Keep collecting stamps.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // Transition to fresh token — resets the stamp baseline to 0.
+      setState(() {
+        _stampResult = null;
+        _activeTokenValue = null;
+        _loyaltyBaselineStamps = 0;
+        _loyaltyBaselineStatus = 'active';
+      });
+      ref
+          .read(redemptionControllerProvider.notifier)
+          .refreshToken(widget.offerId);
+    } on RedemptionException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: AppColors.error,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not start a new card. Please try again.'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override
@@ -209,17 +330,41 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
       });
       _startCountdown(token.expiresAt);
 
-      // Start loyalty polling if this is a loyalty stamp card offer.
+      // Start type-specific post-QR polling.
       final offerType =
           ref.read(offerProvider(widget.offerId)).valueOrNull?.offerType;
       if (offerType == 'loyalty_visits') {
         _startLoyaltyPolling();
+      } else if (offerType == 'venue_referral') {
+        _startVenueReferralPolling();
       }
     });
 
     final controllerState = ref.watch(redemptionControllerProvider);
     final offerTitle =
         ref.watch(offerProvider(widget.offerId)).valueOrNull?.title;
+
+    // H-4: pre-flight — reward already redeemed before this screen opened.
+    if (_venueReferralAlreadyRedeemed) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Use this offer')),
+        body: _VenueReferralAlreadyRedeemedView(
+          offerTitle: offerTitle,
+          onDone: () => context.pop(),
+        ),
+      );
+    }
+
+    // H-3: confirmation — retailer just scanned and confirmed the reward.
+    if (_venueReferralConfirmed) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Use this offer')),
+        body: _VenueReferralConfirmedView(
+          offerTitle: offerTitle,
+          onDone: () => context.pop(),
+        ),
+      );
+    }
 
     // Stamp confirmation overlay takes priority over the QR view.
     if (_stampResult != null) {
@@ -568,6 +713,122 @@ class _BlockedView extends StatelessWidget {
               onPressed: () => context.pop(),
               child: const Text('Go back'),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Venue referral: already redeemed (pre-flight, H-4) ────────────────────────
+
+class _VenueReferralAlreadyRedeemedView extends StatelessWidget {
+  const _VenueReferralAlreadyRedeemedView({
+    required this.onDone,
+    this.offerTitle,
+  });
+
+  final VoidCallback onDone;
+  final String? offerTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.pagePadding),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Icon(Icons.check_circle_outline,
+              size: 64, color: AppColors.success),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Reward already redeemed',
+            style: AppTextStyles.headlineMedium,
+            textAlign: TextAlign.center,
+          ),
+          if (offerTitle != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              offerTitle!,
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'You\'ve already redeemed this referral reward.',
+            style: AppTextStyles.bodyMedium
+                .copyWith(color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          OutlinedButton(
+            onPressed: onDone,
+            child: const Text('Go back'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Venue referral: redemption confirmed (polling success, H-3) ───────────────
+
+class _VenueReferralConfirmedView extends StatelessWidget {
+  const _VenueReferralConfirmedView({
+    required this.onDone,
+    this.offerTitle,
+  });
+
+  final VoidCallback onDone;
+  final String? offerTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.pagePadding),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Icon(Icons.celebration_outlined,
+              size: 64, color: AppColors.success),
+          const SizedBox(height: AppSpacing.lg),
+          Text(
+            'Reward redeemed! ✓',
+            style: AppTextStyles.headlineMedium,
+            textAlign: TextAlign.center,
+          ),
+          if (offerTitle != null) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              offerTitle!,
+              style: AppTextStyles.bodyLarge.copyWith(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'The retailer has confirmed your reward. Enjoy!',
+            style: AppTextStyles.bodyMedium
+                .copyWith(color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          OutlinedButton(
+            onPressed: onDone,
+            child: const Text('Done'),
+          ),
         ],
       ),
     );

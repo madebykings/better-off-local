@@ -22,9 +22,9 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
  */
 
 const APP_STORE_URL =
-  'https://apps.apple.com/gb/app/better-off-local/id0000000000'; // update before launch
+  'https://apps.apple.com/gb/app/better-off-local/id6739500888';
 const PLAY_STORE_URL =
-  'https://play.google.com/store/apps/details?id=com.betterofflocal.app'; // update before launch
+  'https://play.google.com/store/apps/details?id=com.betterofflocal.app';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
