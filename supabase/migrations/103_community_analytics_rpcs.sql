@@ -100,114 +100,124 @@ stable
 set search_path = public, pg_temp
 as $$
   -- 1. Most redeemed offer overall
-  select
-    'most_redeemed_offer'::text,
-    'Most redeemed'::text,
-    o.title,
-    jsonb_build_object(
-      'offer_id',       o.id::text,
-      'retailer_name',  ret.name,
-      'count',          count(r.id)
-    )
-  from redemptions r
-  join offers o on o.id = r.offer_id
-  join retailers ret on ret.id = o.retailer_id
-  join retailer_locations rl
-    on rl.retailer_id = ret.id and rl.is_primary = true
-  where r.status = 'success'
-    and rl.region_id = p_region_id
-  group by o.id, o.title, ret.name
-  order by count(r.id) desc
-  limit 1
+  (
+    select
+      'most_redeemed_offer'::text,
+      'Most redeemed'::text,
+      o.title,
+      jsonb_build_object(
+        'offer_id',       o.id::text,
+        'retailer_name',  ret.name,
+        'count',          count(r.id)
+      )
+    from redemptions r
+    join offers o on o.id = r.offer_id
+    join retailers ret on ret.id = o.retailer_id
+    join retailer_locations rl
+      on rl.retailer_id = ret.id and rl.is_primary = true
+    where r.status = 'success'
+      and rl.region_id = p_region_id
+    group by o.id, o.title, ret.name
+    order by count(r.id) desc
+    limit 1
+  )
 
   union all
 
   -- 2. Most popular retailer in last 30 days
-  select
-    'most_popular_retailer'::text,
-    'Most popular this month'::text,
-    ret.name,
-    jsonb_build_object(
-      'retailer_id',    ret.id::text,
-      'count',          count(r.id)
-    )
-  from redemptions r
-  join offers o on o.id = r.offer_id
-  join retailers ret on ret.id = o.retailer_id
-  join retailer_locations rl
-    on rl.retailer_id = ret.id and rl.is_primary = true
-  where r.status = 'success'
-    and rl.region_id = p_region_id
-    and r.redeemed_at >= now() - interval '30 days'
-  group by ret.id, ret.name
-  order by count(r.id) desc
-  limit 1
+  (
+    select
+      'most_popular_retailer'::text,
+      'Most popular this month'::text,
+      ret.name,
+      jsonb_build_object(
+        'retailer_id',    ret.id::text,
+        'count',          count(r.id)
+      )
+    from redemptions r
+    join offers o on o.id = r.offer_id
+    join retailers ret on ret.id = o.retailer_id
+    join retailer_locations rl
+      on rl.retailer_id = ret.id and rl.is_primary = true
+    where r.status = 'success'
+      and rl.region_id = p_region_id
+      and r.redeemed_at >= now() - interval '30 days'
+    group by ret.id, ret.name
+    order by count(r.id) desc
+    limit 1
+  )
 
   union all
 
   -- 3. Most completed loyalty card offer
-  select
-    'most_completed_loyalty'::text,
-    'Most popular loyalty card'::text,
-    o.title,
-    jsonb_build_object(
-      'offer_id',       o.id::text,
-      'retailer_name',  ret.name,
-      'count',          count(lc.id)
-    )
-  from loyalty_cards lc
-  join offers o on o.id = lc.offer_id
-  join retailers ret on ret.id = lc.retailer_id
-  join retailer_locations rl
-    on rl.retailer_id = ret.id and rl.is_primary = true
-  where lc.status in ('completed','claimed')
-    and rl.region_id = p_region_id
-  group by o.id, o.title, ret.id, ret.name
-  order by count(lc.id) desc
-  limit 1
+  (
+    select
+      'most_completed_loyalty'::text,
+      'Most popular loyalty card'::text,
+      o.title,
+      jsonb_build_object(
+        'offer_id',       o.id::text,
+        'retailer_name',  ret.name,
+        'count',          count(lc.id)
+      )
+    from loyalty_cards lc
+    join offers o on o.id = lc.offer_id
+    join retailers ret on ret.id = lc.retailer_id
+    join retailer_locations rl
+      on rl.retailer_id = ret.id and rl.is_primary = true
+    where lc.status in ('completed','claimed')
+      and rl.region_id = p_region_id
+    group by o.id, o.title, ret.id, ret.name
+    order by count(lc.id) desc
+    limit 1
+  )
 
   union all
 
   -- 4. Most followed retailer in region
-  select
-    'most_followed_retailer'::text,
-    'Most followed'::text,
-    ret.name,
-    jsonb_build_object(
-      'retailer_id',    ret.id::text,
-      'count',          count(rf.profile_id)
-    )
-  from retailer_follows rf
-  join retailers ret on ret.id = rf.retailer_id
-  join retailer_locations rl
-    on rl.retailer_id = ret.id and rl.is_primary = true
-  where rl.region_id = p_region_id
-  group by ret.id, ret.name
-  order by count(rf.profile_id) desc
-  limit 1
+  (
+    select
+      'most_followed_retailer'::text,
+      'Most followed'::text,
+      ret.name,
+      jsonb_build_object(
+        'retailer_id',    ret.id::text,
+        'count',          count(rf.profile_id)
+      )
+    from retailer_follows rf
+    join retailers ret on ret.id = rf.retailer_id
+    join retailer_locations rl
+      on rl.retailer_id = ret.id and rl.is_primary = true
+    where rl.region_id = p_region_id
+    group by ret.id, ret.name
+    order by count(rf.profile_id) desc
+    limit 1
+  )
 
   union all
 
   -- 5. Busiest month in last 12 months
-  select
-    'most_active_month'::text,
-    'Busiest month'::text,
-    to_char(date_trunc('month', r.redeemed_at), 'Month YYYY'),
-    jsonb_build_object(
-      'month', to_char(date_trunc('month', r.redeemed_at), 'YYYY-MM'),
-      'count', count(r.id)
-    )
-  from redemptions r
-  join offers o on o.id = r.offer_id
-  join retailers ret on ret.id = o.retailer_id
-  join retailer_locations rl
-    on rl.retailer_id = ret.id and rl.is_primary = true
-  where r.status = 'success'
-    and rl.region_id = p_region_id
-    and r.redeemed_at >= now() - interval '12 months'
-  group by date_trunc('month', r.redeemed_at)
-  order by count(r.id) desc
-  limit 1;
+  (
+    select
+      'most_active_month'::text,
+      'Busiest month'::text,
+      to_char(date_trunc('month', r.redeemed_at), 'Month YYYY'),
+      jsonb_build_object(
+        'month', to_char(date_trunc('month', r.redeemed_at), 'YYYY-MM'),
+        'count', count(r.id)
+      )
+    from redemptions r
+    join offers o on o.id = r.offer_id
+    join retailers ret on ret.id = o.retailer_id
+    join retailer_locations rl
+      on rl.retailer_id = ret.id and rl.is_primary = true
+    where r.status = 'success'
+      and rl.region_id = p_region_id
+      and r.redeemed_at >= now() - interval '12 months'
+    group by date_trunc('month', r.redeemed_at)
+    order by count(r.id) desc
+    limit 1
+  );
 $$;
 
 grant execute on function get_community_highlights(uuid) to authenticated;
@@ -273,23 +283,25 @@ as $$
 
     -- Loyalty milestones: offers where members completed their card in last 7 days
     -- Returns the offer with the most completions in that window.
-    select
-      'loyalty_milestone'::text           as activity_type,
-      o.title                             as title,
-      count(lc.id)::text || ' members completed their loyalty card' as subtitle,
-      'loyalty'::text                     as icon_hint,
-      max(lc.completed_at)                as occurred_at
-    from loyalty_cards lc
-    join offers o on o.id = lc.offer_id
-    join retailers ret on ret.id = lc.retailer_id
-    join retailer_locations rl
-      on rl.retailer_id = ret.id and rl.is_primary = true
-    where lc.status in ('completed','claimed')
-      and lc.completed_at >= now() - interval '7 days'
-      and rl.region_id = p_region_id
-    group by o.id, o.title
-    order by count(lc.id) desc
-    limit 1
+    (
+      select
+        'loyalty_milestone'::text           as activity_type,
+        o.title                             as title,
+        count(lc.id)::text || ' members completed their loyalty card' as subtitle,
+        'loyalty'::text                     as icon_hint,
+        max(lc.completed_at)                as occurred_at
+      from loyalty_cards lc
+      join offers o on o.id = lc.offer_id
+      join retailers ret on ret.id = lc.retailer_id
+      join retailer_locations rl
+        on rl.retailer_id = ret.id and rl.is_primary = true
+      where lc.status in ('completed','claimed')
+        and lc.completed_at >= now() - interval '7 days'
+        and rl.region_id = p_region_id
+      group by o.id, o.title
+      order by count(lc.id) desc
+      limit 1
+    )
 
     union all
 
