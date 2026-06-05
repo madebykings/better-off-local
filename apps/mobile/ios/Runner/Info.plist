@@ -16,6 +16,9 @@
 	<!-- Required by geolocator (nearby offers / map discovery). -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Better Off Local uses your location to show nearby offers and retailers.</string>
+	<!-- Required by image_picker (profile avatar upload). -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Better Off Local accesses your photo library so you can choose a profile picture.</string>
 
 	<!-- ── Custom URL scheme — Stripe deep-link redirects ────────────────── -->
 	<!-- Handles: betterofflocal://subscription-success  betterofflocal://paywall -->

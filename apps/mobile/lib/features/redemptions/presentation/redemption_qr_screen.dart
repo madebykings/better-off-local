@@ -9,6 +9,7 @@ import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_text_styles.dart';
+import '../../../core/providers/analytics_provider.dart';
 import '../../../core/providers/supabase_provider.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_indicator.dart';
@@ -191,6 +192,23 @@ class _RedemptionQRScreenState extends ConsumerState<RedemptionQRScreen> {
           _loyaltyPollTimer?.cancel();
           _countdownTimer?.cancel();
           if (!mounted) return;
+
+          final cardId = row?['id'] as String? ?? widget.offerId;
+          final retailerId = row?['retailer_id'] as String? ?? '';
+          if (cardClaimed) {
+            unawaited(ref.read(analyticsServiceProvider).logLoyaltyCardCompleted(
+                  cardId: cardId,
+                  retailerId: retailerId,
+                ));
+          } else if (stampAdded) {
+            unawaited(ref.read(analyticsServiceProvider).logLoyaltyStampEarned(
+                  cardId: cardId,
+                  retailerId: retailerId,
+                  stampNumber: earned,
+                  totalRequired: required,
+                ));
+          }
+
           setState(() {
             _stampResult = (
               earned: earned,

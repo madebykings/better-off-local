@@ -8,7 +8,9 @@ import '../../../app/router/route_names.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_text_styles.dart';
+import '../../../core/providers/analytics_provider.dart';
 import '../../../core/widgets/primary_button.dart';
+import '../domain/membership.dart';
 import '../providers/membership_providers.dart';
 
 // ---------------------------------------------------------------------------
@@ -67,9 +69,6 @@ class ActivationController extends StateNotifier<ActivationState> {
     _timeoutTimer?.cancel();
     _pollTimer?.cancel();
     _pollCount = 0;
-
-    // TODO: analytics — track ActivationChecking started
-
     _timeoutTimer = Timer(_timeoutDuration, _onTimeout);
     _scheduleNextPoll();
   }
@@ -92,7 +91,14 @@ class ActivationController extends StateNotifier<ActivationState> {
 
       if (membership != null && membership.isEntitled) {
         _timeoutTimer?.cancel();
-        // TODO: analytics — track ActivationActive (poll count: $_pollCount)
+        final plan = membership.planInterval?.name ?? 'unknown';
+        final amount = membership.planInterval == MembershipPlanInterval.annual
+            ? 49.99
+            : 5.99;
+        unawaited(_ref.read(analyticsServiceProvider).logMembershipPurchased(
+              plan: plan,
+              amountGbp: amount,
+            ));
         state = const ActivationActive();
         return;
       }
@@ -107,7 +113,6 @@ class ActivationController extends StateNotifier<ActivationState> {
   void _onTimeout() {
     if (state is ActivationChecking) {
       _pollTimer?.cancel();
-      // TODO: analytics — track ActivationTimeout (poll count: $_pollCount)
       state = const ActivationTimeout();
     }
   }

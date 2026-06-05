@@ -2,7 +2,8 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("com.google.gms.google-services") // processes google-services.json
+    id("com.google.gms.google-services")       // processes google-services.json
+    id("com.google.firebase.crashlytics")      // uploads mapping files for deobfuscated crash reports
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -42,8 +43,10 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // PRODUCTION TODO: Replace debug signing with a real keystore.
+            // Create a keystore, add signing config in gradle, reference via
+            // environment variables — never commit the .jks file.
+            // See: https://developer.android.com/studio/publish/app-signing
             signingConfig = signingConfigs.getByName("debug")
         }
     }

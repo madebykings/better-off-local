@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers/analytics_provider.dart';
 import '../../../core/providers/session_provider.dart';
 import '../../../core/providers/supabase_provider.dart';
 import '../data/retailer_follows_remote_data_source.dart';
@@ -78,6 +81,9 @@ Future<void> toggleRetailerFollow(
     } else {
       await ds.followRetailer(
           profileId: session.user.id, retailerId: retailerId);
+      unawaited(ref
+          .read(analyticsServiceProvider)
+          .logRetailerFollowed(retailerId: retailerId));
     }
     ref.invalidate(_confirmedFollowedRetailerIdsProvider);
   } catch (_) {

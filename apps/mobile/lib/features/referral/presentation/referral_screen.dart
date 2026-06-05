@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_text_styles.dart';
+import '../../../core/providers/analytics_provider.dart';
 import '../../../core/providers/supabase_provider.dart';
 import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/loading_indicator.dart';
@@ -393,6 +396,7 @@ class _ReferralBodyState extends ConsumerState<_ReferralBody> {
   }
 
   void _share(ReferralStats stats) {
+    unawaited(ref.read(analyticsServiceProvider).logReferralShared());
     Share.share(
       'I\'ve been saving money with Better Off Local — supporting brilliant local businesses in my area. '
       'Join with my link and start exploring local offers!\n${stats.referralUrl}',
