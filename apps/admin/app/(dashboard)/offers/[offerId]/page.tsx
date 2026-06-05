@@ -14,6 +14,7 @@ import { AdminOfferEditForm } from '@/components/offers/offer_edit_form';
 import { type AdminOfferFields } from '@/lib/actions/offer_admin';
 import { type OfferType } from '@/lib/utils/first_offer';
 import { ruleFromColumns } from '@/lib/utils/redemption_rules';
+import { TabbedPanel } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Offer – Admin' };
 
@@ -165,19 +166,29 @@ export default async function OfferDetailPage({ params }: Props) {
     return iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
   }
 
-  return (
-    <div className="max-w-3xl">
-      <div className="mb-6 flex items-center gap-3">
-        <Link href="/offers" className="text-sm text-gray-500 hover:text-gray-700">← Offers</Link>
-        <span className="text-gray-300">/</span>
-        <h1 className="text-2xl font-semibold truncate">{o.title}</h1>
-        <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${STATUS_BADGES[o.status] ?? ''}`}>
-          {o.status}
-        </span>
+  const reviewTabContent = (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden max-w-xs">
+        <div className="h-20 bg-gradient-to-r from-green-800 to-green-600 flex items-end p-3">
+          {(o as any).image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={(o as any).image_url} alt="" className="w-10 h-10 rounded-lg object-cover bg-white" />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-green-800 font-bold text-lg">
+              {(o.title ?? '?')[0].toUpperCase()}
+            </div>
+          )}
+        </div>
+        <div className="p-3">
+          <p className="font-semibold text-sm text-gray-900">{o.title ?? 'Untitled offer'}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{(o as any).short_summary ?? 'No summary'}</p>
+          {(o as any).value_text && (
+            <p className="text-xs text-green-700 font-medium mt-1">{(o as any).value_text}</p>
+          )}
+        </div>
       </div>
 
-      {/* Moderation actions */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Moderation actions</h2>
         <OfferModerationActions
           offerId={o.id}
@@ -189,9 +200,8 @@ export default async function OfferDetailPage({ params }: Props) {
         />
       </div>
 
-      {/* Retailer context */}
       {o.retailers && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm">
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm">
           <span className="font-medium text-amber-800">Retailer: </span>
           <Link href={`/retailers/${o.retailers.id}`} className="text-amber-700 hover:underline">
             {o.retailers.name}
@@ -205,11 +215,10 @@ export default async function OfferDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Offer details */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
         <h2 className="text-sm font-semibold text-gray-700 mb-4">Offer details</h2>
         <dl className="grid grid-cols-2 gap-3">
-          <Field label="Type" value={o.offer_type} />
+          <Field label="Type" value={(o as any).offer_type} />
           <Field label="Value" value={o.value_text} />
           <Field label="Start date" value={formatDate(o.start_at)} />
           <Field label="End date" value={formatDate(o.end_at)} />
@@ -226,6 +235,20 @@ export default async function OfferDetailPage({ params }: Props) {
             <Field label="Terms" value={o.terms_text} />
           </div>
         )}
+      </div>
+    </div>
+  );
+
+  const detailsTabContent = (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">Offer type &amp; dates</h2>
+        <dl className="grid grid-cols-2 gap-3">
+          <Field label="Type" value={(o as any).offer_type} />
+          <Field label="Value" value={o.value_text} />
+          <Field label="Start date" value={formatDate(o.start_at)} />
+          <Field label="End date" value={formatDate(o.end_at)} />
+        </dl>
         {rules && (
           <div className="mt-3 pt-3 border-t border-gray-100">
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Redemption rules</p>
@@ -238,9 +261,8 @@ export default async function OfferDetailPage({ params }: Props) {
         )}
       </div>
 
-      {/* Loyalty stamp card config */}
       {loyaltyConfig && (
-        <div className="bg-white rounded-lg border border-teal-200 p-4 mb-6">
+        <div className="bg-white rounded-lg border border-teal-200 p-4">
           <h2 className="text-sm font-semibold text-teal-700 mb-4">Loyalty stamp card configuration</h2>
           <dl className="grid grid-cols-2 gap-3 mb-4">
             <Field label="Stamps required" value={String(loyaltyConfig.stamps_required)} />
@@ -263,9 +285,8 @@ export default async function OfferDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Venue referral stats */}
       {vrStats && (
-        <div className="bg-white rounded-lg border border-amber-200 p-4 mb-6">
+        <div className="bg-white rounded-lg border border-amber-200 p-4">
           <h2 className="text-sm font-semibold text-amber-700 mb-4">Venue referral statistics</h2>
           <dl className="grid grid-cols-4 gap-3">
             <Field label="Invitations"  value={String(vrStats.invited)} />
@@ -276,8 +297,7 @@ export default async function OfferDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Edit offer */}
-      <details className="mb-6 group bg-white rounded-lg border border-gray-200">
+      <details className="group bg-white rounded-lg border border-gray-200">
         <summary className="flex cursor-pointer items-center justify-between p-4 text-sm font-semibold text-gray-700 select-none hover:bg-gray-50 rounded-lg transition-colors">
           Edit offer
           <span className="text-gray-400 text-xs group-open:hidden">▶ expand</span>
@@ -292,9 +312,40 @@ export default async function OfferDetailPage({ params }: Props) {
           />
         </div>
       </details>
+    </div>
+  );
 
-      {/* Admin action history */}
-      {actions.length > 0 && (
+  const retailerTabContent = (
+    <div className="space-y-4">
+      {o.retailers ? (
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Retailer</p>
+          <Link href={`/retailers/${o.retailers.id}`} className="text-sm font-semibold text-green-700 hover:underline">
+            {o.retailers.name}
+          </Link>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${o.retailers.approval_status === 'approved' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+              {o.retailers.approval_status}
+            </span>
+            <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${(o.retailers as any).visibility_status === 'visible' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+              {(o.retailers as any).visibility_status}
+            </span>
+            {o.retailers.approval_status !== 'approved' && (
+              <span className="text-red-600 text-xs font-medium">⚠ Not approved — offer cannot go live</span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">No retailer linked to this offer.</p>
+      )}
+    </div>
+  );
+
+  const auditTabContent = (
+    <div>
+      {actions.length === 0 ? (
+        <p className="text-sm text-gray-500">No admin history yet.</p>
+      ) : (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">Admin history</h2>
           <ul className="space-y-2">
@@ -310,6 +361,35 @@ export default async function OfferDetailPage({ params }: Props) {
           </ul>
         </div>
       )}
+    </div>
+  );
+
+  return (
+    <div className="max-w-3xl">
+      <div className="mb-6 flex items-center gap-3">
+        <Link href="/offers" className="text-sm text-gray-500 hover:text-gray-700">← Offers</Link>
+        <span className="text-gray-300">/</span>
+        <h1 className="text-2xl font-semibold truncate">{o.title}</h1>
+        <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${STATUS_BADGES[o.status] ?? ''}`}>
+          {o.status}
+        </span>
+      </div>
+
+      <TabbedPanel
+        tabs={[
+          { id: 'review', label: 'Review' },
+          { id: 'details', label: 'Details' },
+          { id: 'retailer', label: 'Retailer' },
+          { id: 'audit', label: 'Audit' },
+        ]}
+        panels={[
+          { id: 'review', content: reviewTabContent },
+          { id: 'details', content: detailsTabContent },
+          { id: 'retailer', content: retailerTabContent },
+          { id: 'audit', content: auditTabContent },
+        ]}
+        defaultTab="review"
+      />
     </div>
   );
 }

@@ -8,7 +8,8 @@ import type { VenueFields } from '@/lib/actions/location';
 import type { RegionOption } from '../location_form';
 import { OpeningHoursEditor } from '@/components/dashboard/opening_hours_editor';
 import { VenueImageUpload } from '@/components/dashboard/venue_image_upload';
-import { parseOpeningHours, DEFAULT_HOURS } from '@/lib/utils/opening_hours';
+import { parseOpeningHours } from '@/lib/utils/opening_hours';
+import { VenueEditorTabs } from '../venue_editor_tabs';
 
 export const metadata: Metadata = { title: 'Edit Location – Retailer Portal' };
 
@@ -56,6 +57,41 @@ export default async function LocationDetailPage({ params }: Props) {
 
   const reviewStatus = (loc as any).review_status ?? 'draft';
   const reviewNotes  = (loc as any).review_notes  ?? null;
+  const locationName = loc.name ?? '';
+
+  const hoursPanel = (
+    <div className="max-w-xl">
+      <p className="text-sm text-gray-500 mb-4">
+        Set your opening hours so members know when you're open.
+      </p>
+      <OpeningHoursEditor locationId={locationId} initialData={openingHours} />
+    </div>
+  );
+
+  const imagesPanel = (
+    <div className="max-w-xl space-y-5">
+      <p className="text-sm text-gray-500">
+        Venue-specific images override your retailer-level images for this location.
+        Recommended: provide both a logo and a cover image.
+      </p>
+      <div className="rounded-lg border border-gray-200 bg-white p-5 space-y-5">
+        <VenueImageUpload
+          locationId={locationId}
+          slot="logo"
+          label="Venue logo"
+          hint="400 × 400 px minimum, square · max 5 MB"
+          currentUrl={(loc as any).logo_url ?? null}
+        />
+        <VenueImageUpload
+          locationId={locationId}
+          slot="cover"
+          label="Cover image"
+          hint="1600 × 600 px recommended · max 10 MB"
+          currentUrl={(loc as any).cover_image_url ?? null}
+        />
+      </div>
+    </div>
+  );
 
   return (
     <div>
@@ -77,41 +113,23 @@ export default async function LocationDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <div className="space-y-8 max-w-xl">
-        <VenueForm locationId={locationId} initialData={initialData} regions={regions} reviewStatus={reviewStatus} reviewNotes={reviewNotes} />
-
-        <section className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
-            Venue images
-          </h2>
-          <p className="text-xs text-gray-400 mb-4">
-            Venue-specific images override your retailer-level images for this location.
-          </p>
-          <div className="space-y-5">
-            <VenueImageUpload
-              locationId={locationId}
-              slot="logo"
-              label="Venue logo"
-              hint="400 × 400 px minimum, square · max 5 MB"
-              currentUrl={(loc as any).logo_url ?? null}
-            />
-            <VenueImageUpload
-              locationId={locationId}
-              slot="cover"
-              label="Venue cover image"
-              hint="1600 × 600 px recommended · max 10 MB"
-              currentUrl={(loc as any).cover_image_url ?? null}
-            />
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-gray-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
-            Opening hours
-          </h2>
-          <OpeningHoursEditor locationId={locationId} initialData={openingHours} />
-        </section>
-      </div>
+      <VenueEditorTabs
+        locationName={locationName}
+        reviewStatus={reviewStatus}
+        reviewNotes={reviewNotes}
+        isPrimary={loc.is_primary ?? false}
+        detailsPanel={
+          <VenueForm
+            locationId={locationId}
+            initialData={initialData}
+            regions={regions}
+            reviewStatus={reviewStatus}
+            reviewNotes={reviewNotes}
+          />
+        }
+        hoursPanel={hoursPanel}
+        imagesPanel={imagesPanel}
+      />
     </div>
   );
 }

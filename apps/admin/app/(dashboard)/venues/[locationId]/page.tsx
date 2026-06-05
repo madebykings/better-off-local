@@ -16,6 +16,7 @@ import {
 import { AdminOpeningHoursEditor } from '@/components/venue/opening_hours_editor';
 import { AdminVenueImageSlot } from '@/components/venue/venue_image_upload';
 import { parseOpeningHours } from '@/lib/utils/opening_hours';
+import { TabbedPanel } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Venue – Admin' };
 
@@ -123,7 +124,6 @@ export default async function VenueDetailPage({ params }: Props) {
   const retailer = Array.isArray(venue.retailers) ? venue.retailers[0] : venue.retailers;
   const retailerId = venue.retailer_id as string;
 
-  // Fetch enrichment data for quality score
   const [
     { data: categoryRows },
     { data: offerRow },
@@ -180,59 +180,31 @@ export default async function VenueDetailPage({ params }: Props) {
     inactive:           'bg-gray-50 text-gray-500 border-gray-200',
   };
 
-  return (
-    <div className="max-w-3xl">
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-          <Link href="/venues" className="hover:text-gray-700">← Venues</Link>
-          <span className="text-gray-300">/</span>
-          {retailer && (
-            <>
-              <Link href={`/retailers/${retailerId}`} className="hover:text-gray-700">{retailer.name}</Link>
-              <span className="text-gray-300">/</span>
-            </>
-          )}
-          <span className="text-gray-700">{(venue.name as string | null) ?? 'Unnamed venue'}</span>
-        </div>
+  const address = [(venue.address_line_1 as string | null), (venue.town as string | null), (venue.postcode as string | null)].filter(Boolean).join(', ');
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-2xl font-semibold">
-            {(venue.name as string | null) ?? (venue.address_line_1 as string | null) ?? 'Unnamed venue'}
-          </h1>
-          <ReviewBadge status={(venue.review_status as string | null) ?? 'draft'} />
-          <QualityBadge score={qualityScore} />
-          {(venue.is_featured as boolean) && (
-            <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-              ⭐ Featured
-            </span>
-          )}
-          {!(venue.is_active as boolean) && (
-            <span className="rounded border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-              Inactive
-            </span>
+  const loc = venue;
+
+  const reviewTabContent = (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden max-w-xs">
+        <div className="h-20 bg-gradient-to-r from-green-800 to-green-600 flex items-end p-3">
+          {loc.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={loc.logo_url as string} alt="" className="w-10 h-10 rounded-lg object-cover bg-white" />
+          ) : (
+            <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center text-green-800 font-bold text-lg">
+              {((loc.name as string | null) ?? '?')[0].toUpperCase()}
+            </div>
           )}
         </div>
-
-        {(venue.address_line_1 as string | null) && (
-          <p className="mt-1 text-sm text-gray-500">
-            {[(venue.address_line_1 as string | null), (venue.town as string | null), (venue.postcode as string | null)].filter(Boolean).join(', ')}
-          </p>
-        )}
-
-        {submittedAt && (
-          <p className="mt-1 text-xs text-gray-400">Submitted {submittedAt}</p>
-        )}
-
-        {(venue.review_status as string) === 'rejected' && (venue.review_notes as string | null) && (
-          <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            <span className="font-medium">Rejection reason:</span> {venue.review_notes as string}
-          </div>
-        )}
+        <div className="p-3">
+          <p className="font-semibold text-sm text-gray-900">{(loc.name as string | null) ?? 'Unnamed venue'}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{(loc.short_description as string | null) ?? 'No description'}</p>
+          {address && <p className="text-xs text-gray-400 mt-1">{address}</p>}
+        </div>
       </div>
 
-      {/* ── Moderation panel ────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden mb-6">
+      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <h2 className="text-sm font-semibold text-gray-700">Venue moderation</h2>
           <p className="text-xs text-gray-400 mt-0.5">
@@ -240,7 +212,6 @@ export default async function VenueDetailPage({ params }: Props) {
           </p>
         </div>
         <div className="px-4 py-4 space-y-3">
-          {/* Approve */}
           {(venue.review_status as string) !== 'approved' && (
             <form action={approveVenue} className="flex items-center gap-3">
               <input type="hidden" name="location_id" value={locationId} />
@@ -264,7 +235,6 @@ export default async function VenueDetailPage({ params }: Props) {
             </div>
           )}
 
-          {/* Reject */}
           {(venue.review_status as string) !== 'rejected' && (
             <form action={rejectVenue} className="flex items-center gap-2 flex-wrap">
               <input type="hidden" name="location_id" value={locationId} />
@@ -300,14 +270,12 @@ export default async function VenueDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* ── Admin controls ───────────────────────────────────────────────── */}
-      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden mb-6">
+      <div className="rounded-lg border border-gray-200 bg-white overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
           <h2 className="text-sm font-semibold text-gray-700">Admin controls</h2>
         </div>
         <div className="px-4 py-4 space-y-4">
           <div className="flex flex-wrap gap-3">
-            {/* Featured toggle */}
             <form action={toggleVenueFeatured} className="flex items-center gap-2">
               <input type="hidden" name="location_id" value={locationId} />
               <input type="hidden" name="retailer_id" value={retailerId} />
@@ -324,7 +292,6 @@ export default async function VenueDetailPage({ params }: Props) {
               </button>
             </form>
 
-            {/* Deactivate */}
             {canDeactivate && (
               <form action={deactivateRetailerVenue}>
                 <input type="hidden" name="location_id" value={locationId} />
@@ -342,7 +309,6 @@ export default async function VenueDetailPage({ params }: Props) {
             )}
           </div>
 
-          {/* Region */}
           <div>
             <label className="block text-xs text-gray-500 mb-1.5">Region</label>
             <form action={setVenueRegion} className="flex items-center gap-2">
@@ -366,7 +332,6 @@ export default async function VenueDetailPage({ params }: Props) {
             </form>
           </div>
 
-          {/* Billing status */}
           <div>
             <label className="block text-xs text-gray-500 mb-1.5">Billing status</label>
             <form action={setVenueBillingStatus} className="flex items-center gap-2">
@@ -397,9 +362,17 @@ export default async function VenueDetailPage({ params }: Props) {
           </div>
         </div>
       </div>
+    </div>
+  );
 
-      {/* ── Opening hours ────────────────────────────────────────────────── */}
-      <details className="rounded-lg border border-gray-200 bg-white overflow-hidden mb-4 group">
+  const detailsTabContent = (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500">Quality score:</span>
+        <QualityBadge score={qualityScore} />
+      </div>
+
+      <details className="rounded-lg border border-gray-200 bg-white overflow-hidden group">
         <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 select-none border-b border-gray-100 bg-gray-50">
           <span className="transition-transform group-open:rotate-90">▶</span>
           Opening hours
@@ -413,8 +386,7 @@ export default async function VenueDetailPage({ params }: Props) {
         </div>
       </details>
 
-      {/* ── Images ───────────────────────────────────────────────────────── */}
-      <details className="rounded-lg border border-gray-200 bg-white overflow-hidden mb-4 group">
+      <details className="rounded-lg border border-gray-200 bg-white overflow-hidden group">
         <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 select-none border-b border-gray-100 bg-gray-50">
           <span className="transition-transform group-open:rotate-90">▶</span>
           Images
@@ -437,49 +409,7 @@ export default async function VenueDetailPage({ params }: Props) {
         </div>
       </details>
 
-      {/* ── Consumer listing preview ─────────────────────────────────────── */}
-      <details className="rounded-lg border border-gray-200 bg-white overflow-hidden mb-4 group">
-        <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 select-none border-b border-gray-100 bg-gray-50">
-          <span className="transition-transform group-open:rotate-90">▶</span>
-          Consumer listing preview
-        </summary>
-        <div className="px-4 py-4">
-          <div className="max-w-xs rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-            {((venue.cover_image_url as string | null) || retailer?.cover_image_url) && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={((venue.cover_image_url as string | null) || retailer?.cover_image_url) as string}
-                alt=""
-                className="w-full h-28 object-cover"
-              />
-            )}
-            <div className="p-3 space-y-1">
-              <div className="flex items-center gap-2">
-                {((venue.logo_url as string | null) || retailer?.logo_url) && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={((venue.logo_url as string | null) || retailer?.logo_url) as string}
-                    alt=""
-                    className="w-8 h-8 rounded object-cover border border-gray-100 shrink-0"
-                  />
-                )}
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  {(venue.name as string | null) ?? retailer?.name ?? 'Unnamed'}
-                </p>
-              </div>
-              {(venue.short_description as string | null) && (
-                <p className="text-xs text-gray-500 line-clamp-2">{venue.short_description as string}</p>
-              )}
-              <p className="text-xs text-gray-400">
-                {[(venue.address_line_1 as string | null), (venue.town as string | null), (venue.postcode as string | null)].filter(Boolean).join(', ')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </details>
-
-      {/* ── Edit venue details ───────────────────────────────────────────── */}
-      <details className="rounded-lg border border-gray-200 bg-white overflow-hidden mb-4 group">
+      <details className="rounded-lg border border-gray-200 bg-white overflow-hidden group">
         <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 select-none border-b border-gray-100 bg-gray-50">
           <span className="transition-transform group-open:rotate-90">▶</span>
           Edit venue details
@@ -587,35 +517,131 @@ export default async function VenueDetailPage({ params }: Props) {
           </div>
         </form>
       </details>
+    </div>
+  );
 
-      {/* ── Audit trail ─────────────────────────────────────────────────── */}
-      {(auditRows ?? []).length > 0 && (
-        <details className="rounded-lg border border-gray-200 bg-white overflow-hidden mb-4 group">
-          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 select-none border-b border-gray-100 bg-gray-50">
-            <span className="transition-transform group-open:rotate-90">▶</span>
-            Audit trail ({(auditRows ?? []).length})
-          </summary>
-          <div className="divide-y divide-gray-100">
-            {(auditRows ?? []).map((a) => {
-              const profile = Array.isArray(a.profiles) ? a.profiles[0] : a.profiles;
-              return (
-                <div key={a.id} className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-mono text-gray-700">{a.action_type}</span>
-                    <span className="text-xs text-gray-400">
-                      {new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </span>
-                  </div>
-                  {a.reason && <p className="text-xs text-gray-500 mt-0.5">{a.reason}</p>}
-                  {(profile as any)?.full_name && (
-                    <p className="text-xs text-gray-400 mt-0.5">by {(profile as any).full_name}</p>
-                  )}
-                </div>
-              );
-            })}
+  const retailerTabContent = (
+    <div className="space-y-4">
+      {retailer ? (
+        <>
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Retailer</p>
+            <Link href={`/retailers/${retailerId}`} className="text-sm font-semibold text-green-700 hover:underline">
+              {retailer.name}
+            </Link>
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${retailer.approval_status === 'approved' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+                {retailer.approval_status}
+              </span>
+              {!retailer.is_active && (
+                <span className="inline-flex items-center rounded border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                  Inactive
+                </span>
+              )}
+            </div>
           </div>
-        </details>
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">Active venues</p>
+            <p className="text-2xl font-semibold text-gray-900">{activeVenueCount ?? 0}</p>
+          </div>
+        </>
+      ) : (
+        <p className="text-sm text-gray-500">No retailer linked to this venue.</p>
       )}
+    </div>
+  );
+
+  const auditTabContent = (
+    <div>
+      {(auditRows ?? []).length === 0 ? (
+        <p className="text-sm text-gray-500">No audit entries yet.</p>
+      ) : (
+        <div className="rounded-lg border border-gray-200 bg-white overflow-hidden divide-y divide-gray-100">
+          {(auditRows ?? []).map((a) => {
+            const profile = Array.isArray(a.profiles) ? a.profiles[0] : a.profiles;
+            return (
+              <div key={a.id} className="px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-mono text-gray-700">{a.action_type}</span>
+                  <span className="text-xs text-gray-400">
+                    {new Date(a.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+                {a.reason && <p className="text-xs text-gray-500 mt-0.5">{a.reason}</p>}
+                {(profile as any)?.full_name && (
+                  <p className="text-xs text-gray-400 mt-0.5">by {(profile as any).full_name}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="max-w-3xl">
+      <div className="mb-6">
+        <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+          <Link href="/venues" className="hover:text-gray-700">← Venues</Link>
+          <span className="text-gray-300">/</span>
+          {retailer && (
+            <>
+              <Link href={`/retailers/${retailerId}`} className="hover:text-gray-700">{retailer.name}</Link>
+              <span className="text-gray-300">/</span>
+            </>
+          )}
+          <span className="text-gray-700">{(venue.name as string | null) ?? 'Unnamed venue'}</span>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-2xl font-semibold">
+            {(venue.name as string | null) ?? (venue.address_line_1 as string | null) ?? 'Unnamed venue'}
+          </h1>
+          <ReviewBadge status={(venue.review_status as string | null) ?? 'draft'} />
+          <QualityBadge score={qualityScore} />
+          {(venue.is_featured as boolean) && (
+            <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+              ⭐ Featured
+            </span>
+          )}
+          {!(venue.is_active as boolean) && (
+            <span className="rounded border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+              Inactive
+            </span>
+          )}
+        </div>
+
+        {(venue.address_line_1 as string | null) && (
+          <p className="mt-1 text-sm text-gray-500">{address}</p>
+        )}
+
+        {submittedAt && (
+          <p className="mt-1 text-xs text-gray-400">Submitted {submittedAt}</p>
+        )}
+
+        {(venue.review_status as string) === 'rejected' && (venue.review_notes as string | null) && (
+          <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <span className="font-medium">Rejection reason:</span> {venue.review_notes as string}
+          </div>
+        )}
+      </div>
+
+      <TabbedPanel
+        tabs={[
+          { id: 'review', label: 'Review' },
+          { id: 'details', label: 'Details' },
+          { id: 'retailer', label: 'Retailer' },
+          { id: 'audit', label: 'Audit' },
+        ]}
+        panels={[
+          { id: 'review', content: reviewTabContent },
+          { id: 'details', content: detailsTabContent },
+          { id: 'retailer', content: retailerTabContent },
+          { id: 'audit', content: auditTabContent },
+        ]}
+        defaultTab="review"
+      />
     </div>
   );
 }

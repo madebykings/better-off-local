@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireRetailerUser } from '@/lib/auth/require_retailer_user';
 import { createServiceClient } from '@/lib/supabase/service';
+import { PageHeader, EmptyState, StatusBadge } from '@better-off-local/ui';
 
 export const metadata: Metadata = { title: 'Referrals – Retailer Portal' };
 
@@ -14,14 +15,6 @@ type ConfigRow = {
   max_rewards_per_referrer: number | null;
 };
 
-const STATUS_LABELS: Record<string, { label: string; classes: string }> = {
-  live:     { label: 'Live',             classes: 'bg-green-100 text-green-800 border-green-200' },
-  draft:    { label: 'Draft',            classes: 'bg-gray-100 text-gray-700 border-gray-200' },
-  pending:  { label: 'Pending approval', classes: 'bg-amber-100 text-amber-800 border-amber-200' },
-  paused:   { label: 'Paused',           classes: 'bg-orange-100 text-orange-800 border-orange-200' },
-  expired:  { label: 'Expired',          classes: 'bg-red-100 text-red-800 border-red-200' },
-  rejected: { label: 'Rejected',         classes: 'bg-red-100 text-red-800 border-red-200' },
-};
 
 function pct(n: number, d: number): string {
   return d === 0 ? '—' : `${Math.round((n / d) * 100)}%`;
@@ -108,38 +101,35 @@ export default async function ReferralsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Referrals</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Refer-a-friend campaigns — members share a link and earn rewards when friends visit.
-          </p>
-        </div>
-        <Link
-          href="/referrals/new"
-          className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-        >
-          Create referral campaign
-        </Link>
-      </div>
-
-      {offers.length === 0 ? (
-        <div className="text-center py-16 text-gray-400 border border-gray-200 rounded-lg">
-          <p className="text-4xl mb-3">🤝</p>
-          <p className="font-medium text-gray-600">No referral campaigns yet</p>
-          <p className="text-sm mt-1 mb-4">
-            Create a refer-a-friend campaign to grow your customer base.
-          </p>
+      <PageHeader
+        title="Referrals"
+        description="Refer-a-friend campaigns — members share a link and earn rewards when friends visit."
+        action={
           <Link
             href="/referrals/new"
-            className="inline-block text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            className="text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
             Create referral campaign
           </Link>
-        </div>
+        }
+      />
+
+      {offers.length === 0 ? (
+        <EmptyState
+          icon="🤝"
+          title="No referral campaigns yet"
+          description="Create a refer-a-friend campaign to grow your customer base."
+          action={
+            <Link
+              href="/referrals/new"
+              className="inline-block text-sm bg-green-800 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Create referral campaign
+            </Link>
+          }
+        />
       ) : (
         <>
-          {/* Summary metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
             {[
               { label: 'Links shared',     value: totalLinks },
@@ -155,8 +145,7 @@ export default async function ReferralsPage() {
             ))}
           </div>
 
-          {/* Per-campaign table */}
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -182,19 +171,13 @@ export default async function ReferralsPage() {
                   const newBol = newBolByOffer.get(offer.id) ?? 0;
                   const { unlocked = 0, redeemed = 0 } = rewardsByOffer.get(offer.id) ?? {};
                   const converted = unlocked + redeemed;
-                  const badge = STATUS_LABELS[offer.status] ?? {
-                    label: offer.status,
-                    classes: 'bg-gray-100 text-gray-600 border-gray-200',
-                  };
                   return (
                     <tr key={offer.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-800 max-w-[160px] truncate">
                         {offer.title}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${badge.classes}`}>
-                          {badge.label}
-                        </span>
+                        <StatusBadge status={offer.status} />
                       </td>
                       <td className="px-4 py-3 text-gray-600 max-w-[140px] truncate">
                         {cfg?.reward_title ?? '—'}
@@ -232,6 +215,60 @@ export default async function ReferralsPage() {
                 })}
               </tbody>
             </table>
+          </div>
+
+          <div className="md:hidden space-y-3">
+            {offers.map((offer) => {
+              const cfg = configs.get(offer.id);
+              const links = sharesByOffer.get(offer.id) ?? 0;
+              const invited = invitesByOffer.get(offer.id) ?? 0;
+              const { unlocked = 0, redeemed = 0 } = rewardsByOffer.get(offer.id) ?? {};
+              const converted = unlocked + redeemed;
+              return (
+                <div key={offer.id} className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-gray-800 text-sm leading-snug">{offer.title}</p>
+                    <StatusBadge status={offer.status} />
+                  </div>
+                  <div className="space-y-1 text-sm">
+                    <p className="text-gray-600">
+                      <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Referrer reward: </span>
+                      {cfg?.reward_title ?? '—'}
+                    </p>
+                    <p className="text-gray-600">
+                      <span className="text-xs text-gray-400 uppercase tracking-wide font-medium">Friend reward: </span>
+                      {cfg
+                        ? cfg.friend_reward_enabled
+                          ? cfg.friend_reward_title ?? 'Set'
+                          : 'None'
+                        : '—'}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-100">
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400">Links</p>
+                      <p className="text-sm font-semibold text-gray-800">{links}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400">Unlocked</p>
+                      <p className="text-sm font-semibold text-gray-800">{unlocked + redeemed}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs text-gray-400">Conv. %</p>
+                      <p className="text-sm font-semibold text-gray-800">{pct(converted, invited)}</p>
+                    </div>
+                  </div>
+                  <div className="pt-1">
+                    <Link
+                      href={`/offers/${offer.id}`}
+                      className="text-xs font-medium text-green-700 hover:text-green-900 hover:underline"
+                    >
+                      Edit campaign
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
