@@ -2,9 +2,13 @@
 -- process_event_reminders(): sends 24h and 1h pre-event push/in-app notifications
 -- to members who have opted in via event_reminders rows.
 --
--- Invoked by pg_cron every 30 minutes (see cron.schedule call below).
--- Also callable via the process-event-reminders edge function for environments
--- where pg_cron is not available.
+-- This function may be invoked via:
+--   - Supabase Scheduled Functions
+--   - GitHub Actions
+--   - External cron service
+--   - Manual invocation
+--
+-- No pg_cron dependency is required.
 --
 -- Uses insert_notification(profile_id, type, title, body, data_json) defined
 -- in migration 061 (service_role only; this function runs as security definer).
@@ -75,18 +79,7 @@ begin
 end;
 $$;
 
--- Restrict execution: called only by pg_cron (superuser) and the edge function
--- (service_role). Revoke from all other roles.
+-- Restrict execution to service_role only (edge function / scheduled invocations).
+-- Revoke from all other roles.
 revoke execute on function process_event_reminders() from public, anon, authenticated;
 grant  execute on function process_event_reminders() to service_role;
-
--- ── pg_cron schedule ──────────────────────────────────────────────────────────
--- Run every 30 minutes.
--- Requires pg_cron extension enabled in Supabase project settings.
--- If pg_cron is not available, call the process-event-reminders edge function
--- from an external scheduler instead.
-select cron.schedule(
-  'process-event-reminders',
-  '*/30 * * * *',
-  $$select process_event_reminders()$$
-);
