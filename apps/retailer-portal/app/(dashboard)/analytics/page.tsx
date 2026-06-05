@@ -478,7 +478,7 @@ export default async function AnalyticsPage() {
     <div className="space-y-8">
       <PageHeader
         title="Analytics"
-        description="Performance and health overview for your business on Better Off Local."
+        description={`Performance and health overview for your ${terms.entity.toLowerCase()} on Better Off Local.`}
       />
 
       {/* ── Business Health Score ── */}
@@ -660,7 +660,7 @@ export default async function AnalyticsPage() {
       <div>
         <h2 className="text-lg font-semibold mb-1">Your Impact</h2>
         <p className="text-sm text-gray-500 mb-4">
-          How your business is contributing to the local community.
+          How your {terms.entity.toLowerCase()} is contributing to the local community.
         </p>
         <RetailerImpactCard retailerId={retailerId} />
       </div>

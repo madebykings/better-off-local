@@ -189,7 +189,7 @@ class _ImpactBody extends StatelessWidget {
               ),
               _MetricCell(
                 value: '${impact.businessesParticipating}',
-                label: 'Businesses participating',
+                label: 'Partners participating',
                 color: const Color(0xFF059669),
               ),
               _MetricCell(
@@ -726,7 +726,7 @@ class _RegionLeaderboard extends ConsumerWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '${region.activeRetailerCount} businesses · ${region.liveOfferCount} offers',
+                                '${region.activeRetailerCount} partners · ${region.liveOfferCount} offers',
                                 style: const TextStyle(
                                   fontSize: 11,
                                   color: AppColors.textDisabled,

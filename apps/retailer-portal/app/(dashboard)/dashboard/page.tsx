@@ -237,7 +237,7 @@ export default async function DashboardPage() {
     if (totalRedemptions === 0) {
       return {
         heading: 'Share your listing',
-        description: 'You have live offers but no redemptions yet. Share your link with customers.',
+        description: `You have live offers but no redemptions yet. Share your link with ${terms.customers.toLowerCase()}.`,
         href: null,
         linkLabel: null,
       };
