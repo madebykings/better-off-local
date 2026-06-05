@@ -37,6 +37,9 @@ class _NoOpNotificationService implements NotificationService {
 
   @override
   Future<RemoteMessage?> getInitialMessage() async => null;
+
+  @override
+  Stream<String?> get onNotificationTap => Stream.empty();
 }
 
 Future<void> bootstrap() async {

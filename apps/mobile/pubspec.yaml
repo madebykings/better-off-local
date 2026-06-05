@@ -26,6 +26,8 @@ dependencies:
   # Firebase — push notifications
   firebase_core: ^3.0.0
   firebase_messaging: ^15.0.0
+  # Local notification display (foreground messages on Android + channel creation)
+  flutter_local_notifications: ^17.0.0
 
   # Maps & location
   google_maps_flutter: ^2.7.0

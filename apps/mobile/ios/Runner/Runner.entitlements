@@ -6,5 +6,11 @@
 	<array>
 		<string>applinks:betterofflocal.com</string>
 	</array>
+
+	<!-- APNs environment: 'development' for debug builds, 'production' for release. -->
+	<!-- Must match the certificate type uploaded to Firebase Console.               -->
+	<!-- Xcode also sets this automatically via Signing & Capabilities → Push Notifs. -->
+	<key>aps-environment</key>
+	<string>development</string>
 </dict>
 </plist>

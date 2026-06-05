@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../core/constants/storage_keys.dart';
 import '../core/providers/supabase_provider.dart';
+import 'bootstrap/bootstrap.dart';
 import 'router/app_router.dart';
 import 'router/route_names.dart';
 import 'theme/app_theme.dart';
@@ -22,17 +24,68 @@ class _AppState extends ConsumerState<App> {
   final _appLinks = AppLinks();
   final _secureStorage = const FlutterSecureStorage();
   StreamSubscription<Uri>? _linkSub;
+  StreamSubscription<String?>? _notifTapSub;
+  StreamSubscription<RemoteMessage>? _bgNotifSub;
 
   @override
   void initState() {
     super.initState();
     _initDeepLinks();
+    _initNotifications();
   }
 
   @override
   void dispose() {
     _linkSub?.cancel();
+    _notifTapSub?.cancel();
+    _bgNotifSub?.cancel();
     super.dispose();
+  }
+
+  // ── Notification tap handling ────────────────────────────────────────────────
+
+  void _initNotifications() {
+    final notifSvc = ref.read(notificationServiceProvider);
+
+    // 1. Foreground local notification tap (Android only via flutter_local_notifications)
+    _notifTapSub = notifSvc.onNotificationTap.listen((route) {
+      _navigateFromNotification(route);
+    });
+
+    // 2. Background→foreground tap (user tapped a system notification while app
+    //    was in background; FCM delivers the triggering message here).
+    _bgNotifSub = FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      _navigateFromNotification(message.data['route'] as String?);
+    });
+
+    // 3. Terminated-state tap (app was not running; launched by notification tap).
+    //    Delay until after the first frame so the router is fully initialised.
+    unawaited(
+      notifSvc.getInitialMessage().then((message) {
+        if (message != null && mounted) {
+          _navigateFromNotification(message.data['route'] as String?);
+        }
+      }).catchError((Object e) {
+        debugPrint('[App] getInitialMessage error (non-fatal): $e');
+      }),
+    );
+  }
+
+  /// Navigates to [route] if it is a recognised path, otherwise falls back to
+  /// the notifications tab so the user always lands somewhere useful.
+  void _navigateFromNotification(String? route) {
+    if (!mounted) return;
+    final router = ref.read(appRouterProvider);
+    if (route != null && route.isNotEmpty) {
+      try {
+        router.go(route);
+      } catch (_) {
+        // route string was malformed or not recognised — fall back.
+        router.go(RouteNames.notifications);
+      }
+    } else {
+      router.go(RouteNames.notifications);
+    }
   }
 
   Future<void> _initDeepLinks() async {

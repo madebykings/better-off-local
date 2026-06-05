@@ -23,4 +23,10 @@ abstract class NotificationService {
   /// terminated state, or null if the app was not launched from a
   /// notification.
   Future<RemoteMessage?> getInitialMessage();
+
+  /// Emits the route payload string when the user taps a foreground local
+  /// notification (Android only — iOS uses system presentation).  The payload
+  /// is the value of the FCM message's `data['route']` field.
+  /// Returns null if no route is embedded in the notification data.
+  Stream<String?> get onNotificationTap;
 }

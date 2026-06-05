@@ -33,6 +33,10 @@ class AppShell extends ConsumerWidget {
     final selectedIndex = _selectedIndex(location);
     final unreadCount = ref.watch(unreadNotificationCountProvider).valueOrNull ?? 0;
 
+    // Activate FCM token registration while the shell is alive.
+    // The provider no-ops when unauthenticated or when Firebase is unavailable.
+    ref.watch(fcmTokenRegistrationProvider);
+
     return Scaffold(
       body: child,
       bottomNavigationBar: NavigationBar(

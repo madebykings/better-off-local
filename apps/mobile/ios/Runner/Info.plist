@@ -2,6 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- ── Push notifications (Firebase Cloud Messaging / APNs) ──────────── -->
+	<!-- remote-notification: required for background FCM data-only messages. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+
 	<!-- ── Permission usage descriptions ───────────────────────────────────── -->
 	<!-- Required by mobile_scanner (offer redemption QR scanning). -->
 	<key>NSCameraUsageDescription</key>

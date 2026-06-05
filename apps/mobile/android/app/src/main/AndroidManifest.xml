@@ -24,6 +24,21 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="${GOOGLE_MAPS_API_KEY}"/>
 
+        <!-- ── Firebase Cloud Messaging ──────────────────────────────────── -->
+        <!-- Channel created in Dart at startup; must match channelId in     -->
+        <!-- NotificationService.initialize() and FCM server payloads.      -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="bol_offers"/>
+        <!-- White-on-transparent small icon (required for Android 5+).      -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification"/>
+        <!-- Accent colour shown on the notification icon badge.             -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/bol_green"/>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
