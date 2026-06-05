@@ -4,15 +4,29 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/location_provider.dart';
+import '../../../core/providers/session_provider.dart';
+import '../../../core/providers/supabase_provider.dart';
+import '../../../features/loyalty/domain/loyalty_card.dart';
+import '../../../features/loyalty/providers/loyalty_providers.dart';
 import '../../../features/offers/domain/offer_summary.dart';
 import '../../../features/offers/providers/offers_providers.dart';
+import '../../../features/region/providers/region_providers.dart';
 import '../../../features/retailers/domain/retailer.dart';
 import '../../../features/retailers/providers/retailer_providers.dart';
+import '../../../features/follow/providers/retailer_follows_providers.dart';
+import '../data/map_remote_data_source.dart';
+import '../domain/map_event_pin.dart';
 import '../presentation/map_controller.dart';
 
 export '../presentation/map_controller.dart';
 
-// ── Enriched retailer list for the map ───────────────────────────────────────
+// ── Data source ───────────────────────────────────────────────────────────────
+
+final mapDataSourceProvider = Provider<MapRemoteDataSource>(
+  (ref) => MapRemoteDataSource(ref.watch(supabaseClientProvider)),
+);
+
+// ── Retailer base data ────────────────────────────────────────────────────────
 
 /// Fetches live retailers and their best featured offers from the DB.
 /// No location dependency — stable across GPS updates so DB is not re-queried
@@ -29,7 +43,9 @@ final mapBaseDataProvider = FutureProvider<
         'lat=${r.latitude}, lon=${r.longitude}, '
         'isPrimary location attached=${r.latitude != null}');
   }
-  if (retailers.isEmpty) return (retailers: <Retailer>[], featured: <String, OfferSummary>{});
+  if (retailers.isEmpty) {
+    return (retailers: <Retailer>[], featured: <String, OfferSummary>{});
+  }
 
   final retailerIds = retailers.map((r) => r.id).toList();
   final featuredOffers = await ref
@@ -39,12 +55,8 @@ final mapBaseDataProvider = FutureProvider<
   return (retailers: retailers, featured: featuredOffers);
 });
 
-/// All live retailers enriched with their best featured offer and distance
-/// from the current user position (if available). No radius filter — the map
-/// shows the full dataset and lets the user pan freely.
-///
-/// Distance is recalculated in-memory when location changes; DB is not
-/// re-queried on GPS updates.
+/// All live retailers enriched with distance from current user position.
+/// DB is not re-queried on GPS updates — only the distance calculation changes.
 final mapAllRetailersProvider = Provider<List<Retailer>>((ref) {
   final base = ref.watch(mapBaseDataProvider).valueOrNull;
   if (base == null || base.retailers.isEmpty) return [];
@@ -82,22 +94,76 @@ final mapAllRetailersProvider = Provider<List<Retailer>>((ref) {
       categories: r.categories,
       featuredOffer: base.featured[r.id],
       activeOfferCount: r.activeOfferCount,
+      isFeatured: r.isFeatured,
+      openingHours: r.openingHours,
+      createdAt: r.createdAt,
+      recentRedemptionCount: r.recentRedemptionCount,
+      favouriteCount: r.favouriteCount,
+      primaryLocationId: r.primaryLocationId,
     );
   }).toList();
 });
 
-// ── Map-filtered retailer list ────────────────────────────────────────────────
+// ── Event pins ────────────────────────────────────────────────────────────────
 
-/// Live retailers that have coordinates, filtered by the current search query.
-/// Used to populate both map markers and the bottom-sheet list.
-final mapRetailersProvider = Provider<List<Retailer>>((ref) {
+/// Live upcoming events with venue coordinates. Requires user session to
+/// include reminder state; returns empty list if not signed in.
+final mapEventsProvider = FutureProvider<List<MapEventPin>>((ref) async {
+  final session = ref.watch(sessionProvider).valueOrNull;
+  if (session == null) return [];
+  final userId = session.user.id;
+  final regionId = ref.watch(memberRegionIdProvider(userId)).valueOrNull;
+  if (regionId == null) return [];
+  return ref.read(mapDataSourceProvider).fetchMapEvents(
+        regionId: regionId,
+        consumerId: userId,
+      );
+});
+
+// ── Filtered retailers ────────────────────────────────────────────────────────
+
+/// Retailers filtered by the active MapFilter and search query.
+/// Only returns retailers that have map coordinates.
+final mapFilteredRetailersProvider = Provider<List<Retailer>>((ref) {
   final all = ref.watch(mapAllRetailersProvider);
   final query =
       ref.watch(mapControllerProvider.select((s) => s.searchQuery));
+  final filter =
+      ref.watch(mapControllerProvider.select((s) => s.activeFilter));
+  final followedIds = ref.watch(followedRetailerIdsProvider);
+  final loyaltyCards =
+      ref.watch(myLoyaltyCardsProvider).valueOrNull ?? <LoyaltyCard>[];
 
-  final withCoords =
+  final loyaltyRetailerIds = loyaltyCards
+      .where((c) =>
+          c.status == LoyaltyCardStatus.active && c.stampsEarned < c.stampsRequired)
+      .map((c) => c.retailerId)
+      .toSet();
+
+  var withCoords =
       all.where((r) => r.latitude != null && r.longitude != null).toList();
-  debugPrint('[MAP] Retailers total: ${all.length}, with coordinates: ${withCoords.length}');
+
+  debugPrint(
+      '[MAP] Retailers total: ${all.length}, with coordinates: ${withCoords.length}');
+
+  // Events-only filter hides all retailer markers.
+  if (filter == MapFilter.events) return [];
+
+  switch (filter) {
+    case MapFilter.offers:
+      withCoords = withCoords.where((r) => r.activeOfferCount > 0).toList();
+    case MapFilter.featured:
+      withCoords = withCoords.where((r) => r.isFeatured).toList();
+    case MapFilter.following:
+      withCoords =
+          withCoords.where((r) => followedIds.contains(r.id)).toList();
+    case MapFilter.loyalty:
+      withCoords =
+          withCoords.where((r) => loyaltyRetailerIds.contains(r.id)).toList();
+    case MapFilter.all:
+    case MapFilter.events:
+      break;
+  }
 
   if (query.isEmpty) return withCoords;
 
@@ -114,28 +180,58 @@ final mapRetailersProvider = Provider<List<Retailer>>((ref) {
   }).toList();
 });
 
-// ── Selected retailer ─────────────────────────────────────────────────────────
+/// Backwards-compatible alias — callers that used mapRetailersProvider
+/// automatically get the filter-aware version.
+final mapRetailersProvider = mapFilteredRetailersProvider;
 
-/// The currently-tapped retailer object, or null if nothing is selected.
+// ── Filtered events ───────────────────────────────────────────────────────────
+
+/// Events shown as map markers — only when filter is 'all' or 'events'.
+final mapFilteredEventsProvider = Provider<List<MapEventPin>>((ref) {
+  final filter =
+      ref.watch(mapControllerProvider.select((s) => s.activeFilter));
+  if (filter != MapFilter.all && filter != MapFilter.events) return [];
+  return ref.watch(mapEventsProvider).valueOrNull ?? [];
+});
+
+// ── Selected items ────────────────────────────────────────────────────────────
+
+/// The currently-tapped retailer, or null.
 final selectedMapRetailerProvider = Provider<Retailer?>((ref) {
   final selectedId =
       ref.watch(mapControllerProvider.select((s) => s.selectedRetailerId));
   if (selectedId == null) return null;
-  final retailers = ref.watch(mapRetailersProvider);
+  final retailers = ref.watch(mapFilteredRetailersProvider);
   try {
     return retailers.firstWhere((r) => r.id == selectedId);
+  } catch (_) {
+    // Fall back to full list in case the selected retailer is filtered out.
+    final all = ref.watch(mapAllRetailersProvider);
+    try {
+      return all.firstWhere((r) => r.id == selectedId);
+    } catch (_) {
+      return null;
+    }
+  }
+});
+
+/// The currently-tapped event, or null.
+final selectedMapEventProvider = Provider<MapEventPin?>((ref) {
+  final selectedId =
+      ref.watch(mapControllerProvider.select((s) => s.selectedEventId));
+  if (selectedId == null) return null;
+  final events = ref.watch(mapEventsProvider).valueOrNull ?? [];
+  try {
+    return events.firstWhere((e) => e.id == selectedId);
   } catch (_) {
     return null;
   }
 });
 
-// ── Base data load status — for error/loading UI in the map screen ────────────
+// ── Load state ────────────────────────────────────────────────────────────────
 
-/// Exposes the async state of the underlying retailer fetch so the map screen
-/// can show a loading indicator or error banner rather than silently showing
-/// an empty list when the query fails.
-final mapRetailersLoadStateProvider =
-    Provider<AsyncValue<void>>((ref) {
+/// Exposes the async state of the retailer fetch for error/loading UI.
+final mapRetailersLoadStateProvider = Provider<AsyncValue<void>>((ref) {
   final async = ref.watch(mapBaseDataProvider);
   if (async.isLoading) return const AsyncLoading();
   if (async.hasError) return AsyncError(async.error!, async.stackTrace!);
