@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase config files — contain app secrets.
+# Download from Firebase Console and place locally; do not commit.
+# Android: apps/mobile/android/app/google-services.json
+# iOS:     apps/mobile/ios/Runner/GoogleService-Info.plist
+google-services.json
+**/GoogleService-Info.plist

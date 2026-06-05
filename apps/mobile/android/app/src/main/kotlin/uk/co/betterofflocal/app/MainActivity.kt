@@ -1,4 +1,4 @@
-package com.example.better_off_local
+package uk.co.betterofflocal.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -16,7 +16,7 @@ val localProperties = Properties().also { props ->
 }
 
 android {
-    namespace = "com.example.better_off_local"
+    namespace = "uk.co.betterofflocal.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -26,8 +26,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.better_off_local"
+        applicationId = "uk.co.betterofflocal.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
