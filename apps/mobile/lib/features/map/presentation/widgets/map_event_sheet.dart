@@ -5,7 +5,12 @@ import '../../../../app/theme/app_text_styles.dart';
 import '../../domain/map_event_pin.dart';
 
 /// Bottom-sheet card shown when an event map marker is tapped.
-class MapEventSheet extends StatelessWidget {
+///
+/// Manages reminder state locally so the card doesn't disappear during a
+/// server round-trip. [onReminderToggled] is called after the optimistic
+/// local update — callers should make the server call and need not
+/// invalidate the global events provider.
+class MapEventSheet extends StatefulWidget {
   const MapEventSheet({
     super.key,
     required this.event,
@@ -20,6 +25,34 @@ class MapEventSheet extends StatelessWidget {
   final VoidCallback onDismiss;
   final VoidCallback onViewEvent;
   final ValueChanged<bool> onReminderToggled;
+
+  @override
+  State<MapEventSheet> createState() => _MapEventSheetState();
+}
+
+class _MapEventSheetState extends State<MapEventSheet> {
+  late bool _hasReminder;
+
+  @override
+  void initState() {
+    super.initState();
+    _hasReminder = widget.hasReminder;
+  }
+
+  @override
+  void didUpdateWidget(MapEventSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync when the sheet switches to a different event.
+    if (oldWidget.event.id != widget.event.id) {
+      _hasReminder = widget.hasReminder;
+    }
+  }
+
+  void _toggleReminder() {
+    final next = !_hasReminder;
+    setState(() => _hasReminder = next);
+    widget.onReminderToggled(next);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,26 +189,26 @@ class MapEventSheet extends StatelessWidget {
                     children: [
                       // Remind me toggle
                       GestureDetector(
-                        onTap: () => onReminderToggled(!hasReminder),
+                        onTap: _toggleReminder,
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: hasReminder
+                            color: _hasReminder
                                 ? AppColors.info.withValues(alpha: 0.1)
                                 : AppColors.background,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: hasReminder
+                              color: _hasReminder
                                   ? AppColors.info
                                   : AppColors.border,
                             ),
                           ),
                           child: Icon(
-                            hasReminder
+                            _hasReminder
                                 ? Icons.notifications_active_outlined
                                 : Icons.notifications_outlined,
                             size: 16,
-                            color: hasReminder
+                            color: _hasReminder
                                 ? AppColors.info
                                 : AppColors.textSecondary,
                           ),

@@ -165,7 +165,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       } else {
         await ds.removeReminder(event.id, session.user.id);
       }
-      ref.invalidate(mapEventsProvider);
+      // Do NOT invalidate mapEventsProvider here — MapEventSheet manages the
+      // reminder state locally (optimistic UI) so the sheet stays visible.
+      // The correct state is reflected on the next natural refresh of the provider.
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

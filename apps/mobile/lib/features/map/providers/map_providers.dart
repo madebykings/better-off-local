@@ -160,8 +160,7 @@ final mapFilteredRetailersProvider = Provider<List<Retailer>>((ref) {
     case MapFilter.loyalty:
       withCoords =
           withCoords.where((r) => loyaltyRetailerIds.contains(r.id)).toList();
-    case MapFilter.all:
-    case MapFilter.events:
+    case MapFilter.all || MapFilter.events:
       break;
   }
 
