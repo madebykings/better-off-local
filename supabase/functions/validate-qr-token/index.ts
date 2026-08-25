@@ -151,19 +151,21 @@ serve(async (req) => {
       return json({ error: 'Token expired' }, 410);
     }
 
-    // Re-verify membership is still active at scan time.
-    // A token issued to a member who subsequently cancels must be rejected.
-    const { data: membership } = await supabase
-      .from('consumer_memberships')
-      .select('plan_interval, started_at')
-      .eq('profile_id', passToken.profile_id)
-      .in('status', ['active', 'trialing'])
-      .gt('current_period_end', now.toISOString())
-      .maybeSingle();
-
-    if (!membership) {
-      return json({ error: 'Membership not active' }, 403);
-    }
+    // ── Consumer membership check — DORMANT (free consumer tier) ────────────
+    // Token existence + unexpired TTL is sufficient for the free tier.
+    // Restore when paid consumer tiers are introduced:
+    //
+    // const { data: membership } = await supabase
+    //   .from('consumer_memberships')
+    //   .select('plan_interval, started_at')
+    //   .eq('profile_id', passToken.profile_id)
+    //   .in('status', ['active', 'trialing'])
+    //   .gt('current_period_end', now.toISOString())
+    //   .maybeSingle();
+    //
+    // if (!membership) {
+    //   return json({ error: 'Membership not active' }, 403);
+    // }
 
     // Fetch first name for the offer-chooser UI (non-critical — omit on error).
     let consumerName: string | null = null;
@@ -182,8 +184,8 @@ serve(async (req) => {
       token_type: 'membership_pass',
       valid: true,
       purpose: passToken.purpose,
-      plan_interval: membership.plan_interval,
-      member_since: membership.started_at ?? null,
+      plan_interval: 'free',
+      member_since: null,
       consumer_name: consumerName,
     });
   }
